@@ -8,6 +8,7 @@ let appData    = { version: 1, clients: [] };
 let appProfile = { name: '', age: '', sex: '', email: '', photo: '' };
 let nav        = { view: 'welcome', clientId: null, planId: null };
 let state      = { activeDay: 0, days: [] };
+let draftClient = null;
 
 let selectedFood   = null;
 let activeMealCtx  = null;
@@ -221,6 +222,9 @@ function enterApp() {
 }
 
 function goToClients() {
+  if (draftClient && nav.clientId === draftClient.id) {
+    draftClient = null;
+  }
   nav = { view: 'clients', clientId: null, planId: null };
   showPage('clients');
   updateBreadcrumb();
@@ -228,6 +232,9 @@ function goToClients() {
 }
 
 function goToClient(clientId, tab) {
+  if (draftClient && clientId !== draftClient.id) {
+    draftClient = null;
+  }
   const client = appData.clients.find(c => c.id === clientId);
   if (!client) return;
   nav = { view: 'client', clientId, planId: null };
@@ -266,9 +273,12 @@ function createClient() {
     info: {},
     plans: []
   };
-  appData.clients.push(client);
-  saveAppData();
-  goToClient(client.id, 'info');
+  draftClient = client;
+  nav = { view: 'client', clientId: client.id, planId: null };
+  document.getElementById('client-page-name').textContent = client.nome;
+  showPage('client');
+  renderClientPage(client);
+  showClientTab('info');
   setTimeout(() => {
     const el = document.getElementById('pNome');
     if (el) { el.focus(); el.select(); }
@@ -406,7 +416,7 @@ function renderDashboard() {
         <div class="dash-left">
           <div class="dash-hero">
             <div class="dash-hero-text">
-              <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
+              <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma </span>vidas</h2>
               <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
               <div class="dash-hero-actions">
                 <button class="btn-hero-primary" onclick="createClient()">
@@ -484,7 +494,9 @@ function loadInfoForm(info) {
 
 function savePatientInfo() {
   if (!nav.clientId) return;
-  const client = appData.clients.find(c => c.id === nav.clientId);
+  let client = appData.clients.find(c => c.id === nav.clientId);
+  const isDraft = !client && draftClient && draftClient.id === nav.clientId;
+  if (!client && isDraft) client = draftClient;
   if (!client) return;
   if (!client.info) client.info = {};
   PATIENT_FIELDS.forEach(id => {
@@ -496,6 +508,10 @@ function savePatientInfo() {
     client.nome = newNome;
     document.getElementById('client-page-name').textContent = newNome;
     updateBreadcrumb();
+  }
+  if (isDraft) {
+    appData.clients.push(client);
+    draftClient = null;
   }
   saveAppData();
   const btn = document.querySelector('.btn-save-info');

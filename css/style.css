@@ -853,6 +853,8 @@ body {
   border-bottom: 1px solid rgba(39,134,90,.10);
   display: flex;
   align-items: center;
+  margin-top: 8px;
+  margin-bottom: 8px;
   padding: 0 16px;
   gap: 2px;
   flex-shrink: 0;
@@ -863,6 +865,7 @@ body {
   border-radius: 6px 6px 0 0;
   cursor: pointer;
   font-size: 12px;
+  margin-bottom: 8px;
   font-weight: 500;
   color: var(--gray-500);
   border: none;
@@ -892,10 +895,14 @@ body {
   gap: 6px;
   flex-shrink: 0;
   margin-right: 6px;
+  margin-bottom: 8px;
+  margin-top: 2px;
 }
 .btn-back-plan {
-  width: 26px; height: 26px;
   display: flex; align-items: center; justify-content: center;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 26px;
   border: 1px solid var(--gray-200);
   border-radius: 6px;
   background: white;
