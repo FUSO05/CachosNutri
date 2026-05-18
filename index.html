@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CachosNutri — Planeamento Alimentar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+      <path d="M8 12h8M12 8v8"/>
+    </svg>
+    CachosNutri
+  </div>
+  <div class="topbar-sep"></div>
+  <nav class="topbar-tabs">
+    <button class="topbar-tab active" id="tab-plan" onclick="switchTab('plan')">Refeições</button>
+    <button class="topbar-tab" id="tab-info" onclick="switchTab('info')">Informações</button>
+  </nav>
+  <div class="topbar-right">
+    <button class="btn-print" onclick="window.print()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+      Imprimir
+    </button>
+  </div>
+</header>
+
+<!-- ── DAY TABS ── -->
+<div class="day-tabs">
+  <div id="dayTabs"></div>
+  <div class="day-tabs-right">
+    <button class="btn-icon" title="Exportar">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+    </button>
+    <button class="btn-icon" title="Guardar">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main-layout">
+
+  <!-- ── PLANO (esquerda) ── -->
+  <main class="plan-area" id="planArea"></main>
+
+  <!-- ── SIDEBAR (direita) ── -->
+  <aside class="sidebar">
+
+    <!-- Análise global -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Análise global</div>
+      <div class="kcal-total">
+        <div class="kcal-num" id="kcalNum">0</div>
+        <div class="kcal-label">kcal totais do dia</div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-canvas-wrap">
+          <canvas id="pieChart"></canvas>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#e74c3c"></div>
+            <span class="legend-label">Proteína</span>
+            <span class="legend-val" id="legProt">0g</span>
+            <span class="legend-pct" id="legProtPct">0%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#f39c12"></div>
+            <span class="legend-label">Hidratos C.</span>
+            <span class="legend-val" id="legHc">0g</span>
+            <span class="legend-pct" id="legHcPct">0%</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#9b59b6"></div>
+            <span class="legend-label">Lípidos</span>
+            <span class="legend-val" id="legLip">0g</span>
+            <span class="legend-pct" id="legLipPct">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Macro rings -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Distribuição de macronutrientes</div>
+      <div class="macro-rings">
+        <div class="macro-ring-item">
+          <div class="val c-prot" id="rProt">0g</div>
+          <div class="lbl">Proteína</div>
+        </div>
+        <div class="macro-ring-item">
+          <div class="val c-hc" id="rHc">0g</div>
+          <div class="lbl">Hidratos C.</div>
+        </div>
+        <div class="macro-ring-item">
+          <div class="val c-lip" id="rLip">0g</div>
+          <div class="lbl">Lípidos</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- ── INFORMAÇÕES DO PACIENTE ── -->
+<div class="info-page" id="infoPage">
+  <div class="info-container">
+
+    <div class="info-page-header">
+      <div>
+        <div class="info-page-title">Informações do Paciente</div>
+        <div class="info-page-sub">Os dados são guardados automaticamente no browser</div>
+      </div>
+      <button class="btn-save-info" onclick="savePatientInfo()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+          <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Guardar
+      </button>
+    </div>
+
+    <div class="info-grid">
+
+      <!-- Dados Pessoais -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          Dados Pessoais
+        </div>
+        <div class="form-field">
+          <label class="field-label">Nome completo</label>
+          <input class="field-input" type="text" id="pNome" placeholder="Nome do paciente">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">Data de nascimento</label>
+            <input class="field-input" type="date" id="pNascimento" oninput="updateAge()">
+          </div>
+          <div class="form-field">
+            <label class="field-label">Idade</label>
+            <input class="field-input field-calc" type="text" id="pIdade" readonly placeholder="—">
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Género</label>
+          <select class="field-select" id="pGenero" onchange="updateTMB()">
+            <option value="">Selecionar…</option>
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">E-mail</label>
+          <input class="field-input" type="email" id="pEmail" placeholder="email@exemplo.com">
+        </div>
+        <div class="form-field">
+          <label class="field-label">Telefone</label>
+          <input class="field-input" type="tel" id="pTelefone" placeholder="+351 912 345 678">
+        </div>
+      </div>
+
+      <!-- Avaliação Antropométrica -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3h18v4H3zM3 10h6v4H3zM3 17h6v4H3z"/></svg>
+          Avaliação Antropométrica
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">Altura (cm)</label>
+            <input class="field-input" type="number" id="pAltura" min="50" max="250" placeholder="175" oninput="updateMetrics()">
+          </div>
+          <div class="form-field">
+            <label class="field-label">Peso atual (kg)</label>
+            <input class="field-input" type="number" id="pPeso" min="20" max="300" step="0.1" placeholder="70" oninput="updateMetrics()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">IMC</label>
+            <input class="field-input field-calc" type="text" id="pIMC" readonly placeholder="—">
+          </div>
+          <div class="form-field">
+            <label class="field-label">Classificação</label>
+            <input class="field-input field-calc" id="pIMCClass" type="text" readonly placeholder="—">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">Peso objetivo (kg)</label>
+            <input class="field-input" type="number" id="pPesoObj" min="20" max="300" step="0.1" placeholder="65">
+          </div>
+          <div class="form-field">
+            <label class="field-label">Perímetro cintura (cm)</label>
+            <input class="field-input" type="number" id="pCintura" min="40" max="200" placeholder="80">
+          </div>
+        </div>
+      </div>
+
+      <!-- Atividade & Energia -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Atividade &amp; Energia
+        </div>
+        <div class="form-field">
+          <label class="field-label">Nível de atividade física</label>
+          <select class="field-select" id="pAtividade" onchange="updateTMB()">
+            <option value="">Selecionar…</option>
+            <option value="1.2">Sedentário (sem exercício)</option>
+            <option value="1.375">Levemente ativo (1–3×/semana)</option>
+            <option value="1.55">Moderadamente ativo (3–5×/semana)</option>
+            <option value="1.725">Muito ativo (6–7×/semana)</option>
+            <option value="1.9">Extremamente ativo (atleta/trabalho físico)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Objetivo principal</label>
+          <select class="field-select" id="pObjetivo">
+            <option value="">Selecionar…</option>
+            <option value="perda">Perda de peso</option>
+            <option value="manutencao">Manutenção de peso</option>
+            <option value="ganho">Ganho de massa muscular</option>
+            <option value="saude">Melhoria da saúde geral</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-row tmb-row">
+          <div class="form-field">
+            <label class="field-label">TMB (kcal/dia)</label>
+            <input class="field-input field-calc" type="text" id="pTMB" readonly placeholder="—">
+          </div>
+          <div class="form-field">
+            <label class="field-label">GET — Gasto Energético Total</label>
+            <input class="field-input field-calc field-calc-highlight" type="text" id="pGET" readonly placeholder="—">
+          </div>
+        </div>
+      </div>
+
+      <!-- Informações Clínicas -->
+      <div class="info-card">
+        <div class="info-card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6M12 9v6M12 22C6.5 22 2 17.5 2 12S6.5 2 12 2s10 4.5 10 10-4.5 10-10 10z"/></svg>
+          Informações Clínicas
+        </div>
+        <div class="form-field">
+          <label class="field-label">Alergias / Intolerâncias</label>
+          <textarea class="field-textarea" id="pAlergias" placeholder="Ex: intolerância à lactose, alergia ao glúten…"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Patologias / Condições</label>
+          <textarea class="field-textarea" id="pPatologias" placeholder="Ex: diabetes tipo 2, hipertensão arterial…"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Medicação atual</label>
+          <textarea class="field-textarea" id="pMedicacao" placeholder="Medicação relevante…"></textarea>
+        </div>
+      </div>
+
+      <!-- Observações (largura total) -->
+      <div class="info-card info-card-full">
+        <div class="info-card-title">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Observações e Notas
+        </div>
+        <div class="form-field">
+          <textarea class="field-textarea field-textarea-lg" id="pNotas" placeholder="Observações clínicas, preferências alimentares, histórico relevante, metas específicas…"></textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── DROPDOWN PESQUISA ── -->
+<div class="food-dropdown" id="foodDropdown">
+  <div class="dropdown-inner">
+    <div class="search-input-wrap">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="foodSearch" type="text" placeholder="Pesquisar alimento…" autocomplete="off">
+    </div>
+    <div class="search-results" id="searchResults">
+      <div class="search-hint">Escreva para pesquisar</div>
+    </div>
+  </div>
+</div>
+
+<script src="js/tca_data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
