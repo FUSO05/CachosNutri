@@ -1,39 +1,454 @@
-// ── NutriPlan app.js ─────────────────────────────────────────────────────────
+// ── CachosNutri app.js ────────────────────────────────────────────────────────
 
-// ── Estado global ──
-const DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const DAYS          = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const DEFAULT_MEALS = ['Pequeno-almoço','Lanche da manhã','Almoço','Lanche da tarde','Jantar'];
 const MEAL_TIMES    = ['07:30','10:30','13:00','16:00','20:00','','',''];
 
-let state = {
-  activeDay: 0,
-  days: DAYS.map(() => ({
+let appData = { version: 1, clients: [] };
+let nav     = { view: 'welcome', clientId: null, planId: null };
+let state   = { activeDay: 0, days: [] };
+
+let selectedFood   = null;
+let activeMealCtx  = null;
+let pieChart       = null;
+let searchDebounce = null;
+
+// ── Data helpers ──────────────────────────────────────────────────────────────
+function makeDefaultDays() {
+  return DAYS.map(() => ({
     meals: DEFAULT_MEALS.map((nome, i) => ({
       id: crypto.randomUUID(),
       nome,
       hora: MEAL_TIMES[i] || '',
       foods: []
     }))
-  }))
-};
-
-let selectedFood   = null;   // alimento actualmente em destaque na sidebar
-let activeMealCtx  = null;   // id da refeição para adicionar
-let pieChart       = null;
-let searchDebounce = null;
-
-// ── Persistência ──────────────────────────────────────────────────────────────
-function saveState() {
-  try { localStorage.setItem('nutriplan_state', JSON.stringify(state)); } catch(e) {}
+  }));
 }
-function loadState() {
+
+function getInitials(nome) {
+  const parts = (nome || '?').trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatDate(ts) {
+  return new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+function saveAppData() {
+  if (nav.clientId && nav.planId) {
+    const client = appData.clients.find(c => c.id === nav.clientId);
+    if (client) {
+      const plan = client.plans.find(p => p.id === nav.planId);
+      if (plan) plan.days = state.days;
+    }
+  }
+  try { localStorage.setItem('cachos_data', JSON.stringify(appData)); } catch(e) {}
+}
+
+function saveState() { saveAppData(); }
+
+function loadAppData() {
   try {
-    const raw = localStorage.getItem('nutriplan_state');
-    if (raw) state = JSON.parse(raw);
+    const raw = localStorage.getItem('cachos_data');
+    if (raw) { appData = JSON.parse(raw); return; }
+    // Migrate from old single-patient format
+    const oldRaw = localStorage.getItem('nutriplan_state');
+    if (oldRaw) {
+      const oldState = JSON.parse(oldRaw);
+      const oldInfo  = JSON.parse(localStorage.getItem('cachos_patient') || '{}');
+      appData = {
+        version: 1,
+        clients: [{
+          id: crypto.randomUUID(),
+          nome: oldInfo.pNome || 'Paciente importado',
+          createdAt: Date.now(),
+          info: oldInfo,
+          plans: [{
+            id: crypto.randomUUID(),
+            nome: 'Plano 1',
+            createdAt: Date.now(),
+            days: oldState.days || makeDefaultDays()
+          }]
+        }]
+      };
+      saveAppData();
+    }
   } catch(e) {}
 }
 
-// ── Helpers nutricionais ──────────────────────────────────────────────────────
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.getElementById('pg-clients').style.display = name === 'clients' ? '' : 'none';
+  document.getElementById('pg-client').style.display  = name === 'client'  ? '' : 'none';
+  document.getElementById('pg-plan').style.display    = name === 'plan'    ? 'flex' : 'none';
+  // Sidebar active state
+  const sniDash = document.getElementById('sni-dashboard');
+  const sniPac  = document.getElementById('sni-pacientes');
+  if (sniDash) sniDash.classList.toggle('active', name === 'clients');
+  if (sniPac)  sniPac.classList.toggle('active', name === 'client');
+}
+
+function updateBreadcrumb() {
+  // Kept for compatibility — sidebar handles active state in showPage
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (client) {
+    const el = document.getElementById('client-page-name');
+    if (el) el.textContent = client.nome;
+  }
+}
+
+function enterApp() {
+  document.getElementById('pg-welcome').style.display = 'none';
+  document.getElementById('app-shell').style.display  = '';
+  goToClients();
+}
+
+function goToClients() {
+  nav = { view: 'clients', clientId: null, planId: null };
+  showPage('clients');
+  updateBreadcrumb();
+  renderDashboard();
+}
+
+function goToClient(clientId, tab) {
+  const client = appData.clients.find(c => c.id === clientId);
+  if (!client) return;
+  nav = { view: 'client', clientId, planId: null };
+  document.getElementById('client-page-name').textContent = client.nome;
+  showPage('client');
+  updateBreadcrumb();
+  renderClientPage(client);
+  showClientTab(tab || 'info');
+}
+
+function goToPlan(clientId, planId) {
+  const client = appData.clients.find(c => c.id === clientId);
+  if (!client) return;
+  const plan = client.plans.find(p => p.id === planId);
+  if (!plan) return;
+
+  nav = { view: 'plan', clientId, planId };
+  state.activeDay = 0;
+  state.days = plan.days;
+
+  document.getElementById('plan-name-input').value = plan.nome;
+  document.getElementById('plan-back-btn').onclick = () => goToClient(clientId, 'plans');
+
+  showPage('plan');
+  updateBreadcrumb();
+  if (pieChart) { pieChart.destroy(); pieChart = null; }
+  render();
+}
+
+// ── Clients CRUD ──────────────────────────────────────────────────────────────
+function createClient() {
+  const client = {
+    id: crypto.randomUUID(),
+    nome: 'Novo paciente',
+    createdAt: Date.now(),
+    info: {},
+    plans: []
+  };
+  appData.clients.push(client);
+  saveAppData();
+  goToClient(client.id, 'info');
+  setTimeout(() => {
+    const el = document.getElementById('pNome');
+    if (el) { el.focus(); el.select(); }
+  }, 120);
+}
+
+function deleteClient(clientId, e) {
+  e.stopPropagation();
+  const client = appData.clients.find(c => c.id === clientId);
+  if (!client) return;
+  if (!confirm(`Eliminar "${client.nome}"? Esta ação é irreversível.`)) return;
+  appData.clients = appData.clients.filter(c => c.id !== clientId);
+  saveAppData();
+  renderDashboard();
+}
+
+function formatTimeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(diff / 86400000);
+  if (m < 1)  return 'agora';
+  if (m < 60) return `Há ${m} min`;
+  if (h < 24) return `Há ${h}h`;
+  if (d < 7)  return `Há ${d} dia${d !== 1 ? 's' : ''}`;
+  return formatDate(ts);
+}
+
+function renderDashboard() {
+  const container = document.getElementById('dashboard-content');
+  if (!container) return;
+
+  const totalClients = appData.clients.length;
+  const totalPlans   = appData.clients.reduce((s, c) => s + c.plans.length, 0);
+
+  // Build activity feed
+  const events = [];
+  appData.clients.forEach(c => {
+    events.push({ type: 'client', name: c.nome, ts: c.createdAt, id: c.id });
+    c.plans.forEach(p => {
+      events.push({ type: 'plan', name: p.nome, client: c.nome, ts: p.createdAt, clientId: c.id, planId: p.id });
+    });
+  });
+  events.sort((a, b) => b.ts - a.ts);
+  const recent = events.slice(0, 5);
+
+  const today = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const todayCap = today.charAt(0).toUpperCase() + today.slice(1);
+
+  const activityHTML = recent.length > 0
+    ? recent.map(e => {
+        const initials = getInitials(e.type === 'client' ? e.name : e.client);
+        const onclick  = e.type === 'client'
+          ? `goToClient('${e.id}')`
+          : `goToPlan('${e.clientId}','${e.planId}')`;
+        const label = e.type === 'client' ? 'Paciente adicionado' : 'Plano criado';
+        const sub   = e.type === 'client' ? escHtml(e.name) : `${escHtml(e.name)} · ${escHtml(e.client)}`;
+        return `
+          <div class="activity-item" onclick="${onclick}">
+            <div class="activity-avatar">${initials}</div>
+            <div class="activity-info">
+              <div class="activity-title">${label}</div>
+              <div class="activity-sub">${sub}</div>
+            </div>
+            <div class="activity-time">${formatTimeAgo(e.ts)}</div>
+          </div>`;
+      }).join('')
+    : `<div class="activity-empty">Sem atividade recente</div>`;
+
+  const clientsHTML = totalClients === 0
+    ? `<div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        <div class="empty-state-title">Nenhum paciente ainda</div>
+        <div class="empty-state-sub">Clique em "Novo paciente" para começar.</div>
+      </div>`
+    : appData.clients.map(c => `
+        <div class="client-card" onclick="goToClient('${c.id}')">
+          <div class="client-avatar">${getInitials(c.nome)}</div>
+          <div class="client-card-info">
+            <div class="client-card-name">${escHtml(c.nome)}</div>
+            <div class="client-card-meta">Criado em ${formatDate(c.createdAt)}</div>
+          </div>
+          <div class="client-card-right">
+            <span class="plans-badge">${c.plans.length} plano${c.plans.length !== 1 ? 's' : ''}</span>
+            <button class="btn-danger-sm" onclick="deleteClient('${c.id}', event)" title="Eliminar">×</button>
+          </div>
+        </div>`).join('');
+
+  container.innerHTML = `
+    <div class="dashboard">
+
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting">Olá! 👋</div>
+          <div class="dash-sub">Bem-vindo ao CachosNutri — aqui está o resumo do seu consultório.</div>
+        </div>
+        <div class="dash-date">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          ${todayCap}
+        </div>
+      </div>
+
+      <div class="dash-stats">
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-green">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/></svg>
+          </div>
+          <div><div class="stat-num">${totalClients}</div><div class="stat-label">Pacientes ativos</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-blue">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+          </div>
+          <div><div class="stat-num">${totalPlans}</div><div class="stat-label">Planos criados</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-orange">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <div><div class="stat-num">4</div><div class="stat-label">Fórmulas TMB</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-wrap stat-cyan">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          </div>
+          <div><div class="stat-num">1.376</div><div class="stat-label">Alimentos TCA</div></div>
+        </div>
+      </div>
+
+      <div class="dash-main">
+        <div class="dash-hero">
+          <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
+          <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
+          <div class="dash-hero-actions">
+            <button class="btn-hero-primary" onclick="createClient()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              Adicionar paciente
+            </button>
+            ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
+          </div>
+          <div class="dash-hero-badge">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <div>
+              <div class="dhb-title">Base TCA-INSA</div>
+              <div class="dhb-sub">Dados nutricionais confiáveis e atualizados</div>
+            </div>
+            <span class="dhb-count">1.376 alimentos</span>
+          </div>
+        </div>
+
+        <div class="dash-activity">
+          <div class="dash-panel-title">Atividade recente</div>
+          ${activityHTML}
+        </div>
+      </div>
+
+      <div id="dash-patients">
+        <div class="dash-patients-header">
+          <div class="dash-section-title">Os seus pacientes</div>
+          <button class="btn-primary" onclick="createClient()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Novo paciente
+          </button>
+        </div>
+        <div class="clients-list" id="clients-list">${clientsHTML}</div>
+      </div>
+
+    </div>
+  `;
+}
+
+// ── Client page ───────────────────────────────────────────────────────────────
+function renderClientPage(client) {
+  loadInfoForm(client.info || {});
+  renderPlansList(client);
+}
+
+function showClientTab(tab) {
+  const isInfo = tab === 'info';
+  document.getElementById('ct-info').classList.toggle('active', isInfo);
+  document.getElementById('ct-plans').classList.toggle('active', !isInfo);
+  document.getElementById('ct-info-view').style.display  = isInfo ? '' : 'none';
+  document.getElementById('ct-plans-view').style.display = isInfo ? 'none' : '';
+}
+
+function loadInfoForm(info) {
+  PATIENT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = info[id] !== undefined ? info[id] : '';
+  });
+  // Restore formula selector buttons
+  const formula = info.pFormula || 'harris';
+  document.getElementById('pFormula').value = formula;
+  document.querySelectorAll('.formula-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.formula === formula);
+  });
+  updateAge();
+  updateMetrics();
+  updateSomatorio();
+}
+
+function savePatientInfo() {
+  if (!nav.clientId) return;
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client) return;
+  if (!client.info) client.info = {};
+  PATIENT_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) client.info[id] = el.value;
+  });
+  const newNome = client.info.pNome?.trim();
+  if (newNome) {
+    client.nome = newNome;
+    document.getElementById('client-page-name').textContent = newNome;
+    updateBreadcrumb();
+  }
+  saveAppData();
+  const btn = document.querySelector('.btn-save-info');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Guardado';
+  btn.style.background = '#16a34a';
+  setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+}
+
+// ── Plans CRUD ────────────────────────────────────────────────────────────────
+function createPlan() {
+  if (!nav.clientId) return;
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client) return;
+  const plan = {
+    id: crypto.randomUUID(),
+    nome: `Plano ${client.plans.length + 1}`,
+    createdAt: Date.now(),
+    days: makeDefaultDays()
+  };
+  client.plans.push(plan);
+  saveAppData();
+  goToPlan(nav.clientId, plan.id);
+}
+
+function deletePlan(planId, e) {
+  e.stopPropagation();
+  if (!nav.clientId) return;
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client) return;
+  const plan = client.plans.find(p => p.id === planId);
+  if (!plan) return;
+  if (!confirm(`Eliminar "${plan.nome}"?`)) return;
+  client.plans = client.plans.filter(p => p.id !== planId);
+  saveAppData();
+  renderPlansList(client);
+}
+
+function updatePlanName(nome) {
+  if (!nav.clientId || !nav.planId) return;
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client) return;
+  const plan = client.plans.find(p => p.id === nav.planId);
+  if (plan) { plan.nome = nome; saveAppData(); updateBreadcrumb(); }
+}
+
+function renderPlansList(client) {
+  const list = document.getElementById('plans-list');
+  if (!client.plans.length) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+        <div class="empty-state-title">Nenhum plano ainda</div>
+        <div class="empty-state-sub">Clique em "Novo plano" para criar o primeiro plano.</div>
+      </div>`;
+    return;
+  }
+  list.innerHTML = client.plans.map(p => `
+    <div class="plan-card" onclick="goToPlan('${client.id}', '${p.id}')">
+      <div class="plan-card-icon">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </div>
+      <div class="plan-card-info">
+        <div class="plan-card-name">${escHtml(p.nome)}</div>
+        <div class="plan-card-meta">Criado em ${formatDate(p.createdAt)}</div>
+      </div>
+      <div class="plan-card-right">
+        <button class="btn-danger-sm" onclick="deletePlan('${p.id}', event)" title="Eliminar">×</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Nutritional helpers ───────────────────────────────────────────────────────
 function scale(food, qty) {
   const f = qty / 100;
   return {
@@ -46,7 +461,7 @@ function scale(food, qty) {
 }
 
 function dayTotals(dayIdx) {
-  let tot = { kcal:0, prot:0, hc:0, lip:0 };
+  let tot = { kcal: 0, prot: 0, hc: 0, lip: 0 };
   state.days[dayIdx].meals.forEach(meal => {
     meal.foods.forEach(fi => {
       const s = scale(fi.food, fi.qty);
@@ -57,7 +472,7 @@ function dayTotals(dayIdx) {
 }
 
 function mealTotals(meal) {
-  let tot = { kcal:0, prot:0, hc:0, lip:0 };
+  let tot = { kcal: 0, prot: 0, hc: 0, lip: 0 };
   meal.foods.forEach(fi => {
     const s = scale(fi.food, fi.qty);
     tot.kcal += s.kcal; tot.prot += s.prot; tot.hc += s.hc; tot.lip += s.lip;
@@ -65,7 +480,7 @@ function mealTotals(meal) {
   return { kcal: +tot.kcal.toFixed(0), prot: +tot.prot.toFixed(1), hc: +tot.hc.toFixed(1), lip: +tot.lip.toFixed(1) };
 }
 
-// ── Render principal ──────────────────────────────────────────────────────────
+// ── Render ────────────────────────────────────────────────────────────────────
 function render() {
   renderDayTabs();
   renderPlan();
@@ -73,8 +488,7 @@ function render() {
 }
 
 function renderDayTabs() {
-  const wrap = document.getElementById('dayTabs');
-  wrap.innerHTML = DAYS.map((d, i) => `
+  document.getElementById('dayTabs').innerHTML = DAYS.map((d, i) => `
     <button class="day-tab${i === state.activeDay ? ' active' : ''}" onclick="switchDay(${i})">${d}</button>
   `).join('');
 }
@@ -82,7 +496,6 @@ function renderDayTabs() {
 function renderPlan() {
   const area = document.getElementById('planArea');
   const day  = state.days[state.activeDay];
-
   area.innerHTML = day.meals.map(meal => renderMealCard(meal)).join('') + `
     <div class="add-meal-row">
       <button class="add-meal-btn" onclick="addMeal()">
@@ -126,8 +539,7 @@ function renderFoodRow(fi, mealId) {
   return `
     <div class="food-row" id="fi-${fi.id}">
       <div class="food-row-name">
-        ${escHtml(fi.food.nome)}
-        <span>(${fi.food.cat})</span>
+        ${escHtml(fi.food.nome)}<span>(${fi.food.cat})</span>
       </div>
       <div class="food-macros-inline">
         <span class="m"><b>${s.kcal}</b> kcal</span>
@@ -144,28 +556,24 @@ function renderFoodRow(fi, mealId) {
     </div>`;
 }
 
-// ── Gráfico ───────────────────────────────────────────────────────────────────
+// ── Chart ─────────────────────────────────────────────────────────────────────
 function renderChart() {
-  const tot = dayTotals(state.activeDay);
-
-  document.getElementById('kcalNum').textContent  = tot.kcal.toFixed(0);
-
-  // Calorias de cada macro
+  const tot   = dayTotals(state.activeDay);
   const cProt = tot.prot * 4;
   const cHc   = tot.hc   * 4;
   const cLip  = tot.lip  * 9;
   const total = cProt + cHc + cLip || 1;
 
-  document.getElementById('legProt').textContent  = `${tot.prot.toFixed(1)}g`;
-  document.getElementById('legHc').textContent    = `${tot.hc.toFixed(1)}g`;
-  document.getElementById('legLip').textContent   = `${tot.lip.toFixed(1)}g`;
+  document.getElementById('kcalNum').textContent    = tot.kcal.toFixed(0);
+  document.getElementById('legProt').textContent    = `${tot.prot.toFixed(1)}g`;
+  document.getElementById('legHc').textContent      = `${tot.hc.toFixed(1)}g`;
+  document.getElementById('legLip').textContent     = `${tot.lip.toFixed(1)}g`;
   document.getElementById('legProtPct').textContent = `${(cProt/total*100).toFixed(0)}%`;
   document.getElementById('legHcPct').textContent   = `${(cHc/total*100).toFixed(0)}%`;
   document.getElementById('legLipPct').textContent  = `${(cLip/total*100).toFixed(0)}%`;
-
-  document.getElementById('rProt').textContent = `${tot.prot.toFixed(1)}g`;
-  document.getElementById('rHc').textContent   = `${tot.hc.toFixed(1)}g`;
-  document.getElementById('rLip').textContent  = `${tot.lip.toFixed(1)}g`;
+  document.getElementById('rProt').textContent      = `${tot.prot.toFixed(1)}g`;
+  document.getElementById('rHc').textContent        = `${tot.hc.toFixed(1)}g`;
+  document.getElementById('rLip').textContent       = `${tot.lip.toFixed(1)}g`;
 
   const data = total <= 0 ? [1,1,1] : [cProt, cHc, cLip];
 
@@ -180,9 +588,7 @@ function renderChart() {
         datasets: [{
           data,
           backgroundColor: ['#e74c3c','#f39c12','#9b59b6'],
-          borderWidth: 2,
-          borderColor: '#fff',
-          hoverOffset: 4,
+          borderWidth: 2, borderColor: '#fff', hoverOffset: 4,
         }]
       },
       options: {
@@ -204,8 +610,7 @@ function renderChart() {
   }
 }
 
-
-// ── Search de alimentos ───────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────────────────
 let activeCat = 'Todos';
 
 function initSearch() {
@@ -215,22 +620,14 @@ function initSearch() {
   });
 }
 
-function filterCat(cat) {
-  activeCat = cat;
-  document.querySelectorAll('.cat-pill').forEach(p =>
-    p.classList.toggle('active', p.textContent === cat));
-  doSearch(document.getElementById('foodSearch').value.trim());
-}
-
 function doSearch(q) {
   const results = document.getElementById('searchResults');
-  const qLow = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
+  const qLow = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   let list = TCA;
   if (activeCat !== 'Todos') list = list.filter(f => f.cat === activeCat);
   if (qLow) {
     list = list.filter(f => {
-      const n = f.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const n = f.nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
       return n.includes(qLow);
     });
   } else {
@@ -260,17 +657,12 @@ function doSearch(q) {
 }
 
 function selectFood(id, el) {
-  // Remove previous expanded item
   const prevEl = document.querySelector('.result-item.selected');
   if (prevEl) {
     prevEl.classList.remove('selected');
     prevEl.querySelector('.result-actions')?.remove();
   }
-  // Toggle off if same item
-  if (prevEl === el) {
-    selectedFood = null;
-    return;
-  }
+  if (prevEl === el) { selectedFood = null; return; }
 
   selectedFood = TCA.find(f => f.id === id);
   if (!selectedFood) return;
@@ -296,8 +688,7 @@ function selectFood(id, el) {
       </div>
       <span class="qty-unit-lbl">g</span>
       <button class="btn-add-food" onclick="addFoodToMeal()">+ Adicionar</button>
-    </div>
-  `;
+    </div>`;
   el.appendChild(div);
 }
 
@@ -313,8 +704,7 @@ function updateDetailCalc() {
 
 function changeQty(delta) {
   const inp = document.getElementById('addQty');
-  const v = Math.max(1, (parseFloat(inp.value)||100) + delta);
-  inp.value = v;
+  inp.value = Math.max(1, (parseFloat(inp.value) || 100) + delta);
   updateDetailCalc();
 }
 
@@ -324,38 +714,31 @@ function addFoodToMeal() {
   const qty    = parseFloat(document.getElementById('addQty').value) || 100;
   const meal   = findMeal(mealId);
   if (!meal) return;
-
   meal.foods.push({ id: crypto.randomUUID(), food: selectedFood, qty });
   selectedFood = null;
-  saveState();
+  saveAppData();
   render();
   closeSearchModal();
-
   setTimeout(() => {
     const el = document.getElementById(`meal-${mealId}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, 50);
 }
 
-// ── Acções sobre o plano ──────────────────────────────────────────────────────
+// ── Plan actions ──────────────────────────────────────────────────────────────
 function switchDay(i) {
   state.activeDay = i;
   render();
 }
 
 function addMeal() {
-  const meal = {
-    id: crypto.randomUUID(),
-    nome: 'Nova refeição',
-    hora: '',
-    foods: []
-  };
+  const meal = { id: crypto.randomUUID(), nome: 'Nova refeição', hora: '', foods: [] };
   state.days[state.activeDay].meals.push(meal);
-  saveState();
+  saveAppData();
   render();
   setTimeout(() => {
     const el = document.querySelector(`#meal-${meal.id} .meal-name-input`);
-    if (el) { el.select(); el.scrollIntoView({ behavior:'smooth', block:'center' }); }
+    if (el) { el.select(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }, 50);
 }
 
@@ -363,18 +746,18 @@ function deleteMeal(mealId) {
   const day = state.days[state.activeDay];
   if (day.meals.length <= 1) return;
   day.meals = day.meals.filter(m => m.id !== mealId);
-  saveState();
+  saveAppData();
   render();
 }
 
 function renameMeal(mealId, nome) {
   const meal = findMeal(mealId);
-  if (meal) { meal.nome = nome; saveState(); }
+  if (meal) { meal.nome = nome; saveAppData(); }
 }
 
 function setMealTime(mealId, hora) {
   const meal = findMeal(mealId);
-  if (meal) { meal.hora = hora; saveState(); }
+  if (meal) { meal.hora = hora; saveAppData(); }
 }
 
 function updateQty(mealId, fiId, rawVal) {
@@ -383,7 +766,7 @@ function updateQty(mealId, fiId, rawVal) {
   const meal = findMeal(mealId);
   if (!meal) return;
   const fi = meal.foods.find(f => f.id === fiId);
-  if (fi) { fi.qty = qty; saveState(); updateMealTotalsUI(meal); renderChart(); }
+  if (fi) { fi.qty = qty; saveAppData(); updateMealTotalsUI(meal); renderChart(); }
 }
 
 function updateMealTotalsUI(meal) {
@@ -400,7 +783,7 @@ function deleteFood(mealId, fiId) {
   const meal = findMeal(mealId);
   if (!meal) return;
   meal.foods = meal.foods.filter(f => f.id !== fiId);
-  saveState();
+  saveAppData();
   const row = document.getElementById(`fi-${fiId}`);
   if (row) row.remove();
   updateMealTotalsUI(meal);
@@ -409,8 +792,6 @@ function deleteFood(mealId, fiId) {
 
 function focusSearch(mealId, btn) {
   activeMealCtx = mealId;
-
-  // Garantir que o botão está visível antes de calcular a posição
   btn.scrollIntoView({ block: 'nearest', behavior: 'instant' });
 
   const dd   = document.getElementById('foodDropdown');
@@ -454,54 +835,16 @@ function findMeal(mealId) {
   return null;
 }
 
-// ── Utilitários ───────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  const isPlan = tab === 'plan';
-  document.getElementById('tab-plan').classList.toggle('active', isPlan);
-  document.getElementById('tab-info').classList.toggle('active', !isPlan);
-  document.querySelector('.day-tabs').style.display  = isPlan ? '' : 'none';
-  document.querySelector('.main-layout').style.display = isPlan ? '' : 'none';
-  document.getElementById('infoPage').classList.toggle('active', !isPlan);
-}
-
-// ── Informações do Paciente ───────────────────────────────────────────────────
-const PATIENT_FIELDS = ['pNome','pNascimento','pGenero','pEmail','pTelefone',
-  'pAltura','pPeso','pPesoObj','pCintura','pAtividade','pObjetivo',
-  'pAlergias','pPatologias','pMedicacao','pNotas'];
-
-function savePatientInfo() {
-  const data = {};
-  PATIENT_FIELDS.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) data[id] = el.value;
-  });
-  try { localStorage.setItem('cachos_patient', JSON.stringify(data)); } catch(e) {}
-  const btn = document.querySelector('.btn-save-info');
-  const orig = btn.innerHTML;
-  btn.innerHTML = '✓ Guardado';
-  btn.style.background = '#16a34a';
-  setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
-}
-
-function loadPatientInfo() {
-  try {
-    const raw = localStorage.getItem('cachos_patient');
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    PATIENT_FIELDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el && data[id] !== undefined) el.value = data[id];
-    });
-    updateAge();
-    updateMetrics();
-    updateTMB();
-  } catch(e) {}
-}
+// ── Patient info calculations ─────────────────────────────────────────────────
+const PATIENT_FIELDS = [
+  'pNome','pNascimento','pGenero','pEmail','pTelefone',
+  'pAltura','pPeso','pPesoRef','pPesoObj','pMassaGorda','pCintura',
+  'pFormula','pAtividade','pObjetivo',
+  'pPregaTricipital','pPregaBicipital','pPregaSubescapular','pPregaAbdominal',
+  'pPregaSupraespinal','pPregaIleocristal','pPregaCrural','pPregaGeminal',
+  'pPerCefalico','pPerBraco','pPerCinturaISAK','pPerAnca','pPerCrural','pPerGeminal',
+  'pAlergias','pPatologias','pMedicacao','pNotas'
+];
 
 function updateAge() {
   const val = document.getElementById('pNascimento').value;
@@ -516,8 +859,10 @@ function updateAge() {
 }
 
 function updateMetrics() {
-  const h = parseFloat(document.getElementById('pAltura').value);
-  const w = parseFloat(document.getElementById('pPeso').value);
+  const h  = parseFloat(document.getElementById('pAltura').value);
+  const w  = parseFloat(document.getElementById('pPeso').value);
+  const bf = parseFloat(document.getElementById('pMassaGorda').value);
+
   if (h > 0 && w > 0) {
     const imc = w / ((h / 100) ** 2);
     document.getElementById('pIMC').value = imc.toFixed(1);
@@ -533,40 +878,90 @@ function updateMetrics() {
     document.getElementById('pIMC').value = '';
     document.getElementById('pIMCClass').value = '';
   }
+
+  if (w > 0 && bf > 0 && bf < 100) {
+    const lbm = w * (1 - bf / 100);
+    document.getElementById('pMIG').value = lbm.toFixed(1) + ' kg';
+  } else {
+    document.getElementById('pMIG').value = '';
+  }
+
   updateTMB();
 }
 
-function updateTMB() {
-  const h   = parseFloat(document.getElementById('pAltura').value);
-  const w   = parseFloat(document.getElementById('pPeso').value);
-  const ageStr = document.getElementById('pIdade').value;
-  const age = parseInt(ageStr);
-  const gen = document.getElementById('pGenero').value;
-  const fac = parseFloat(document.getElementById('pAtividade').value);
+function setFormula(formula, btn) {
+  document.getElementById('pFormula').value = formula;
+  document.querySelectorAll('.formula-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateTMB();
+}
 
-  if (h > 0 && w > 0 && age > 0 && gen) {
-    // Mifflin-St Jeor
-    const tmb = gen === 'M'
-      ? 10 * w + 6.25 * h - 5 * age + 5
-      : 10 * w + 6.25 * h - 5 * age - 161;
-    document.getElementById('pTMB').value = Math.round(tmb) + ' kcal';
-    if (fac) {
-      document.getElementById('pGET').value = Math.round(tmb * fac) + ' kcal';
-    } else {
-      document.getElementById('pGET').value = '';
+function updateSomatorio() {
+  const ids = ['pPregaTricipital','pPregaBicipital','pPregaSubescapular','pPregaAbdominal',
+               'pPregaSupraespinal','pPregaIleocristal','pPregaCrural','pPregaGeminal'];
+  let soma = 0, count = 0;
+  ids.forEach(id => {
+    const v = parseFloat(document.getElementById(id).value);
+    if (!isNaN(v) && v > 0) { soma += v; count++; }
+  });
+  document.getElementById('pSomatorioPregas').value = count > 0 ? soma.toFixed(1) + ' mm' : '';
+}
+
+function updateTMB() {
+  const h       = parseFloat(document.getElementById('pAltura').value);
+  const w       = parseFloat(document.getElementById('pPeso').value);
+  const ageStr  = document.getElementById('pIdade').value;
+  const age     = parseInt(ageStr);
+  const gen     = document.getElementById('pGenero').value;
+  const fac     = parseFloat(document.getElementById('pAtividade').value);
+  const bf      = parseFloat(document.getElementById('pMassaGorda').value);
+  const formula = document.getElementById('pFormula')?.value || 'harris';
+
+  let tmb = null;
+
+  if (formula === 'cunningham') {
+    if (w > 0 && bf > 0 && bf < 100) {
+      const lbm = w * (1 - bf / 100);
+      tmb = 500 + 22 * lbm;
     }
+  } else if (formula === 'harris') {
+    if (h > 0 && w > 0 && age > 0 && gen) {
+      tmb = gen === 'M'
+        ? 88.362 + 13.397 * w + 4.799 * h - 5.677 * age
+        : 447.593 + 9.247 * w + 3.098 * h - 4.330 * age;
+    }
+  } else if (formula === 'tenhaaf') {
+    if (h > 0 && w > 0 && age > 0 && gen) {
+      tmb = 19.38 * w + 6.52 * h - 6.56 * age + (gen === 'M' ? 17.36 : 0) + 123;
+    }
+  } else if (formula === 'delorenzo') {
+    // De Lorenzo et al. (1999) — calibrado para atletas; H em cm, resultado em kJ → ÷ 4.184
+    if (h > 0 && w > 0 && age > 0 && gen) {
+      const kj = gen === 'M'
+        ? 9 * w + 11.7 * h - 1.14 * age + 9082
+        : 9 * w + 11.7 * h - 1.14 * age - 857 + 9082;
+      tmb = kj / 4.184;
+    }
+  }
+
+  if (tmb !== null && tmb > 0) {
+    document.getElementById('pTMB').value = Math.round(tmb) + ' kcal';
+    document.getElementById('pGET').value = fac ? Math.round(tmb * fac) + ' kcal' : '';
   } else {
     document.getElementById('pTMB').value = '';
     document.getElementById('pGET').value = '';
   }
 }
 
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadState();
-  loadPatientInfo();
+  loadAppData();
   initSearch();
-  render();
 
   document.addEventListener('click', e => {
     const dd = document.getElementById('foodDropdown');
