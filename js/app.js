@@ -4,14 +4,88 @@ const DAYS          = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','D
 const DEFAULT_MEALS = ['Pequeno-almoço','Lanche da manhã','Almoço','Lanche da tarde','Jantar'];
 const MEAL_TIMES    = ['07:30','10:30','13:00','16:00','20:00','','',''];
 
-let appData = { version: 1, clients: [] };
-let nav     = { view: 'welcome', clientId: null, planId: null };
-let state   = { activeDay: 0, days: [] };
+let appData    = { version: 1, clients: [] };
+let appProfile = { name: '', age: '', sex: '', email: '', photo: '' };
+let nav        = { view: 'welcome', clientId: null, planId: null };
+let state      = { activeDay: 0, days: [] };
 
 let selectedFood   = null;
 let activeMealCtx  = null;
 let pieChart       = null;
 let searchDebounce = null;
+
+// ── Profile ───────────────────────────────────────────────────────────────────
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem('cachos_profile');
+    if (raw) appProfile = { ...appProfile, ...JSON.parse(raw) };
+  } catch(e) {}
+}
+
+function saveProfile() {
+  appProfile.name  = document.getElementById('profName').value.trim();
+  appProfile.age   = document.getElementById('profAge').value;
+  appProfile.sex   = document.getElementById('profSex').value;
+  appProfile.email = document.getElementById('profEmail').value.trim();
+  try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
+  updateSidebarUser();
+  closeProfileModal();
+  if (nav.view === 'clients') renderDashboard();
+}
+
+function openProfileModal() {
+  document.getElementById('profName').value  = appProfile.name;
+  document.getElementById('profAge').value   = appProfile.age;
+  document.getElementById('profSex').value   = appProfile.sex;
+  document.getElementById('profEmail').value = appProfile.email;
+  updateProfilePhotoUI();
+  document.getElementById('profileModal').style.display = '';
+}
+
+function closeProfileModal() {
+  document.getElementById('profileModal').style.display = 'none';
+}
+
+function handlePhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    appProfile.photo = ev.target.result;
+    updateProfilePhotoUI();
+    updateSidebarUser();
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function updateProfilePhotoUI() {
+  const img     = document.getElementById('profPhotoImg');
+  const initial = document.getElementById('profPhotoInitial');
+  if (!img || !initial) return;
+  if (appProfile.photo) {
+    img.src = appProfile.photo;
+    img.style.display = '';
+    initial.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    initial.style.display = '';
+    initial.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
+  }
+}
+
+function updateSidebarUser() {
+  const nameEl   = document.getElementById('sidebar-user-name');
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (nameEl) nameEl.textContent = appProfile.name || 'Nutricionista';
+  if (avatarEl) {
+    if (appProfile.photo) {
+      avatarEl.innerHTML = `<img src="${escHtml(appProfile.photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      avatarEl.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
+    }
+  }
+}
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
 function makeDefaultDays() {
@@ -102,6 +176,8 @@ function updateBreadcrumb() {
 function enterApp() {
   document.getElementById('pg-welcome').style.display = 'none';
   document.getElementById('app-shell').style.display  = '';
+  loadProfile();
+  updateSidebarUser();
   goToClients();
 }
 
@@ -244,12 +320,14 @@ function renderDashboard() {
           </div>
         </div>`).join('');
 
+  const greetName = appProfile.name ? `, ${escHtml(appProfile.name)}` : '';
+
   container.innerHTML = `
     <div class="dashboard">
 
       <div class="dash-header">
         <div>
-          <div class="dash-greeting">Olá! 👋</div>
+          <div class="dash-greeting">Olá${greetName}! 👋</div>
           <div class="dash-sub">Bem-vindo ao CachosNutri — aqui está o resumo do seu consultório.</div>
         </div>
         <div class="dash-date">
@@ -287,22 +365,28 @@ function renderDashboard() {
 
       <div class="dash-main">
         <div class="dash-hero">
-          <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
-          <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
-          <div class="dash-hero-actions">
-            <button class="btn-hero-primary" onclick="createClient()">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-              Adicionar paciente
-            </button>
-            ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
-          </div>
-          <div class="dash-hero-badge">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <div>
-              <div class="dhb-title">Base TCA-INSA</div>
-              <div class="dhb-sub">Dados nutricionais confiáveis e atualizados</div>
+          <div class="dash-hero-text">
+            <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
+            <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
+            <div class="dash-hero-actions">
+              <button class="btn-hero-primary" onclick="createClient()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Adicionar paciente
+              </button>
+              ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
             </div>
-            <span class="dhb-count">1.376 alimentos</span>
+            <div class="dash-hero-badge">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <div>
+                <div class="dhb-title">Base TCA-INSA</div>
+                <div class="dhb-sub">Dados nutricionais confiáveis e atualizados</div>
+              </div>
+              <span class="dhb-count">1.376 alimentos</span>
+            </div>
+          </div>
+          <div class="dash-hero-visual">
+            <div class="hero-plate-bg"></div>
+            <img src="img/plate.png" alt="Prato saudável" class="hero-plate-img">
           </div>
         </div>
 
