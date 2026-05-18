@@ -29,6 +29,7 @@ function saveProfile() {
   appProfile.email = document.getElementById('profEmail').value.trim();
   try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
   updateSidebarUser();
+  updateWelcomeUser();
   closeProfileModal();
   if (nav.view === 'clients') renderDashboard();
 }
@@ -54,6 +55,7 @@ function handlePhotoUpload(input) {
     appProfile.photo = ev.target.result;
     updateProfilePhotoUI();
     updateSidebarUser();
+    updateWelcomeUser();
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -85,6 +87,41 @@ function updateSidebarUser() {
       avatarEl.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
     }
   }
+}
+
+function updateWelcomeUser() {
+  const nameEl   = document.getElementById('wl-profile-name');
+  const avatarEl = document.getElementById('wl-avatar');
+  const greetEl  = document.getElementById('welcome-greeting');
+  const greetName = appProfile.name || 'Nutricionista';
+  if (nameEl) nameEl.textContent = appProfile.name || 'Nutricionista';
+  if (avatarEl) {
+    if (appProfile.photo) {
+      avatarEl.innerHTML = `<img src="${escHtml(appProfile.photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      avatarEl.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
+    }
+  }
+  if (greetEl) greetEl.textContent = `Olá, ${greetName}`;
+}
+
+function updateWelcomeStats() {
+  const clientsEl = document.getElementById('ws-clients');
+  const plansEl   = document.getElementById('ws-plans');
+  if (!clientsEl && !plansEl) return;
+  const totalClients = appData.clients.length;
+  const totalPlans   = appData.clients.reduce((s, c) => s + c.plans.length, 0);
+  if (clientsEl) clientsEl.textContent = totalClients;
+  if (plansEl) plansEl.textContent = totalPlans;
+}
+
+function updateWelcomeDate() {
+  const el = document.getElementById('wl-date-text');
+  if (!el) return;
+  const today = new Date();
+  const day = today.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long' });
+  const year = today.getFullYear();
+  el.textContent = `${day}, ${year}`;
 }
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
@@ -119,6 +156,7 @@ function saveAppData() {
     }
   }
   try { localStorage.setItem('cachos_data', JSON.stringify(appData)); } catch(e) {}
+  updateWelcomeStats();
 }
 
 function saveState() { saveAppData(); }
@@ -178,6 +216,7 @@ function enterApp() {
   document.getElementById('app-shell').style.display  = '';
   loadProfile();
   updateSidebarUser();
+  updateWelcomeUser();
   goToClients();
 }
 
@@ -363,30 +402,43 @@ function renderDashboard() {
         </div>
       </div>
 
-      <div class="dash-main">
-        <div class="dash-hero">
-          <div class="dash-hero-text">
-            <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
-            <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
-            <div class="dash-hero-actions">
-              <button class="btn-hero-primary" onclick="createClient()">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Adicionar paciente
-              </button>
-              ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
-            </div>
-            <div class="dash-hero-badge">
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <div>
-                <div class="dhb-title">Base TCA-INSA</div>
-                <div class="dhb-sub">Dados nutricionais confiáveis e atualizados</div>
+      <div class="dash-body">
+        <div class="dash-left">
+          <div class="dash-hero">
+            <div class="dash-hero-text">
+              <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma vidas</span></h2>
+              <p class="dash-hero-sub">Crie planos alimentares personalizados, acompanhe a evolução dos seus pacientes e alcance resultados extraordinários.</p>
+              <div class="dash-hero-actions">
+                <button class="btn-hero-primary" onclick="createClient()">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                  Adicionar paciente
+                </button>
+                ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
               </div>
-              <span class="dhb-count">1.376 alimentos</span>
+              <div class="dash-hero-badge">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div>
+                  <div class="dhb-title">Base TCA-INSA</div>
+                  <div class="dhb-sub">Dados nutricionais confiáveis e atualizados</div>
+                </div>
+                <span class="dhb-count">1.376 alimentos</span>
+              </div>
+            </div>
+            <div class="dash-hero-visual">
+              <div class="hero-plate-bg"></div>
+              <img src="img/plate.png" alt="Prato saudável" class="hero-plate-img">
             </div>
           </div>
-          <div class="dash-hero-visual">
-            <div class="hero-plate-bg"></div>
-            <img src="img/plate.png" alt="Prato saudável" class="hero-plate-img">
+
+          <div id="dash-patients" class="dash-patients">
+            <div class="dash-patients-header">
+              <div class="dash-section-title">Os seus pacientes</div>
+              <button class="btn-primary" onclick="createClient()">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Novo paciente
+              </button>
+            </div>
+            <div class="clients-list" id="clients-list">${clientsHTML}</div>
           </div>
         </div>
 
@@ -394,17 +446,6 @@ function renderDashboard() {
           <div class="dash-panel-title">Atividade recente</div>
           ${activityHTML}
         </div>
-      </div>
-
-      <div id="dash-patients">
-        <div class="dash-patients-header">
-          <div class="dash-section-title">Os seus pacientes</div>
-          <button class="btn-primary" onclick="createClient()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            Novo paciente
-          </button>
-        </div>
-        <div class="clients-list" id="clients-list">${clientsHTML}</div>
       </div>
 
     </div>
@@ -1045,6 +1086,10 @@ function escHtml(s) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   loadAppData();
+  loadProfile();
+  updateWelcomeStats();
+  updateWelcomeUser();
+  updateWelcomeDate();
   initSearch();
 
   document.addEventListener('click', e => {
