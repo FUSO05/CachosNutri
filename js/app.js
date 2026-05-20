@@ -35,6 +35,27 @@ function saveProfile() {
   if (nav.view === 'clients') renderDashboard();
 }
 
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+let _confirmCallback = null;
+
+function showConfirm(title, message, onConfirm) {
+  document.getElementById('confirm-title').textContent   = title;
+  document.getElementById('confirm-message').textContent = message;
+  _confirmCallback = onConfirm;
+  document.getElementById('confirmModal').style.display = '';
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').style.display = 'none';
+  _confirmCallback = null;
+}
+
+function confirmOk() {
+  const cb = _confirmCallback;
+  closeConfirm();
+  if (cb) cb();
+}
+
 function openProfileModal() {
   document.getElementById('profName').value  = appProfile.name;
   document.getElementById('profAge').value   = appProfile.age;
@@ -289,10 +310,15 @@ function deleteClient(clientId, e) {
   e.stopPropagation();
   const client = appData.clients.find(c => c.id === clientId);
   if (!client) return;
-  if (!confirm(`Eliminar "${client.nome}"? Esta ação é irreversível.`)) return;
-  appData.clients = appData.clients.filter(c => c.id !== clientId);
-  saveAppData();
-  renderDashboard();
+  showConfirm(
+    'Eliminar paciente',
+    `Tem a certeza que quer eliminar "${client.nome}"? Esta ação é irreversível.`,
+    () => {
+      appData.clients = appData.clients.filter(c => c.id !== clientId);
+      saveAppData();
+      renderDashboard();
+    }
+  );
 }
 
 function formatTimeAgo(ts) {
@@ -314,39 +340,8 @@ function renderDashboard() {
   const totalClients = appData.clients.length;
   const totalPlans   = appData.clients.reduce((s, c) => s + c.plans.length, 0);
 
-  // Build activity feed
-  const events = [];
-  appData.clients.forEach(c => {
-    events.push({ type: 'client', name: c.nome, ts: c.createdAt, id: c.id });
-    c.plans.forEach(p => {
-      events.push({ type: 'plan', name: p.nome, client: c.nome, ts: p.createdAt, clientId: c.id, planId: p.id });
-    });
-  });
-  events.sort((a, b) => b.ts - a.ts);
-  const recent = events.slice(0, 5);
-
   const today = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayCap = today.charAt(0).toUpperCase() + today.slice(1);
-
-  const activityHTML = recent.length > 0
-    ? recent.map(e => {
-        const initials = getInitials(e.type === 'client' ? e.name : e.client);
-        const onclick  = e.type === 'client'
-          ? `goToClient('${e.id}')`
-          : `goToPlan('${e.clientId}','${e.planId}')`;
-        const label = e.type === 'client' ? 'Paciente adicionado' : 'Plano criado';
-        const sub   = e.type === 'client' ? escHtml(e.name) : `${escHtml(e.name)} · ${escHtml(e.client)}`;
-        return `
-          <div class="activity-item" onclick="${onclick}">
-            <div class="activity-avatar">${initials}</div>
-            <div class="activity-info">
-              <div class="activity-title">${label}</div>
-              <div class="activity-sub">${sub}</div>
-            </div>
-            <div class="activity-time">${formatTimeAgo(e.ts)}</div>
-          </div>`;
-      }).join('')
-    : `<div class="activity-empty">Sem atividade recente</div>`;
 
   const clientsHTML = totalClients === 0
     ? `<div class="empty-state">
@@ -413,7 +408,7 @@ function renderDashboard() {
       </div>
 
       <div class="dash-body">
-        <div class="dash-left">
+        <div class="dash-left" style="width:100%">
           <div class="dash-hero">
             <div class="dash-hero-text">
               <h2 class="dash-hero-title">Nutrição que<br><span class="dash-hero-accent">transforma </span>vidas</h2>
@@ -443,6 +438,7 @@ function renderDashboard() {
           <div id="dash-patients" class="dash-patients">
             <div class="dash-patients-header">
               <div class="dash-section-title">Os seus pacientes</div>
+              <input class="patients-search" id="patients-search" type="text" placeholder="Pesquisar paciente…" oninput="filterPatients(this.value)">
               <button class="btn-primary" onclick="createClient()">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                 Novo paciente
@@ -451,15 +447,18 @@ function renderDashboard() {
             <div class="clients-list" id="clients-list">${clientsHTML}</div>
           </div>
         </div>
-
-        <div class="dash-activity">
-          <div class="dash-panel-title">Atividade recente</div>
-          ${activityHTML}
-        </div>
       </div>
 
     </div>
   `;
+}
+
+function filterPatients(query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll('#clients-list .client-card').forEach(card => {
+    const name = card.querySelector('.client-card-name')?.textContent.toLowerCase() || '';
+    card.style.display = name.includes(q) ? '' : 'none';
+  });
 }
 
 // ── Client page ───────────────────────────────────────────────────────────────
@@ -544,10 +543,15 @@ function deletePlan(planId, e) {
   if (!client) return;
   const plan = client.plans.find(p => p.id === planId);
   if (!plan) return;
-  if (!confirm(`Eliminar "${plan.nome}"?`)) return;
-  client.plans = client.plans.filter(p => p.id !== planId);
-  saveAppData();
-  renderPlansList(client);
+  showConfirm(
+    'Eliminar plano',
+    `Tem a certeza que quer eliminar "${plan.nome}"?`,
+    () => {
+      client.plans = client.plans.filter(p => p.id !== planId);
+      saveAppData();
+      renderPlansList(client);
+    }
+  );
 }
 
 function updatePlanName(nome) {
