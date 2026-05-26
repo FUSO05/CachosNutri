@@ -843,6 +843,139 @@ body {
   transform: translateY(-1px);
 }
 
+/* ── EVOLUÇÃO ── */
+#pg-client.evolution-active {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#pg-client.evolution-active #ct-evolution-view {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#pg-client.evolution-active .evolution-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#pg-client.evolution-active .consultations-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+.evolution-wrap {
+  padding: 24px 28px 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+.evolution-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.evolution-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+.evolution-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+  text-align: center;
+}
+.evolution-charts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.evol-chart-card {
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: 14px;
+  padding: 16px 16px 12px;
+  box-shadow: var(--shadow-sm);
+}
+.evol-chart-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gray-500);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.consultations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.consultation-card {
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.consult-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.consult-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+.consult-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.consult-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--green-light);
+  border: 1px solid rgba(39,134,90,.12);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+.chip-label {
+  font-size: 10.5px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+.chip-val {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.consult-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.5;
+  padding-top: 10px;
+  border-top: 1px solid var(--gray-100);
+  white-space: pre-wrap;
+}
+
 /* ── EMPTY STATE ── */
 .empty-state {
   text-align: center;
@@ -869,6 +1002,9 @@ body {
   z-index: 10;
 }
 .client-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 18px;
   font-size: 13px;
   font-weight: 500;
@@ -1612,12 +1748,241 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
 
+/* ── COPY DAY MODAL ── */
+.copy-day-box {
+  width: 360px;
+  max-width: 92vw;
+  padding: 32px 28px 24px;
+  text-align: center;
+  position: relative;
+  animation: confirm-pop .18s cubic-bezier(.34,1.56,.64,1);
+}
+.copy-day-icon-wrap {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgba(39,134,90,.08);
+  border: 2px solid rgba(39,134,90,.2);
+  color: var(--green);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+}
+.copy-day-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+.copy-day-sub {
+  font-size: 12px;
+  color: var(--gray-400);
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.copy-day-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.copy-day-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--gray-100);
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  text-align: left;
+}
+.copy-day-btn:hover {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+.copy-day-name { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+.copy-day-meta { font-size: 10.5px; color: var(--gray-400); }
+
+/* ── EXPORT MODAL ── */
+.export-modal-box { width: 440px; }
+.export-hint { font-size: 12.5px; color: var(--gray-500); margin: 0 0 14px; }
+.export-check-all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gray-100);
+  margin-bottom: 12px;
+}
+.export-check-all input { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+.export-days-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.export-day-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-100);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.export-day-label:hover { border-color: rgba(39,134,90,.3); background: var(--green-light); }
+.export-day-label input { width: 14px; height: 14px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+.export-day-info { display: flex; flex-direction: column; gap: 2px; }
+.export-day-name { font-size: 12.5px; font-weight: 600; color: var(--gray-700); }
+.export-day-meta { font-size: 11px; color: var(--gray-400); }
+
 /* ── PRINT ── */
+#pdf-output { display: none; }
+
 @media print {
-  .sidebar, .day-tabs-right, .add-food-btn,
-  .add-meal-btn, .del-food-btn, .meal-del-btn { display: none !important; }
-  body { background: white; }
-  .main-layout { display: block; }
-  .plan-area { overflow: visible; }
-  .meal-card { break-inside: avoid; margin-bottom: 12px; }
+  body > *:not(#pdf-output) { display: none !important; }
+  #pdf-output {
+    display: block !important;
+    font-family: 'Inter', Georgia, sans-serif;
+    color: #1a1a1a;
+  }
+
+  /* Page wrapper */
+  .pdf-page { padding: 12mm 15mm; }
+
+  /* Top bar */
+  .pdf-topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 6mm;
+  }
+  .pdf-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .pdf-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+  }
+  .pdf-plan-title { font-size: 20px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
+  .pdf-plan-sub  { font-size: 11px; color: #777; margin-top: 3px; }
+
+  .pdf-topbar-right { text-align: right; }
+  .pdf-patient-label { font-size: 11px; color: #777; }
+  .pdf-patient-name  { font-size: 20px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
+
+  /* Divider */
+  .pdf-divider { height: 2px; background: #27865a; margin-bottom: 7mm; }
+
+  /* ── Single-day layout ── */
+  .pdf-s-day-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #27865a;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    border-left: 3px solid #27865a;
+    padding-left: 8px;
+    margin-bottom: 10px;
+  }
+  .pdf-s-meal { margin-bottom: 14px; }
+  .pdf-s-meal-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #27865a;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pdf-s-meal-time { font-size: 10px; color: #aaa; font-weight: 400; }
+  .pdf-s-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+  .pdf-s-table td {
+    padding: 3px 6px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+    vertical-align: middle;
+  }
+  .pdf-s-table td:first-child { padding-left: 0; }
+  .pdf-s-table td.num { text-align: right; color: #666; white-space: nowrap; }
+
+  .pdf-empty-msg { font-size: 11px; color: #bbb; }
+
+  /* ── Weekly table layout ── */
+  .pwt {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .pwt th, .pwt td {
+    border: 1px solid #ddd;
+    padding: 5px 7px;
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .pwt-meal-col-header {
+    background: #27865a;
+    color: white;
+    font-size: .85em;
+    font-weight: 700;
+    width: 80px;
+    text-align: left;
+  }
+  .pwt-day-header {
+    background: #27865a;
+    color: white;
+    font-weight: 700;
+    font-size: .9em;
+    text-align: center;
+  }
+  .pwt-meal-col {
+    background: #f0f7f3;
+    vertical-align: middle;
+    width: 80px;
+  }
+  .pwt-meal-name {
+    font-weight: 700;
+    color: #27865a;
+    font-size: .95em;
+    line-height: 1.3;
+  }
+  .pwt-meal-time {
+    color: #aaa;
+    font-size: .8em;
+    margin-top: 2px;
+  }
+  .pwt-cell { background: white; }
+  .pwt-empty { color: #ccc; text-align: center; vertical-align: middle; }
+  .pwt-food { line-height: 1.4; color: #333; margin-bottom: 1px; }
+  .pwt-qty  { color: #999; }
+
+  /* Footer note */
+  .pdf-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 8mm;
+    padding: 8px 12px;
+    background: #f0f7f3;
+    border-left: 3px solid #27865a;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #555;
+    line-height: 1.5;
+  }
+  .pdf-note svg { flex-shrink: 0; margin-top: 1px; }
 }

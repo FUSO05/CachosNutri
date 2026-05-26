@@ -196,10 +196,6 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Dashboard
       </button>
-      <button class="sn-item" id="sni-pacientes" onclick="goToClients()">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/></svg>
-        Pacientes
-      </button>
       <div class="sn-sep"></div>
       <div class="sn-label">Ferramentas</div>
       <button class="sn-item sn-disabled">
@@ -217,6 +213,10 @@
       <button class="sn-item sn-disabled">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
         Fórmulas TMB
+      </button>
+      <button class="sn-item sn-disabled">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Gráficos de Evolução
       </button>
     </div>
     <div class="sn-footer">
@@ -255,8 +255,18 @@
       </button>
     </div>
     <div class="client-tabs">
-      <button class="client-tab active" id="ct-info" onclick="showClientTab('info')">Informações</button>
-      <button class="client-tab" id="ct-plans" onclick="showClientTab('plans')">Planos</button>
+      <button class="client-tab active" id="ct-info" onclick="showClientTab('info')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Informações
+      </button>
+      <button class="client-tab" id="ct-plans" onclick="showClientTab('plans')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+        Planos
+      </button>
+      <button class="client-tab" id="ct-evolution" onclick="showClientTab('evolution')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Evolução
+      </button>
     </div>
 
     <!-- Informações -->
@@ -434,6 +444,11 @@
     <div id="ct-plans-view" style="display:none">
       <div id="plans-list" class="plans-list"></div>
     </div>
+
+    <!-- Evolução -->
+    <div id="ct-evolution-view" style="display:none">
+      <div id="evolution-content" class="evolution-wrap"></div>
+    </div>
   </div>
 
   <!-- ── PLANO ── -->
@@ -448,7 +463,10 @@
       </div>
       <div id="dayTabs"></div>
       <div class="day-tabs-right">
-        <button class="btn-icon" onclick="window.print()" title="Imprimir">
+        <button class="btn-icon" onclick="openCopyDayModal()" title="Copiar dia">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        </button>
+        <button class="btn-icon" onclick="openExportModal()" title="Exportar PDF">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
             <rect x="6" y="14" width="12" height="8"/>
@@ -565,6 +583,48 @@
     </div>
   </div>
 </div>
+
+<!-- COPY DAY MODAL -->
+<div id="copyDayModal" class="modal-overlay" onclick="if(event.target===this)closeCopyDayModal()" style="display:none">
+  <div class="modal-box copy-day-box">
+    <button class="modal-close confirm-close" onclick="closeCopyDayModal()">&times;</button>
+    <div class="copy-day-icon-wrap">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+    </div>
+    <div class="copy-day-title" id="copy-day-title">Copiar Segunda-feira</div>
+    <p class="copy-day-sub">Escolhe o dia de destino. As refeições existentes serão substituídas.</p>
+    <div class="copy-day-grid" id="copy-day-grid"></div>
+    <button class="confirm-btn-cancel" style="width:100%;margin-top:8px" onclick="closeCopyDayModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- EXPORT PDF MODAL -->
+<div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()" style="display:none">
+  <div class="modal-box export-modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Exportar plano para PDF</div>
+      <button class="modal-close" onclick="closeExportModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="export-hint">Seleciona os dias a incluir:</p>
+      <label class="export-check-all">
+        <input type="checkbox" id="export-all" onchange="toggleAllDays(this.checked)" checked>
+        <span>Selecionar todos</span>
+      </label>
+      <div class="export-days-grid" id="export-days-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-back" onclick="closeExportModal()">Cancelar</button>
+      <button class="btn-primary" onclick="generatePdf()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Gerar PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF OUTPUT (only visible during print) -->
+<div id="pdf-output"></div>
 
 <script src="js/tca_data.js"></script>
 <script src="js/app.js"></script>

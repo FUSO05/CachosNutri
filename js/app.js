@@ -186,7 +186,12 @@ function saveState() { saveAppData(); }
 function loadAppData() {
   try {
     const raw = localStorage.getItem('cachos_data');
-    if (raw) { appData = JSON.parse(raw); return; }
+    if (raw) {
+      appData = JSON.parse(raw);
+      // Migrate: ensure all clients have consultations array
+      appData.clients.forEach(c => { if (!c.consultations) c.consultations = []; });
+      return;
+    }
     // Migrate from old single-patient format
     const oldRaw = localStorage.getItem('nutriplan_state');
     if (oldRaw) {
@@ -199,6 +204,7 @@ function loadAppData() {
           nome: oldInfo.pNome || 'Paciente importado',
           createdAt: Date.now(),
           info: oldInfo,
+          consultations: [],
           plans: [{
             id: crypto.randomUUID(),
             nome: 'Plano 1',
@@ -292,6 +298,7 @@ function createClient() {
     nome: 'Novo paciente',
     createdAt: Date.now(),
     info: {},
+    consultations: [],
     plans: []
   };
   draftClient = client;
@@ -417,8 +424,6 @@ function renderDashboard() {
                 <button class="btn-hero-primary" onclick="createClient()">
                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                   Adicionar paciente
-                </button>
-                ${totalClients > 0 ? `<button class="btn-hero-secondary" onclick="document.getElementById('dash-patients').scrollIntoView({behavior:'smooth'})">Ver pacientes →</button>` : ''}
               </div>
               <div class="dash-hero-badge">
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -439,10 +444,6 @@ function renderDashboard() {
             <div class="dash-patients-header">
               <div class="dash-section-title">Os seus pacientes</div>
               <input class="patients-search" id="patients-search" type="text" placeholder="Pesquisar paciente…" oninput="filterPatients(this.value)">
-              <button class="btn-primary" onclick="createClient()">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Novo paciente
-              </button>
             </div>
             <div class="clients-list" id="clients-list">${clientsHTML}</div>
           </div>
@@ -469,10 +470,16 @@ function renderClientPage(client) {
 
 function showClientTab(tab) {
   const isInfo = tab === 'info';
+  const isPlans = tab === 'plans';
+  const isEvol  = tab === 'evolution';
   document.getElementById('ct-info').classList.toggle('active', isInfo);
-  document.getElementById('ct-plans').classList.toggle('active', !isInfo);
-  document.getElementById('ct-info-view').style.display  = isInfo ? '' : 'none';
-  document.getElementById('ct-plans-view').style.display = isInfo ? 'none' : '';
+  document.getElementById('ct-plans').classList.toggle('active', isPlans);
+  document.getElementById('ct-evolution').classList.toggle('active', isEvol);
+  document.getElementById('ct-info-view').style.display       = isInfo  ? '' : 'none';
+  document.getElementById('ct-plans-view').style.display      = isPlans ? '' : 'none';
+  document.getElementById('ct-evolution-view').style.display  = isEvol  ? '' : 'none';
+  document.getElementById('pg-client').classList.toggle('evolution-active', isEvol);
+  if (isEvol) renderEvolutionTab();
 }
 
 function loadInfoForm(info) {
@@ -876,6 +883,39 @@ function switchDay(i) {
   render();
 }
 
+function openCopyDayModal() {
+  const from = state.activeDay;
+  document.getElementById('copy-day-title').textContent = `Copiar ${DAYS[from]}`;
+  document.getElementById('copy-day-grid').innerHTML = DAYS
+    .map((d, i) => {
+      if (i === from) return '';
+      const tot   = dayTotals(i);
+      const meals = state.days[i].meals.filter(m => m.foods.length > 0).length;
+      return `
+        <button class="copy-day-btn" onclick="copyDay(${i})">
+          <span class="copy-day-name">${d}</span>
+          <span class="copy-day-meta">${meals} refeição${meals !== 1 ? 'ões' : ''} · ${tot.kcal} kcal</span>
+        </button>`;
+    }).join('');
+  document.getElementById('copyDayModal').style.display = '';
+}
+
+function closeCopyDayModal() {
+  document.getElementById('copyDayModal').style.display = 'none';
+}
+
+function copyDay(toIdx) {
+  const from = state.days[state.activeDay];
+  state.days[toIdx].meals = from.meals.map(meal => ({
+    ...meal,
+    id: crypto.randomUUID(),
+    foods: meal.foods.map(fi => ({ ...fi, id: crypto.randomUUID() }))
+  }));
+  saveAppData();
+  closeCopyDayModal();
+  switchDay(toIdx);
+}
+
 function addMeal() {
   const meal = { id: crypto.randomUUID(), nome: 'Nova refeição', hora: '', foods: [] };
   state.days[state.activeDay].meals.push(meal);
@@ -1101,6 +1141,289 @@ function updateTMB() {
 // ── Utils ─────────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Evolução do Paciente ──────────────────────────────────────────────────────
+let evolutionCharts = [];
+
+function currentClient() {
+  return appData.clients.find(c => c.id === nav.clientId) || null;
+}
+
+function registerConsultation() {
+  const client = currentClient();
+  if (!client) return;
+  const f = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const record = {
+    id: crypto.randomUUID(),
+    date: Date.now(),
+    peso:            parseFloat(f('pPeso'))            || null,
+    altura:          parseFloat(f('pAltura'))          || null,
+    imc:             parseFloat(f('pIMC'))             || null,
+    massaGorda:      parseFloat(f('pMassaGorda'))      || null,
+    mig:             parseFloat(f('pMIG'))             || null,
+    somatorioPregas: parseFloat(f('pSomatorioPregas')) || null,
+    perCinturaISAK:  parseFloat(f('pPerCinturaISAK'))  || null,
+    perAnca:         parseFloat(f('pPerAnca'))         || null,
+    perBraco:        parseFloat(f('pPerBraco'))        || null,
+    notes:           f('pNotas')
+  };
+  if (!client.consultations) client.consultations = [];
+  client.consultations.push(record);
+  saveAppData();
+  renderEvolutionTab();
+}
+
+function deleteConsultation(consultationId) {
+  const client = currentClient();
+  if (!client) return;
+  showConfirm(
+    'Eliminar registo',
+    'Tem a certeza que quer eliminar este registo de consulta?',
+    () => {
+      client.consultations = client.consultations.filter(c => c.id !== consultationId);
+      saveAppData();
+      renderEvolutionTab();
+    }
+  );
+}
+
+function renderEvolutionTab() {
+  const client = currentClient();
+  if (!client) return;
+  const container = document.getElementById('evolution-content');
+  if (!container) return;
+
+  const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
+  const hasData = consultations.length > 0;
+  const hasCharts = consultations.length >= 2;
+
+  const cardsHTML = hasData
+    ? consultations.slice().reverse().map(c => {
+        const d = new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+        const chips = [
+          c.peso            != null ? `<div class="consult-chip"><span class="chip-label">Peso</span><span class="chip-val">${c.peso} kg</span></div>` : '',
+          c.imc             != null ? `<div class="consult-chip"><span class="chip-label">IMC</span><span class="chip-val">${c.imc}</span></div>` : '',
+          c.massaGorda      != null ? `<div class="consult-chip"><span class="chip-label">Gordura</span><span class="chip-val">${c.massaGorda}%</span></div>` : '',
+          c.mig             != null ? `<div class="consult-chip"><span class="chip-label">MIG</span><span class="chip-val">${c.mig} kg</span></div>` : '',
+          c.somatorioPregas != null ? `<div class="consult-chip"><span class="chip-label">Σ Pregas</span><span class="chip-val">${c.somatorioPregas} mm</span></div>` : '',
+          c.perCinturaISAK  != null ? `<div class="consult-chip"><span class="chip-label">Cintura</span><span class="chip-val">${c.perCinturaISAK} cm</span></div>` : '',
+          c.perAnca         != null ? `<div class="consult-chip"><span class="chip-label">Anca</span><span class="chip-val">${c.perAnca} cm</span></div>` : '',
+        ].filter(Boolean).join('');
+        const note = c.notes ? `<div class="consult-note">${escHtml(c.notes)}</div>` : '';
+        return `
+          <div class="consultation-card">
+            <div class="consult-card-header">
+              <div class="consult-date">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                ${d}
+              </div>
+              <button class="btn-danger-sm" onclick="deleteConsultation('${c.id}')" title="Eliminar registo">×</button>
+            </div>
+            <div class="consult-metrics">${chips}</div>
+            ${note}
+          </div>`;
+      }).join('')
+    : `<div class="evolution-empty">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="color:var(--gray-300)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-top:12px">Sem registos de consulta</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Preenche as informações do paciente e clica em "Registar consulta"</div>
+      </div>`;
+
+  container.innerHTML = `
+    <div class="evolution-header">
+      <div class="evolution-title">Histórico de Evolução</div>
+      <button class="btn-primary" onclick="registerConsultation()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Registar consulta
+      </button>
+    </div>
+    ${hasCharts ? `<div class="evolution-charts">
+      <div class="evol-chart-card"><div class="evol-chart-title">Peso (kg)</div><canvas id="chartPeso"></canvas></div>
+      <div class="evol-chart-card"><div class="evol-chart-title">% Massa Gorda</div><canvas id="chartGordura"></canvas></div>
+      <div class="evol-chart-card"><div class="evol-chart-title">IMC</div><canvas id="chartIMC"></canvas></div>
+    </div>` : ''}
+    <div class="consultations-list">${cardsHTML}</div>
+  `;
+
+  if (hasCharts) renderEvolutionCharts(consultations);
+}
+
+function renderEvolutionCharts(consultations) {
+  evolutionCharts.forEach(c => c.destroy());
+  evolutionCharts = [];
+
+  const labels = consultations.map(c =>
+    new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })
+  );
+
+  const chartDefs = [
+    { id: 'chartPeso',    label: 'Peso (kg)',       key: 'peso',       color: '#27865a' },
+    { id: 'chartGordura', label: '% Massa Gorda',   key: 'massaGorda', color: '#f59e0b' },
+    { id: 'chartIMC',     label: 'IMC',             key: 'imc',        color: '#4285f4' },
+  ];
+
+  chartDefs.forEach(({ id, label, key, color }) => {
+    const canvas = document.getElementById(id);
+    if (!canvas) return;
+    const data = consultations.map(c => c[key]);
+    if (data.every(v => v == null)) return;
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label,
+          data,
+          borderColor: color,
+          backgroundColor: color + '18',
+          borderWidth: 2.5,
+          pointRadius: 4,
+          pointBackgroundColor: color,
+          tension: 0.35,
+          fill: true,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } },
+          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+    evolutionCharts.push(chart);
+  });
+}
+
+// ── Exportação PDF ────────────────────────────────────────────────────────────
+function openExportModal() {
+  const grid = document.getElementById('export-days-grid');
+  grid.innerHTML = DAYS.map((day, i) => {
+    const tot = dayTotals(i);
+    const meals = state.days[i].meals.filter(m => m.foods.length > 0).length;
+    return `
+      <label class="export-day-label">
+        <input type="checkbox" class="export-day-cb" data-day="${i}" checked>
+        <div class="export-day-info">
+          <span class="export-day-name">${day}</span>
+          <span class="export-day-meta">${meals} refeição${meals !== 1 ? 'ões' : ''} · ${tot.kcal} kcal</span>
+        </div>
+      </label>`;
+  }).join('');
+  document.getElementById('export-all').checked = true;
+  document.getElementById('exportModal').style.display = '';
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').style.display = 'none';
+}
+
+function toggleAllDays(checked) {
+  document.querySelectorAll('.export-day-cb').forEach(cb => { cb.checked = checked; });
+}
+
+function generatePdf() {
+  const selected = [...document.querySelectorAll('.export-day-cb:checked')].map(cb => +cb.dataset.day);
+  if (!selected.length) return;
+
+  const client      = appData.clients.find(c => c.id === nav.clientId);
+  const plan        = client?.plans.find(p => p.id === nav.planId);
+  const patientName = escHtml(client?.nome || '—');
+  const planName    = escHtml(plan?.nome   || 'Plano Nutricional');
+  const isMulti     = selected.length > 1;
+
+  const pageStyle = isMulti
+    ? `<style>@page{size:A4 landscape;margin:0}</style>`
+    : `<style>@page{size:A4 portrait;margin:0}</style>`;
+
+  const bodyHTML = isMulti ? buildWeeklyTableHTML(selected) : buildSingleDayHTML(selected[0]);
+
+  document.getElementById('pdf-output').innerHTML = `
+    ${pageStyle}
+    <div class="pdf-page">
+      <div class="pdf-topbar">
+        <div class="pdf-topbar-left">
+          <img src="img/fav.png" class="pdf-logo" alt="">
+          <div>
+            <div class="pdf-plan-title">Plano Nutricional</div>
+          </div>
+        </div>
+        <div class="pdf-topbar-right">
+          <div class="pdf-patient-label">Paciente:</div>
+          <div class="pdf-patient-name">${patientName}</div>
+        </div>
+      </div>
+      <div class="pdf-divider"></div>
+      ${bodyHTML}
+    </div>`;
+
+  closeExportModal();
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.getElementById('pdf-output').innerHTML = ''; }, 1000);
+  }, 80);
+}
+
+function buildSingleDayHTML(dayIdx) {
+  const day = state.days[dayIdx];
+  const mealsHTML = day.meals.map(meal => {
+    if (!meal.foods.length) return '';
+    const rows = meal.foods.map(fi => `
+      <tr>
+        <td>${escHtml(fi.food.nome)}</td>
+        <td class="num">${fi.qty}g</td>
+      </tr>`).join('');
+    return `
+      <div class="pdf-s-meal">
+        <div class="pdf-s-meal-name">${escHtml(meal.nome)}${meal.hora ? `<span class="pdf-s-meal-time">${meal.hora}</span>` : ''}</div>
+        <table class="pdf-s-table"><tbody>${rows}</tbody></table>
+      </div>`;
+  }).join('');
+  return `
+    <div class="pdf-s-day-title">${DAYS[dayIdx]}</div>
+    ${mealsHTML || '<p class="pdf-empty-msg">Sem refeições registadas</p>'}`;
+}
+
+function buildWeeklyTableHTML(selected) {
+  const mealSlots = state.days[selected[0]].meals;
+
+  let maxFoods = 0;
+  selected.forEach(i => state.days[i].meals.forEach(m => { if (m.foods.length > maxFoods) maxFoods = m.foods.length; }));
+  const fs = maxFoods <= 3 ? '9.5pt' : maxFoods <= 6 ? '8pt' : '7pt';
+
+  const headerCells = selected.map(i =>
+    `<th class="pwt-day-header">${DAYS[i].toUpperCase()}</th>`
+  ).join('');
+
+  const mealRows = mealSlots.map((templateMeal, mealIdx) => {
+    const cells = selected.map(dayIdx => {
+      const meal = state.days[dayIdx].meals[mealIdx];
+      if (!meal || !meal.foods.length) return `<td class="pwt-cell pwt-empty">—</td>`;
+      const foods = meal.foods.map(fi =>
+        `<div class="pwt-food">${escHtml(fi.food.nome)}<span class="pwt-qty"> — ${fi.qty}g</span></div>`
+      ).join('');
+      return `<td class="pwt-cell">${foods}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="pwt-meal-col">
+        <div class="pwt-meal-name">${escHtml(templateMeal.nome)}</div>
+        ${templateMeal.hora ? `<div class="pwt-meal-time">${templateMeal.hora}</div>` : ''}
+      </td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  return `<table class="pwt" style="font-size:${fs}">
+    <thead><tr>
+      <th class="pwt-meal-col-header">REFEIÇÃO</th>
+      ${headerCells}
+    </tr></thead>
+    <tbody>${mealRows}</tbody>
+  </table>`;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
