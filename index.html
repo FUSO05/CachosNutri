@@ -218,6 +218,10 @@
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Gráficos de Evolução
       </button>
+      <button class="sn-item sn-disabled">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16H3l4 4m0-4-4-4M17 8h4l-4-4m0 4 4 4"/></svg>
+        Equivalências Alimentares
+      </button>
     </div>
     <div class="sn-footer">
       <button class="sn-profile-btn" onclick="openProfileModal()">
@@ -442,7 +446,13 @@
 
     <!-- Planos -->
     <div id="ct-plans-view" style="display:none">
-      <div id="plans-list" class="plans-list"></div>
+      <div class="plans-layout">
+        <div class="plans-top-row">
+          <div id="plans-list" class="plans-list"></div>
+          <div id="pd-resumo-panel" class="pd-section pd-resumo-panel"></div>
+        </div>
+        <div id="pd-bottom-row" class="pd-bottom-row"></div>
+      </div>
     </div>
 
     <!-- Evolução -->
@@ -492,12 +502,26 @@
             </div>
           </div>
         </div>
-        <div class="sidebar-section">
-          <div class="sidebar-title">Distribuição de macronutrientes</div>
-          <div class="macro-rings">
-            <div class="macro-ring-item"><div class="val c-prot" id="rProt">0g</div><div class="lbl">Proteína</div></div>
-            <div class="macro-ring-item"><div class="val c-hc" id="rHc">0g</div><div class="lbl">Hidratos C.</div></div>
-            <div class="macro-ring-item"><div class="val c-lip" id="rLip">0g</div><div class="lbl">Lípidos</div></div>
+        <!-- CTA quando sem metas -->
+        <div class="sidebar-section" id="macro-targets-cta">
+          <button class="btn-set-targets" onclick="openMacroTargetsModal()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+            Definir metas do dia
+          </button>
+        </div>
+        <!-- Secção de metas (visível após definição) -->
+        <div class="sidebar-section" id="macro-targets-section" style="display:none">
+          <div class="sidebar-title-row">
+            <div class="sidebar-title">Metas do dia</div>
+            <button class="btn-edit-targets" onclick="openMacroTargetsModal()" title="Editar metas">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+          <div class="macro-target-list">
+            <div class="mt-row" id="mt-kcal"></div>
+            <div class="mt-row" id="mt-prot"></div>
+            <div class="mt-row" id="mt-hc"></div>
+            <div class="mt-row" id="mt-lip"></div>
           </div>
         </div>
       </aside>
@@ -625,6 +649,58 @@
 
 <!-- PDF OUTPUT (only visible during print) -->
 <div id="pdf-output"></div>
+
+<!-- MACRO TARGETS MODAL -->
+<div id="macroTargetsModal" class="modal-overlay" onclick="if(event.target===this)closeMacroTargetsModal()" style="display:none">
+  <div class="modal-box macro-targets-box">
+    <div class="modal-header">
+      <div class="modal-title">Metas diárias</div>
+      <button class="modal-close" onclick="closeMacroTargetsModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tg-banner">
+        <svg width="15" height="15" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+        <span>Os valores sugeridos baseiam-se no perfil do paciente.</span>
+      </div>
+      <div class="targets-grid">
+        <div class="tg-field">
+          <label><span class="tg-dot" style="background:#27865a"></span>Calorias</label>
+          <div class="tg-input-wrap"><input id="tg-kcal" type="number" min="0" placeholder="2200"><span class="tg-unit">kcal</span></div>
+        </div>
+        <div class="tg-field">
+          <label><span class="tg-dot" style="background:#e74c3c"></span>Proteína</label>
+          <div class="tg-input-wrap"><input id="tg-prot" type="number" min="0" placeholder="180"><span class="tg-unit">g</span></div>
+        </div>
+        <div class="tg-field">
+          <label><span class="tg-dot" style="background:#f39c12"></span>Hidratos</label>
+          <div class="tg-input-wrap"><input id="tg-hc" type="number" min="0" placeholder="250"><span class="tg-unit">g</span></div>
+        </div>
+        <div class="tg-field">
+          <label><span class="tg-dot" style="background:#9b59b6"></span>Lípidos</label>
+          <div class="tg-input-wrap"><input id="tg-lip" type="number" min="0" placeholder="70"><span class="tg-unit">g</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-back" onclick="closeMacroTargetsModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveMacroTargets()">Guardar metas</button>
+    </div>
+  </div>
+</div>
+
+<!-- EQUIV MODAL -->
+<div id="equivModal" class="modal-overlay" onclick="if(event.target===this)closeEquivModal()" style="display:none">
+  <div class="modal-box equiv-modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Equivalências — <span id="equiv-food-name"></span></div>
+      <button class="modal-close" onclick="closeEquivModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Alternativas com valor calórico equivalente. Clica para substituir o alimento.</p>
+      <div class="equiv-results" id="equiv-results"></div>
+    </div>
+  </div>
+</div>
 
 <script src="js/tca_data.js"></script>
 <script src="js/app.js"></script>

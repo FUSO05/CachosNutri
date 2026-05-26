@@ -189,7 +189,10 @@ function loadAppData() {
     if (raw) {
       appData = JSON.parse(raw);
       // Migrate: ensure all clients have consultations array
-      appData.clients.forEach(c => { if (!c.consultations) c.consultations = []; });
+      appData.clients.forEach(c => {
+        if (!c.consultations) c.consultations = [];
+        c.plans.forEach(p => { if (!('macroTargets' in p)) p.macroTargets = null; });
+      });
       return;
     }
     // Migrate from old single-patient format
@@ -536,6 +539,7 @@ function createPlan() {
     id: crypto.randomUUID(),
     nome: `Plano ${client.plans.length + 1}`,
     createdAt: Date.now(),
+    macroTargets: null,
     days: makeDefaultDays()
   };
   client.plans.push(plan);
@@ -569,6 +573,8 @@ function updatePlanName(nome) {
   if (plan) { plan.nome = nome; saveAppData(); updateBreadcrumb(); }
 }
 
+let previewPlanId = null;
+
 function renderPlansList(client) {
   const list = document.getElementById('plans-list');
   if (!client.plans.length) {
@@ -582,22 +588,199 @@ function renderPlansList(client) {
       </div>`;
     return;
   }
-  list.innerHTML = client.plans.map(p => `
-    <div class="plan-card" onclick="goToPlan('${client.id}', '${p.id}')">
-      <div class="plan-card-icon">
-        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-        </svg>
+  const DAY_ABBR = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  list.innerHTML = client.plans.map(p => {
+    const activeDays = p.days.filter(d => d.meals.some(m => m.foods.length)).length;
+    const totalMeals = p.days.reduce((s, d) => s + d.meals.filter(m => m.foods.length).length, 0);
+    const dayDots = p.days.map((d, i) => {
+      const active = d.meals.some(m => m.foods.length);
+      return `<span class="pc-day-dot ${active ? 'pc-day-dot--on' : ''}">${DAY_ABBR[i]}</span>`;
+    }).join('');
+    const isSelected = p.id === previewPlanId;
+    return `
+    <div class="plan-card ${isSelected ? 'plan-card--selected' : ''}" onclick="goToPlan('${client.id}','${p.id}')">
+      <div class="plan-card-accent"></div>
+      <div class="plan-card-body">
+        <div class="plan-card-top">
+          <div class="plan-card-icon">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <div class="plan-card-info">
+            <div class="plan-card-name">${escHtml(p.nome)}</div>
+            <div class="plan-card-meta">Criado em ${formatDate(p.createdAt)}</div>
+          </div>
+          <button class="btn-danger-sm" onclick="deletePlan('${p.id}', event)" title="Eliminar">×</button>
+        </div>
+        <div class="plan-card-days">${dayDots}</div>
+        <div class="plan-card-footer">
+          <div class="plan-card-stats">
+            <div class="pc-stat"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>${activeDays} dia${activeDays !== 1 ? 's' : ''}</span></div>
+            <div class="pc-stat"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3h18v4H3zM3 10h18v4H3zM3 17h18v4H3z"/></svg><span>${totalMeals} ${totalMeals === 1 ? 'refeição' : 'refeições'}</span></div>
+          </div>
+        </div>
       </div>
-      <div class="plan-card-info">
-        <div class="plan-card-name">${escHtml(p.nome)}</div>
-        <div class="plan-card-meta">Criado em ${formatDate(p.createdAt)}</div>
+    </div>`;
+  }).join('');
+
+  // auto-select first plan
+  if (!previewPlanId || !client.plans.find(p => p.id === previewPlanId)) {
+    previewPlanId = client.plans[0].id;
+  }
+  renderPlanDetail(client.plans.find(p => p.id === previewPlanId), client);
+}
+
+function selectPlanPreview(planId) {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client) return;
+  previewPlanId = planId;
+  renderPlansList(client);
+}
+
+function renderPlanDetail(plan, client) {
+  const resumoPanel = document.getElementById('pd-resumo-panel');
+  const bottomRow   = document.getElementById('pd-bottom-row');
+  if (!resumoPanel || !bottomRow || !plan) return;
+
+  const activeDays = plan.days.filter(d => d.meals.some(m => m.foods.length)).length;
+  const totalMeals = plan.days.reduce((s, d) => s + d.meals.filter(m => m.foods.length).length, 0);
+  const adhesion   = Math.round(activeDays / 7 * 100);
+
+  const daysWithFood = plan.days.filter(d => d.meals.some(m => m.foods.length));
+  let avgKcal = 0, avgProt = 0, avgHc = 0, avgLip = 0;
+  daysWithFood.forEach(d => {
+    let k = 0, p = 0, h = 0, l = 0;
+    d.meals.forEach(m => m.foods.forEach(fi => {
+      const s = scale(fi.food, fi.qty);
+      k += s.kcal; p += s.prot; h += s.hc; l += s.lip;
+    }));
+    avgKcal += k; avgProt += p; avgHc += h; avgLip += l;
+  });
+  if (daysWithFood.length) {
+    avgKcal /= daysWithFood.length; avgProt /= daysWithFood.length;
+    avgHc   /= daysWithFood.length; avgLip  /= daysWithFood.length;
+  }
+  const cP = avgProt * 4, cH = avgHc * 4, cL = avgLip * 9;
+  const cTotal  = cP + cH + cL || 1;
+  const pctProt = Math.round(cP / cTotal * 100);
+  const pctHc   = Math.round(cH / cTotal * 100);
+  const pctLip  = Math.round(cL / cTotal * 100);
+  const macroLabel = (pctProt >= 20 && pctProt <= 35 && pctLip >= 20 && pctLip <= 35) ? 'Equilibrado' : 'A ajustar';
+
+  const objMap = { perda: 'Perda de peso', manutencao: 'Manutenção de peso', ganho: 'Ganho de massa muscular', saude: 'Melhoria da saúde geral', outro: 'Outro' };
+  const palMap = { '1.4': 'Sedentário (PAL 1.4)', '1.6': 'Moderado (PAL 1.6)', '1.8': 'Ativo (PAL 1.8)', '2.0': 'Muito Ativo (PAL 2.0)' };
+  const objetivo  = objMap[client.info?.pObjetivo] || '—';
+  const atividade = palMap[client.info?.pAtividade] || '—';
+  const autorNome = appProfile.name || 'Nutricionista';
+  const getVal    = parseFloat(client.info?.pGET) || null;
+  const totalFoods = new Set(plan.days.flatMap(d => d.meals.flatMap(m => m.foods.map(fi => fi.food.id)))).size;
+  const daysEmpty  = 7 - activeDays;
+
+  // ── Resumo panel (top right)
+  resumoPanel.innerHTML = `
+    <div class="pd-resumo-title">Resumo do plano</div>
+    <div class="pd-stats-row">
+      <div class="pd-stat-card">
+        <svg width="20" height="20" fill="none" stroke="var(--green)" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="pd-stat-val">7</div><div class="pd-stat-lbl">dias<br>de plano</div>
       </div>
-      <div class="plan-card-right">
-        <button class="btn-danger-sm" onclick="deletePlan('${p.id}', event)" title="Eliminar">×</button>
+      <div class="pd-stat-card">
+        <svg width="20" height="20" fill="none" stroke="var(--green)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <div class="pd-stat-val">${totalMeals}</div><div class="pd-stat-lbl">refeições<br>planeadas</div>
+      </div>
+      <div class="pd-stat-card">
+        <svg width="20" height="20" fill="none" stroke="var(--green)" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div class="pd-stat-val">${adhesion}%</div><div class="pd-stat-lbl">adesão<br>semanal</div>
+      </div>
+      <div class="pd-stat-card">
+        <svg width="20" height="20" fill="none" stroke="var(--green)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        <div class="pd-stat-val pd-stat-label-val">${macroLabel}</div><div class="pd-stat-lbl">distribuição<br>de macros</div>
+      </div>
+    </div>`;
+
+  // ── Bottom row (3 cards)
+  bottomRow.innerHTML = `
+    <div class="pd-section">
+      <div class="pd-section-title">Distribuição de macronutrientes (média diária)</div>
+      ${daysWithFood.length ? `
+        <div class="pd-macro-bar-wrap">
+          <div class="pd-macro-bar">
+            <div class="pd-macro-seg" style="width:${pctHc}%;background:#27865a"></div>
+            <div class="pd-macro-seg" style="width:${pctProt}%;background:#4caf82"></div>
+            <div class="pd-macro-seg" style="width:${pctLip}%;background:#f39c12"></div>
+          </div>
+        </div>
+        <div class="pd-macro-cards">
+          <div class="pd-macro-mini" style="border-color:#27865a22">
+            <span class="pd-macro-dot" style="background:#27865a"></span>
+            <div class="pd-macro-mini-val">${avgHc.toFixed(1)}g</div>
+            <div class="pd-macro-mini-lbl">Hidratos <b>${pctHc}%</b></div>
+          </div>
+          <div class="pd-macro-mini" style="border-color:#4caf8222">
+            <span class="pd-macro-dot" style="background:#4caf82"></span>
+            <div class="pd-macro-mini-val">${avgProt.toFixed(1)}g</div>
+            <div class="pd-macro-mini-lbl">Proteínas <b>${pctProt}%</b></div>
+          </div>
+          <div class="pd-macro-mini" style="border-color:#f39c1222">
+            <span class="pd-macro-dot" style="background:#f39c12"></span>
+            <div class="pd-macro-mini-val">${avgLip.toFixed(1)}g</div>
+            <div class="pd-macro-mini-lbl">Gorduras <b>${pctLip}%</b></div>
+          </div>
+        </div>
+        <div class="pd-kcal-avg">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          ${avgKcal.toFixed(0)} kcal/dia em média
+        </div>`
+      : '<p class="pd-empty-note">Sem dados — adiciona alimentos ao plano.</p>'}
+    </div>
+    <div class="pd-section">
+      <div class="pd-section-title">Informações adicionais</div>
+      <div class="pd-info-list">
+        <div class="pd-info-row">
+          <span>Objetivo do plano</span>
+          <span>${objetivo}</span>
+        </div>
+        <div class="pd-info-row">
+          <span>Nível de atividade</span>
+          <span>${atividade}</span>
+        </div>
+        ${getVal ? `<div class="pd-info-row"><span>GET estimado</span><span>${getVal.toFixed(0)} kcal</span></div>` : ''}
+        <div class="pd-info-row">
+          <span>Alimentos distintos</span>
+          <span>${totalFoods}</span>
+        </div>
+        <div class="pd-info-row">
+          <span>Dias sem refeições</span>
+          <span>${daysEmpty === 0 ? '✓ Nenhum' : daysEmpty}</span>
+        </div>
+        <div class="pd-info-row">
+          <span>Criado por</span>
+          <span>${escHtml(autorNome)}</span>
+        </div>
       </div>
     </div>
-  `).join('');
+    <div class="pd-section">
+      <div class="pd-section-title">Ações rápidas</div>
+      <div class="pd-actions-list">
+        <button class="pd-action" onclick="goToPlan('${client.id}','${plan.id}')">
+          <div class="pd-action-icon" style="background:#edf7f2">
+            <svg width="14" height="14" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
+          <div class="pd-action-text"><div class="pd-action-label">Editar plano</div><div class="pd-action-desc">Abrir o editor de refeições</div></div>
+        </button>
+        <button class="pd-action" onclick="openExportForPlan('${client.id}','${plan.id}')">
+          <div class="pd-action-icon" style="background:#edf7f2">
+            <svg width="14" height="14" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </div>
+          <div class="pd-action-text"><div class="pd-action-label">Exportar PDF</div><div class="pd-action-desc">Gerar plano para entregar ao paciente</div></div>
+        </button>
+        <button class="pd-action pd-action--danger" onclick="deletePlan('${plan.id}', event)">
+          <div class="pd-action-icon" style="background:#fdf0f0">
+            <svg width="14" height="14" fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </div>
+          <div class="pd-action-text"><div class="pd-action-label">Eliminar plano</div><div class="pd-action-desc">Remover permanentemente</div></div>
+        </button>
+      </div>
+    </div>`;
 }
 
 // ── Nutritional helpers ───────────────────────────────────────────────────────
@@ -704,6 +887,10 @@ function renderFoodRow(fi, mealId) {
              onchange="updateQty('${mealId}','${fi.id}',this.value)"
              oninput="updateQty('${mealId}','${fi.id}',this.value)">
       <span class="qty-unit">g</span>
+      <button class="btn-equiv" onclick="openEquivModal('${fi.id}','${mealId}')" title="Ver equivalências">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16H3l4 4m0-4-4-4M17 8h4l-4-4m0 4 4 4"/></svg>
+        Trocar
+      </button>
       <button class="del-food-btn" onclick="deleteFood('${mealId}','${fi.id}')" title="Remover">×</button>
     </div>`;
 }
@@ -723,9 +910,6 @@ function renderChart() {
   document.getElementById('legProtPct').textContent = `${(cProt/total*100).toFixed(0)}%`;
   document.getElementById('legHcPct').textContent   = `${(cHc/total*100).toFixed(0)}%`;
   document.getElementById('legLipPct').textContent  = `${(cLip/total*100).toFixed(0)}%`;
-  document.getElementById('rProt').textContent      = `${tot.prot.toFixed(1)}g`;
-  document.getElementById('rHc').textContent        = `${tot.hc.toFixed(1)}g`;
-  document.getElementById('rLip').textContent       = `${tot.lip.toFixed(1)}g`;
 
   const data = total <= 0 ? [1,1,1] : [cProt, cHc, cLip];
 
@@ -760,6 +944,167 @@ function renderChart() {
       }
     });
   }
+  renderMacroTargets(tot);
+}
+
+// ── Macro Targets ─────────────────────────────────────────────────────────────
+function renderMacroTargets(tot) {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  if (!plan) return;
+
+  const cta  = document.getElementById('macro-targets-cta');
+  const sec  = document.getElementById('macro-targets-section');
+  if (!cta || !sec) return;
+
+  if (!plan.macroTargets) {
+    cta.style.display = '';
+    sec.style.display = 'none';
+    return;
+  }
+  cta.style.display = 'none';
+  sec.style.display = '';
+
+  const rows = [
+    { id: 'mt-kcal', label: 'Calorias',  actual: tot.kcal,  target: plan.macroTargets.kcal,  unit: ' kcal' },
+    { id: 'mt-prot', label: 'Proteína',  actual: tot.prot,  target: plan.macroTargets.prot,  unit: 'g' },
+    { id: 'mt-hc',   label: 'Hidratos',  actual: tot.hc,    target: plan.macroTargets.hc,    unit: 'g' },
+    { id: 'mt-lip',  label: 'Lípidos',   actual: tot.lip,   target: plan.macroTargets.lip,   unit: 'g' },
+  ];
+
+  rows.forEach(({ id, label, actual, target, unit }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const diff  = actual - target;
+    const pct   = target > 0 ? Math.min(actual / target * 100, 100) : 0;
+    const ratio = target > 0 ? Math.abs(diff) / target : 0;
+    const color = ratio < 0.05 ? '#27865a' : diff < 0 ? '#f39c12' : '#e74c3c';
+    const cls   = ratio < 0.05 ? 'mt-ok'   : diff < 0 ? 'mt-deficit' : 'mt-excess';
+    const txt   = ratio < 0.05
+      ? '✓ No objetivo'
+      : diff < 0
+        ? `Faltam ${Math.abs(diff).toFixed(0)}${unit}`
+        : `Excesso ${diff.toFixed(0)}${unit}`;
+    el.innerHTML = `
+      <div class="mt-label">${label}</div>
+      <div class="mt-bar-wrap"><div class="mt-bar" style="width:${pct}%;background:${color}"></div></div>
+      <div class="mt-values">
+        <span class="mt-actual">${actual.toFixed(0)}${unit} <span style="color:#aaa;font-weight:400">/ ${target}${unit}</span></span>
+        <span class="${cls}">${txt}</span>
+      </div>`;
+  });
+}
+
+function openMacroTargetsModal() {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  if (!plan) return;
+
+  const mt = plan.macroTargets;
+  const get  = parseFloat(client?.info?.pGET)  || null;
+  const peso = parseFloat(client?.info?.pPeso) || null;
+
+  document.getElementById('tg-kcal').value = mt?.kcal ?? (get  ? Math.round(get)       : '');
+  document.getElementById('tg-prot').value = mt?.prot ?? (peso ? Math.round(peso * 1.8) : '');
+  document.getElementById('tg-hc').value   = mt?.hc   ?? '';
+  document.getElementById('tg-lip').value  = mt?.lip  ?? '';
+
+  document.getElementById('macroTargetsModal').style.display = 'flex';
+}
+
+function closeMacroTargetsModal() {
+  document.getElementById('macroTargetsModal').style.display = 'none';
+}
+
+function saveMacroTargets() {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  if (!plan) return;
+
+  const kcal = parseFloat(document.getElementById('tg-kcal').value);
+  const prot = parseFloat(document.getElementById('tg-prot').value);
+  const hc   = parseFloat(document.getElementById('tg-hc').value);
+  const lip  = parseFloat(document.getElementById('tg-lip').value);
+
+  if ([kcal, prot, hc, lip].some(v => isNaN(v) || v < 0)) return;
+
+  plan.macroTargets = { kcal, prot, hc, lip };
+  saveAppData();
+  closeMacroTargetsModal();
+  renderChart();
+}
+
+// ── Equivalences ──────────────────────────────────────────────────────────────
+let equivContext = null;
+
+function findEquivalences(food, qty) {
+  const target = scale(food, qty);
+  if (target.kcal < 1) return [];
+
+  const cP = target.prot * 4, cH = target.hc * 4, cL = target.lip * 9;
+  const dom = cP >= cH && cP >= cL ? 'prot' : cH >= cL ? 'hc' : 'lip';
+
+  return TCA
+    .filter(f => f.id !== food.id && f.kcal > 0)
+    .map(f => {
+      const eqQty = Math.round(target.kcal / f.kcal * 100);
+      if (eqQty < 5 || eqQty > 800) return null;
+      const s = scale(f, eqQty);
+      const pD = Math.abs(s.prot - target.prot);
+      const hD = Math.abs(s.hc   - target.hc);
+      const lD = Math.abs(s.lip  - target.lip);
+      const score = dom === 'prot' ? pD*3 + hD + lD
+                  : dom === 'hc'   ? hD*3 + pD + lD
+                                   : lD*3 + pD + hD;
+      return { food: f, qty: eqQty, scaled: s, score, sameCat: f.cat === food.cat };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.sameCat !== b.sameCat ? (a.sameCat ? -1 : 1) : a.score - b.score)
+    .slice(0, 6);
+}
+
+function openEquivModal(fiId, mealId) {
+  equivContext = { fiId, mealId };
+  const meal = findMeal(mealId);
+  const fi   = meal?.foods.find(f => f.id === fiId);
+  if (!fi) return;
+
+  document.getElementById('equiv-food-name').textContent = fi.food.nome;
+  const results = findEquivalences(fi.food, fi.qty);
+
+  const container = document.getElementById('equiv-results');
+  if (!results.length) {
+    container.innerHTML = '<p class="modal-hint" style="grid-column:1/-1">Sem equivalências disponíveis para este alimento.</p>';
+  } else {
+    container.innerHTML = results.map(r => `
+      <div class="equiv-card" onclick="swapFood('${r.food.id}',${r.qty})">
+        <div class="equiv-card-name">${escHtml(r.food.nome)}</div>
+        <div class="equiv-card-qty">${r.qty}g</div>
+        <div class="equiv-card-macros">
+          <span>${r.scaled.kcal.toFixed(0)} kcal</span>
+          <span>P ${r.scaled.prot.toFixed(1)}g</span>
+          <span>HC ${r.scaled.hc.toFixed(1)}g</span>
+          <span>L ${r.scaled.lip.toFixed(1)}g</span>
+        </div>
+        ${r.sameCat ? '<div class="equiv-same-cat">Mesma categoria</div>' : ''}
+      </div>`).join('');
+  }
+  document.getElementById('equivModal').style.display = 'flex';
+}
+
+function closeEquivModal() {
+  document.getElementById('equivModal').style.display = 'none';
+}
+
+function swapFood(newFoodId, newQty) {
+  const meal = findMeal(equivContext.mealId);
+  const fi   = meal?.foods.find(f => f.id === equivContext.fiId);
+  if (!fi) return;
+  fi.food = TCA.find(f => f.id === newFoodId);
+  fi.qty  = newQty;
+  saveAppData();
+  render();
+  closeEquivModal();
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -1300,6 +1645,11 @@ function renderEvolutionCharts(consultations) {
 }
 
 // ── Exportação PDF ────────────────────────────────────────────────────────────
+function openExportForPlan(clientId, planId) {
+  goToPlan(clientId, planId);
+  setTimeout(openExportModal, 120);
+}
+
 function openExportModal() {
   const grid = document.getElementById('export-days-grid');
   grid.innerHTML = DAYS.map((day, i) => {
