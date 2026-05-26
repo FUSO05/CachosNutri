@@ -253,10 +253,6 @@
         </button>
         <div class="pg-title" id="client-page-name">Paciente</div>
       </div>
-      <button class="btn-primary" onclick="createPlan()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Novo plano
-      </button>
     </div>
     <div class="client-tabs">
       <button class="client-tab active" id="ct-info" onclick="showClientTab('info')">
@@ -447,6 +443,13 @@
     <!-- Planos -->
     <div id="ct-plans-view" style="display:none">
       <div class="plans-layout">
+        <div class="plans-toolbar">
+          <div class="info-page-title">Planos Alimentares</div>
+          <button class="btn-primary" onclick="createPlan()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Novo plano
+          </button>
+        </div>
         <div class="plans-top-row">
           <div id="plans-list" class="plans-list"></div>
           <div id="pd-resumo-panel" class="pd-section pd-resumo-panel"></div>
@@ -473,6 +476,12 @@
       </div>
       <div id="dayTabs"></div>
       <div class="day-tabs-right">
+        <button class="btn-icon" onclick="openTemplateModal()" title="Templates pré-definidos">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </button>
         <button class="btn-icon" onclick="openCopyDayModal()" title="Copiar dia">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
@@ -524,6 +533,22 @@
             <div class="mt-row" id="mt-lip"></div>
           </div>
         </div>
+        <!-- Água diária -->
+        <div class="sidebar-section" id="water-section">
+          <div class="sidebar-title-row">
+            <div class="sidebar-title">Água diária</div>
+          </div>
+          <div class="water-widget">
+            <svg width="22" height="22" fill="none" stroke="#3b9bd4" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/>
+            </svg>
+            <div class="water-input-wrap">
+              <input id="water-input" type="number" min="0" max="9999" step="50"
+                     class="water-input" onchange="updateWater(this.value)" oninput="updateWater(this.value)">
+              <span class="water-unit">ml/dia</span>
+            </div>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
@@ -556,7 +581,7 @@
     <p class="confirm-message" id="confirm-message"></p>
     <div class="confirm-actions">
       <button class="confirm-btn-cancel" onclick="closeConfirm()">Cancelar</button>
-      <button class="confirm-btn-ok" id="confirm-ok-btn" onclick="confirmOk()">Eliminar</button>
+      <button class="confirm-btn-ok" id="confirm-ok-btn" onclick="confirmOk()">Continuar</button>
     </div>
   </div>
 </div>
@@ -698,6 +723,47 @@
     <div class="modal-body">
       <p class="modal-hint">Alternativas com valor calórico equivalente. Clica para substituir o alimento.</p>
       <div class="equiv-results" id="equiv-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TEMPLATE MODAL -->
+<div id="templateModal" class="modal-overlay" onclick="if(event.target===this)closeTemplateModal()" style="display:none">
+  <div class="modal-box template-modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Templates pré-definidos</div>
+      <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Seleciona um plano base. Os alimentos serão aplicados a todos os 7 dias e podes editar depois.</p>
+      <div id="template-grid" class="template-grid"></div>
+      <div class="template-footer">
+        <button class="btn-back btn-sm" onclick="openSaveTemplateModal()">➕ Guardar plano atual como template</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE TEMPLATE MODAL -->
+<div id="saveTemplateModal" class="modal-overlay" onclick="if(event.target===this)closeSaveTemplateModal()" style="display:none">
+  <div class="modal-box" style="width:360px">
+    <div class="modal-header">
+      <div class="modal-title">Guardar como template</div>
+      <button class="modal-close" onclick="closeSaveTemplateModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="tg-field">
+        <label class="tg-label">Nome do template</label>
+        <input id="st-label" type="text" style="border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;width:100%;outline:none;box-sizing:border-box" placeholder="Ex: Défice Personalizado">
+      </div>
+      <div class="tg-field" style="margin-top:10px">
+        <label class="tg-label">Descrição (opcional)</label>
+        <input id="st-desc" type="text" style="border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;width:100%;outline:none;box-sizing:border-box" placeholder="Ex: ~1600 kcal">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+        <button class="btn-back" onclick="closeSaveTemplateModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveCurrentAsTemplate()">Guardar</button>
+      </div>
     </div>
   </div>
 </div>

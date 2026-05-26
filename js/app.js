@@ -4,6 +4,109 @@ const DAYS          = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','D
 const DEFAULT_MEALS = ['Pequeno-almoço','Lanche da manhã','Almoço','Lanche da tarde','Jantar'];
 const MEAL_TIMES    = ['07:30','10:30','13:00','16:00','20:00','','',''];
 
+const PLAN_TEMPLATES = {
+  defice: {
+    label: 'Défice Calórico', desc: 'Redução calórica para perda de peso (~1800 kcal)', icon: '⚖️',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '444', qty: 60 }, { id: '25', qty: 200 }, { id: '636', qty: 100 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '2122000015', qty: 150 }, { id: '662', qty: 150 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 150 }, { id: '403', qty: 120 }, { id: '551', qty: 150 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 60 }, { id: '433', qty: 40 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '878', qty: 150 }, { id: '594', qty: 150 }, { id: '608', qty: 100 }] },
+    ]
+  },
+  hipertrofia: {
+    label: 'Hipertrofia', desc: 'Alto teor proteico para ganho muscular (~3000 kcal)', icon: '💪',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '07:30', foods: [{ id: '444', qty: 100 }, { id: '25', qty: 300 }, { id: '636', qty: 120 }, { id: '86', qty: 120 }] },
+      { nome: 'Lanche da manhã', hora: '10:00', foods: [{ id: '2122000008', qty: 200 }, { id: '697', qty: 30 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 200 }, { id: '403', qty: 200 }, { id: '530', qty: 100 }, { id: '395', qty: 15 }] },
+      { nome: 'Lanche da tarde', hora: '16:00', foods: [{ id: '814', qty: 120 }, { id: '433', qty: 80 }] },
+      { nome: 'Jantar', hora: '20:00', foods: [{ id: '878', qty: 200 }, { id: '586', qty: 250 }, { id: '551', qty: 150 }, { id: '395', qty: 15 }] },
+    ]
+  },
+  vegetariano: {
+    label: 'Vegetariano', desc: 'Sem carnes, rico em proteína vegetal (~2000 kcal)', icon: '🌿',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '444', qty: 80 }, { id: '25', qty: 250 }, { id: '636', qty: 100 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '2122000008', qty: 150 }, { id: '662', qty: 150 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '538', qty: 200 }, { id: '403', qty: 120 }, { id: '608', qty: 120 }, { id: '395', qty: 10 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 120 }, { id: '433', qty: 50 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '545', qty: 180 }, { id: '403', qty: 120 }, { id: '551', qty: 150 }, { id: '395', qty: 10 }] },
+    ]
+  },
+  semgluten: {
+    label: 'Sem Glúten', desc: 'Isento de glúten (~2000 kcal)', icon: '🌾',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '445', qty: 60 }, { id: '25', qty: 250 }, { id: '636', qty: 100 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '2122000015', qty: 150 }, { id: '662', qty: 150 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 150 }, { id: '586', qty: 200 }, { id: '601', qty: 100 }, { id: '395', qty: 15 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 60 }, { id: '697', qty: 30 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '805', qty: 150 }, { id: '403', qty: 150 }, { id: '551', qty: 150 }, { id: '395', qty: 15 }] },
+    ]
+  },
+  semlactose: {
+    label: 'Sem Lactose', desc: 'Isento de lactose (~2000 kcal)', icon: '🥛',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '444', qty: 80 }, { id: '636', qty: 120 }, { id: '86', qty: 60 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '662', qty: 180 }, { id: '697', qty: 30 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 150 }, { id: '403', qty: 150 }, { id: '608', qty: 120 }, { id: '395', qty: 15 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '814', qty: 100 }, { id: '403', qty: 80 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '878', qty: 150 }, { id: '594', qty: 150 }, { id: '551', qty: 150 }, { id: '395', qty: 15 }] },
+    ]
+  },
+  baixocarb: {
+    label: 'Baixo Teor de Carboidratos', desc: 'Restrição de HC para controlo glicémico (~1800 kcal)', icon: '🥩',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '86', qty: 120 }, { id: '2122000011', qty: 100 }, { id: '615', qty: 100 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '2122000008', qty: 150 }, { id: '697', qty: 30 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 200 }, { id: '551', qty: 200 }, { id: '395', qty: 15 }, { id: '584', qty: 80 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '814', qty: 120 }, { id: '611', qty: 100 }, { id: '600', qty: 80 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '878', qty: 200 }, { id: '608', qty: 150 }, { id: '557', qty: 150 }, { id: '395', qty: 15 }] },
+    ]
+  },
+  baixofibra: {
+    label: 'Baixo Teor de Fibra', desc: 'Redução de fibra para conforto digestivo (~2000 kcal)', icon: '🍚',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '429', qty: 60 }, { id: '25', qty: 250 }, { id: '663', qty: 120 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '76', qty: 200 }, { id: '636', qty: 100 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 150 }, { id: '403', qty: 150 }, { id: '601', qty: 100 }, { id: '395', qty: 10 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 60 }, { id: '429', qty: 50 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '805', qty: 150 }, { id: '586', qty: 200 }, { id: '601', qty: 100 }, { id: '395', qty: 10 }] },
+    ]
+  },
+  hiperproteico: {
+    label: 'Hiperproteico', desc: 'Maximização de proteína para composição corporal (~2500 kcal)', icon: '🏋️',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '07:00', foods: [{ id: '444', qty: 60 }, { id: '2122000008', qty: 200 }, { id: '86', qty: 120 }] },
+      { nome: 'Lanche da manhã', hora: '10:00', foods: [{ id: '2122000011', qty: 150 }, { id: '662', qty: 150 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 220 }, { id: '403', qty: 120 }, { id: '551', qty: 150 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '814', qty: 150 }, { id: '86', qty: 60 }] },
+      { nome: 'Jantar', hora: '20:00', foods: [{ id: '288', qty: 220 }, { id: '586', qty: 150 }, { id: '608', qty: 100 }, { id: '395', qty: 10 }] },
+    ]
+  },
+  baixofodmap: {
+    label: 'Baixo Teor de FODMAPs', desc: 'Adequado para síndrome do intestino irritável (~2000 kcal)', icon: '🫁',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '444', qty: 60 }, { id: '1900000063', qty: 250 }, { id: '676', qty: 150 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '1920000010', qty: 150 }, { id: '636', qty: 100 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '270', qty: 150 }, { id: '403', qty: 150 }, { id: '601', qty: 100 }, { id: '395', qty: 10 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 60 }, { id: '615', qty: 80 }, { id: '611', qty: 80 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '878', qty: 150 }, { id: '586', qty: 200 }, { id: '578', qty: 100 }, { id: '395', qty: 10 }] },
+    ]
+  },
+  ovolacto: {
+    label: 'Ovolactovegetariano', desc: 'Vegetariano com ovos e laticínios (~2000 kcal)', icon: '🥚',
+    meals: [
+      { nome: 'Pequeno-almoço', hora: '08:00', foods: [{ id: '444', qty: 80 }, { id: '25', qty: 250 }, { id: '636', qty: 100 }] },
+      { nome: 'Lanche da manhã', hora: '10:30', foods: [{ id: '2122000008', qty: 150 }, { id: '662', qty: 130 }] },
+      { nome: 'Almoço', hora: '13:00', foods: [{ id: '538', qty: 180 }, { id: '403', qty: 120 }, { id: '601', qty: 100 }, { id: '395', qty: 10 }] },
+      { nome: 'Lanche da tarde', hora: '16:30', foods: [{ id: '86', qty: 120 }, { id: '2122000011', qty: 100 }] },
+      { nome: 'Jantar', hora: '19:30', foods: [{ id: '536', qty: 180 }, { id: '419', qty: 120 }, { id: '608', qty: 100 }, { id: '395', qty: 10 }] },
+    ]
+  },
+};
+
 let appData    = { version: 1, clients: [] };
 let appProfile = { name: '', age: '', sex: '', email: '', photo: '' };
 let nav        = { view: 'welcome', clientId: null, planId: null };
@@ -21,6 +124,7 @@ function loadProfile() {
     const raw = localStorage.getItem('cachos_profile');
     if (raw) appProfile = { ...appProfile, ...JSON.parse(raw) };
   } catch(e) {}
+  if (!appProfile.customTemplates) appProfile.customTemplates = [];
 }
 
 function saveProfile() {
@@ -38,9 +142,10 @@ function saveProfile() {
 // ── Confirm modal ─────────────────────────────────────────────────────────────
 let _confirmCallback = null;
 
-function showConfirm(title, message, onConfirm) {
+function showConfirm(title, message, onConfirm, okLabel) {
   document.getElementById('confirm-title').textContent   = title;
   document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-ok-btn').textContent  = okLabel || 'Eliminar';
   _confirmCallback = onConfirm;
   document.getElementById('confirmModal').style.display = '';
 }
@@ -191,7 +296,10 @@ function loadAppData() {
       // Migrate: ensure all clients have consultations array
       appData.clients.forEach(c => {
         if (!c.consultations) c.consultations = [];
-        c.plans.forEach(p => { if (!('macroTargets' in p)) p.macroTargets = null; });
+        c.plans.forEach(p => {
+          if (!('macroTargets' in p)) p.macroTargets = null;
+          if (!('waterMl' in p)) p.waterMl = null;
+        });
       });
       return;
     }
@@ -267,6 +375,7 @@ function goToClient(clientId, tab) {
   }
   const client = appData.clients.find(c => c.id === clientId);
   if (!client) return;
+  if (clientId !== nav.clientId) previewPlanId = null;
   nav = { view: 'client', clientId, planId: null };
   document.getElementById('client-page-name').textContent = client.nome;
   showPage('client');
@@ -284,6 +393,12 @@ function goToPlan(clientId, planId) {
   nav = { view: 'plan', clientId, planId };
   state.activeDay = 0;
   state.days = plan.days;
+
+  if (plan.waterMl === null) {
+    const peso = parseFloat(client.info?.pPeso) || 0;
+    plan.waterMl = peso ? Math.round(peso * 35) : 2000;
+    saveAppData();
+  }
 
   document.getElementById('plan-name-input').value = plan.nome;
   document.getElementById('plan-back-btn').onclick = () => goToClient(clientId, 'plans');
@@ -540,6 +655,7 @@ function createPlan() {
     nome: `Plano ${client.plans.length + 1}`,
     createdAt: Date.now(),
     macroTargets: null,
+    waterMl: null,
     days: makeDefaultDays()
   };
   client.plans.push(plan);
@@ -576,8 +692,12 @@ function updatePlanName(nome) {
 let previewPlanId = null;
 
 function renderPlansList(client) {
-  const list = document.getElementById('plans-list');
+  const list        = document.getElementById('plans-list');
+  const resumoPanel = document.getElementById('pd-resumo-panel');
+  const bottomRow   = document.getElementById('pd-bottom-row');
+
   if (!client.plans.length) {
+    previewPlanId = null;
     list.innerHTML = `
       <div class="empty-state">
         <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -586,8 +706,12 @@ function renderPlansList(client) {
         <div class="empty-state-title">Nenhum plano ainda</div>
         <div class="empty-state-sub">Clique em "Novo plano" para criar o primeiro plano.</div>
       </div>`;
+    if (resumoPanel) { resumoPanel.innerHTML = ''; resumoPanel.style.display = 'none'; }
+    if (bottomRow)   { bottomRow.innerHTML   = ''; bottomRow.style.display   = 'none'; }
     return;
   }
+  if (resumoPanel) resumoPanel.style.display = '';
+  if (bottomRow)   bottomRow.style.display   = '';
   const DAY_ABBR = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
   list.innerHTML = client.plans.map(p => {
     const activeDays = p.days.filter(d => d.meals.some(m => m.foods.length)).length;
@@ -820,6 +944,7 @@ function render() {
   renderDayTabs();
   renderPlan();
   renderChart();
+  renderWater();
 }
 
 function renderDayTabs() {
@@ -1105,6 +1230,117 @@ function swapFood(newFoodId, newQty) {
   saveAppData();
   render();
   closeEquivModal();
+}
+
+// ── Water ─────────────────────────────────────────────────────────────────────
+function updateWater(val) {
+  const v = parseInt(val);
+  if (isNaN(v) || v < 0) return;
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  if (plan) { plan.waterMl = v; saveAppData(); }
+}
+
+function renderWater() {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  const el = document.getElementById('water-input');
+  if (el && plan) el.value = plan.waterMl ?? '';
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+function openTemplateModal() {
+  document.getElementById('templateModal').style.display = 'flex';
+  renderTemplateModal();
+}
+
+function closeTemplateModal() {
+  document.getElementById('templateModal').style.display = 'none';
+}
+
+function renderTemplateModal() {
+  const builtIn = Object.entries(PLAN_TEMPLATES).map(([key, t]) =>
+    `<div class="template-card" onclick="applyTemplate('builtin','${key}')">
+       <div class="template-icon">${t.icon}</div>
+       <div class="template-name">${t.label}</div>
+       <div class="template-desc">${t.desc}</div>
+     </div>`
+  ).join('');
+  const custom = (appProfile.customTemplates || []).map(t =>
+    `<div class="template-card template-card--custom" onclick="applyTemplate('custom','${t.key}')">
+       <div class="template-card-top">
+         <div class="template-icon">${t.icon}</div>
+         <button class="template-delete" onclick="event.stopPropagation();deleteCustomTemplate('${t.key}')" title="Apagar">×</button>
+       </div>
+       <div class="template-name">${t.label}</div>
+       <div class="template-desc">${t.desc || 'Template personalizado'}</div>
+     </div>`
+  ).join('');
+  document.getElementById('template-grid').innerHTML = builtIn + custom;
+}
+
+function applyTemplate(source, key) {
+  const dayName = DAYS[state.activeDay];
+  closeTemplateModal();
+  showConfirm('Aplicar template',
+    `As refeições de ${dayName} serão substituídas pelas do template. Continuar?`,
+    () => {
+      const client = appData.clients.find(c => c.id === nav.clientId);
+      const plan   = client?.plans.find(p => p.id === nav.planId);
+      if (!plan) return;
+      const tplMeals = source === 'builtin'
+        ? PLAN_TEMPLATES[key].meals
+        : (appProfile.customTemplates || []).find(t => t.key === key)?.meals;
+      if (!tplMeals) return;
+      plan.days[state.activeDay] = {
+        meals: tplMeals.map(m => ({
+          id: crypto.randomUUID(), nome: m.nome, hora: m.hora,
+          foods: m.foods
+            .map(f => ({ food: TCA.find(t => t.id === f.id), qty: f.qty }))
+            .filter(fi => fi.food != null)
+            .map(fi => ({ ...fi, id: crypto.randomUUID() }))
+        }))
+      };
+      state.days = plan.days;
+      saveAppData();
+      render();
+    },
+    'Continuar'
+  );
+}
+
+function openSaveTemplateModal() {
+  document.getElementById('saveTemplateModal').style.display = 'flex';
+  document.getElementById('st-label').value = '';
+  document.getElementById('st-desc').value = '';
+}
+
+function closeSaveTemplateModal() {
+  document.getElementById('saveTemplateModal').style.display = 'none';
+}
+
+function saveCurrentAsTemplate() {
+  const label = document.getElementById('st-label').value.trim();
+  if (!label) { alert('Dá um nome ao template.'); return; }
+  const desc  = document.getElementById('st-desc').value.trim();
+  const day   = state.days[state.activeDay];
+  if (!day) return;
+  const meals = day.meals.map(m => ({
+    nome: m.nome, hora: m.hora,
+    foods: m.foods
+      .filter(fi => fi.food)
+      .map(fi => ({ id: fi.food.id, qty: fi.qty }))
+  }));
+  appProfile.customTemplates.push({ key: crypto.randomUUID(), label, desc, icon: '⭐', meals });
+  try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
+  closeSaveTemplateModal();
+  renderTemplateModal();
+}
+
+function deleteCustomTemplate(key) {
+  appProfile.customTemplates = appProfile.customTemplates.filter(t => t.key !== key);
+  try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
+  renderTemplateModal();
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -1719,6 +1955,8 @@ function generatePdf() {
 }
 
 function buildSingleDayHTML(dayIdx) {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
   const day = state.days[dayIdx];
   const mealsHTML = day.meals.map(meal => {
     if (!meal.foods.length) return '';
@@ -1733,12 +1971,21 @@ function buildSingleDayHTML(dayIdx) {
         <table class="pdf-s-table"><tbody>${rows}</tbody></table>
       </div>`;
   }).join('');
+  const waterLine = plan?.waterMl
+    ? `<div class="pdf-water-row">
+         <svg width="14" height="14" fill="none" stroke="#3b9bd4" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg>
+         <span>Água diária recomendada: <b>${plan.waterMl} ml</b></span>
+       </div>`
+    : '';
   return `
     <div class="pdf-s-day-title">${DAYS[dayIdx]}</div>
-    ${mealsHTML || '<p class="pdf-empty-msg">Sem refeições registadas</p>'}`;
+    ${mealsHTML || '<p class="pdf-empty-msg">Sem refeições registadas</p>'}
+    ${waterLine}`;
 }
 
 function buildWeeklyTableHTML(selected) {
+  const client  = appData.clients.find(c => c.id === nav.clientId);
+  const plan    = client?.plans.find(p => p.id === nav.planId);
   const mealSlots = state.days[selected[0]].meals;
 
   let maxFoods = 0;
@@ -1767,12 +2014,16 @@ function buildWeeklyTableHTML(selected) {
     </tr>`;
   }).join('');
 
+  const waterRow = `<tr class="pwt-water-row">
+    <td class="pwt-meal-col">💧 Água</td>
+    ${selected.map(() => `<td class="pwt-cell">${plan?.waterMl ? plan.waterMl + ' ml' : '—'}</td>`).join('')}
+  </tr>`;
   return `<table class="pwt" style="font-size:${fs}">
     <thead><tr>
       <th class="pwt-meal-col-header">REFEIÇÃO</th>
       ${headerCells}
     </tr></thead>
-    <tbody>${mealRows}</tbody>
+    <tbody>${mealRows}${waterRow}</tbody>
   </table>`;
 }
 
