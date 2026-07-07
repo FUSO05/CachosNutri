@@ -108,10 +108,14 @@ const PLAN_TEMPLATES = {
 };
 
 let appData    = { version: 1, clients: [] };
-let appProfile = { name: '', age: '', sex: '', email: '', photo: '' };
+let appProfile = { name: '', age: '', sex: '', email: '', photo: '', cedula: '' };
 let nav        = { view: 'welcome', clientId: null, planId: null };
 let state      = { activeDay: 0, days: [] };
 let draftClient = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+let currentUser        = null;
+let _pendingLocalImport = null;
 
 let selectedFood   = null;
 let activeMealCtx  = null;
@@ -128,15 +132,173 @@ function loadProfile() {
 }
 
 function saveProfile() {
-  appProfile.name  = document.getElementById('profName').value.trim();
-  appProfile.age   = document.getElementById('profAge').value;
-  appProfile.sex   = document.getElementById('profSex').value;
-  appProfile.email = document.getElementById('profEmail').value.trim();
+  appProfile.name   = document.getElementById('profName').value.trim();
+  appProfile.age    = document.getElementById('profAge').value;
+  appProfile.sex    = document.getElementById('profSex').value;
+  appProfile.email  = document.getElementById('profEmail').value.trim();
+  appProfile.cedula = document.getElementById('profCedula').value.trim();
   try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
   updateSidebarUser();
   updateWelcomeUser();
   closeProfileModal();
   if (nav.view === 'clients') renderDashboard();
+}
+
+// ── Auth (Supabase) ───────────────────────────────────────────────────────────
+function switchAuthTab(which) {
+  const isLogin = which === 'login';
+  document.getElementById('auth-tab-login').classList.toggle('active', isLogin);
+  document.getElementById('auth-tab-signup').classList.toggle('active', !isLogin);
+  document.getElementById('auth-form-login').style.display  = isLogin ? '' : 'none';
+  document.getElementById('auth-form-signup').style.display = isLogin ? 'none' : '';
+}
+
+function showAuthError(which, msg) {
+  const el = document.getElementById(`auth-${which}-error`);
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('visible', !!msg);
+}
+
+function traduzErroAuth(msg) {
+  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou password incorretos.';
+  if (/User already registered/i.test(msg))   return 'Já existe uma conta com este e-mail.';
+  if (/Password should be at least/i.test(msg)) return 'A password deve ter pelo menos 6 caracteres.';
+  if (/Unable to validate email address/i.test(msg)) return 'E-mail inválido.';
+  return msg;
+}
+
+async function checkSession() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user;
+      await completeAuthFlow();
+      return;
+    }
+  } catch (e) { console.error('Erro ao verificar sessão:', e); }
+  document.getElementById('pg-auth').style.display = '';
+}
+
+async function handleLogin() {
+  const email    = document.getElementById('auth-login-email').value.trim();
+  const password = document.getElementById('auth-login-password').value;
+  showAuthError('login', '');
+  const btn = document.getElementById('auth-login-btn');
+  btn.disabled = true; btn.textContent = 'A entrar…';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Entrar';
+  if (error) { showAuthError('login', traduzErroAuth(error.message)); return; }
+  currentUser = data.user;
+  await completeAuthFlow();
+}
+
+async function handleSignup() {
+  const nome     = document.getElementById('auth-signup-nome').value.trim();
+  const email    = document.getElementById('auth-signup-email').value.trim();
+  const password = document.getElementById('auth-signup-password').value;
+  showAuthError('signup', '');
+  const btn = document.getElementById('auth-signup-btn');
+  btn.disabled = true; btn.textContent = 'A criar conta…';
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { role: 'nutricionista', nome } }
+  });
+  btn.disabled = false; btn.textContent = 'Criar conta';
+  if (error) { showAuthError('signup', traduzErroAuth(error.message)); return; }
+  if (!data.session) {
+    showAuthError('signup', 'Conta criada! Verifique o seu e-mail para confirmar antes de entrar.');
+    return;
+  }
+  currentUser = data.user;
+  appProfile.name = nome;
+  await completeAuthFlow();
+}
+
+async function handleLogout() {
+  clearTimeout(_remoteSyncTimer);
+  await sb.auth.signOut();
+  currentUser = null;
+  appData = { version: 1, clients: [] };
+  nav = { view: 'welcome', clientId: null, planId: null };
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('pg-welcome').style.display = 'none';
+  document.getElementById('auth-login-email').value = '';
+  document.getElementById('auth-login-password').value = '';
+  showAuthError('login', '');
+  switchAuthTab('login');
+  document.getElementById('pg-auth').style.display = '';
+}
+
+async function fetchProfileName() {
+  try {
+    const { data: prof } = await sb.from('profiles').select('nome, email').eq('id', currentUser.id).single();
+    if (prof) {
+      if (prof.nome && !appProfile.name) appProfile.name = prof.nome;
+      if (prof.email) appProfile.email = prof.email;
+    }
+  } catch (e) {}
+}
+
+async function completeAuthFlow() {
+  await fetchProfileName();
+  await loadAppData();
+
+  const alreadyImportedKey = 'cachos_imported_' + currentUser.id;
+  const localRaw = localStorage.getItem('cachos_data');
+  let localHasData = false;
+  if (localRaw && !localStorage.getItem(alreadyImportedKey)) {
+    try {
+      const parsed = JSON.parse(localRaw);
+      if (parsed.clients && parsed.clients.length) {
+        localHasData = true;
+        _pendingLocalImport = parsed;
+      }
+    } catch (e) {}
+  }
+
+  if (localHasData && appData.clients.length === 0) {
+    showImportNotice();
+    return;
+  }
+  finishEnteringApp();
+}
+
+function showImportNotice() {
+  document.getElementById('auth-form-login').style.display = 'none';
+  document.getElementById('auth-form-signup').style.display = 'none';
+  document.querySelector('#pg-auth .auth-tabs').style.display = 'none';
+  document.getElementById('auth-import-notice').style.display = '';
+}
+
+async function importLocalData() {
+  if (_pendingLocalImport) {
+    appData = { version: 1, clients: _pendingLocalImport.clients || [] };
+    await syncAppDataToSupabase();
+  }
+  localStorage.setItem('cachos_imported_' + currentUser.id, '1');
+  _pendingLocalImport = null;
+  finishEnteringApp();
+}
+
+function skipImport() {
+  localStorage.setItem('cachos_imported_' + currentUser.id, '1');
+  _pendingLocalImport = null;
+  finishEnteringApp();
+}
+
+function finishEnteringApp() {
+  document.getElementById('auth-import-notice').style.display = 'none';
+  document.querySelector('#pg-auth .auth-tabs').style.display = '';
+  document.getElementById('auth-form-login').style.display = 'none';
+  document.getElementById('auth-form-signup').style.display = 'none';
+  switchAuthTab('login');
+  document.getElementById('pg-auth').style.display = 'none';
+  updateWelcomeStats();
+  updateSidebarUser();
+  updateWelcomeUser();
+  updateWelcomeDate();
+  document.getElementById('pg-welcome').style.display = '';
 }
 
 // ── Confirm modal ─────────────────────────────────────────────────────────────
@@ -162,10 +324,11 @@ function confirmOk() {
 }
 
 function openProfileModal() {
-  document.getElementById('profName').value  = appProfile.name;
-  document.getElementById('profAge').value   = appProfile.age;
-  document.getElementById('profSex').value   = appProfile.sex;
-  document.getElementById('profEmail').value = appProfile.email;
+  document.getElementById('profName').value   = appProfile.name;
+  document.getElementById('profAge').value    = appProfile.age;
+  document.getElementById('profSex').value    = appProfile.sex;
+  document.getElementById('profEmail').value  = appProfile.email;
+  document.getElementById('profCedula').value = appProfile.cedula || '';
   updateProfilePhotoUI();
   document.getElementById('profileModal').style.display = '';
 }
@@ -273,7 +436,9 @@ function formatDate(ts) {
   return new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-// ── Persistence ───────────────────────────────────────────────────────────────
+// ── Persistence (Supabase, com localStorage como cache local) ──────────────────
+let _remoteSyncTimer = null;
+
 function saveAppData() {
   if (nav.clientId && nav.planId) {
     const client = appData.clients.find(c => c.id === nav.clientId);
@@ -284,49 +449,167 @@ function saveAppData() {
   }
   try { localStorage.setItem('cachos_data', JSON.stringify(appData)); } catch(e) {}
   updateWelcomeStats();
+  scheduleRemoteSync();
 }
 
 function saveState() { saveAppData(); }
 
-function loadAppData() {
+function scheduleRemoteSync() {
+  if (!currentUser) return;
+  setSyncStatus('pending');
+  clearTimeout(_remoteSyncTimer);
+  _remoteSyncTimer = setTimeout(syncAppDataToSupabase, 600);
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('sn-sync-status');
+  if (!el) return;
+  el.classList.remove('sync-error');
+  if (state === 'pending')      el.textContent = 'A guardar…';
+  else if (state === 'syncing') el.textContent = 'A sincronizar…';
+  else if (state === 'error')   { el.textContent = 'Falha ao sincronizar — nova tentativa em breve'; el.classList.add('sync-error'); }
+  else                          el.textContent = 'CachosNutri · sincronizado';
+}
+
+function numOrNull(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+function rowToClient(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    createdAt: new Date(row.created_at).getTime(),
+    info: row.info || {},
+    consultations: (row.consultations || [])
+      .slice().sort((a, b) => new Date(a.date) - new Date(b.date))
+      .map(rowToConsultation),
+    plans: (row.plans || [])
+      .slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map(rowToPlan)
+  };
+}
+
+function rowToPlan(row) {
+  return {
+    id: row.id,
+    nome: row.nome,
+    createdAt: new Date(row.created_at).getTime(),
+    macroTargets: row.macro_targets,
+    waterMl: row.water_ml,
+    days: row.days && row.days.length ? row.days : makeDefaultDays()
+  };
+}
+
+function rowToConsultation(row) {
+  return {
+    id: row.id,
+    date: new Date(row.date).getTime(),
+    peso: row.peso, altura: row.altura, imc: row.imc,
+    massaGorda: row.massa_gorda, mig: row.mig,
+    somatorioPregas: row.somatorio_pregas,
+    perCinturaISAK: row.per_cintura_isak, perAnca: row.per_anca, perBraco: row.per_braco,
+    notes: row.notes
+  };
+}
+
+// Carrega appData a partir do Supabase para o nutricionista autenticado.
+async function loadAppData() {
+  if (!currentUser) { appData = { version: 1, clients: [] }; return; }
   try {
-    const raw = localStorage.getItem('cachos_data');
-    if (raw) {
-      appData = JSON.parse(raw);
-      // Migrate: ensure all clients have consultations array
-      appData.clients.forEach(c => {
-        if (!c.consultations) c.consultations = [];
-        c.plans.forEach(p => {
-          if (!('macroTargets' in p)) p.macroTargets = null;
-          if (!('waterMl' in p)) p.waterMl = null;
-        });
+    const { data: rows, error } = await sb
+      .from('clients')
+      .select('id, nome, info, created_at, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*)')
+      .eq('nutricionista_id', currentUser.id)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    appData = { version: 1, clients: (rows || []).map(rowToClient) };
+  } catch (e) {
+    console.error('Erro ao carregar dados do Supabase:', e);
+    appData = { version: 1, clients: [] };
+  }
+}
+
+// Envia o estado completo em memória para o Supabase (upsert + limpeza de removidos).
+async function syncAppDataToSupabase(retryCount) {
+  if (!currentUser) return;
+  retryCount = retryCount || 0;
+  setSyncStatus('syncing');
+  const nutricionistaId = currentUser.id;
+  try {
+    const clientIds = [];
+    const planIds = [];
+    const consultationIds = [];
+
+    for (const client of appData.clients) {
+      clientIds.push(client.id);
+      const { error: cErr } = await sb.from('clients').upsert({
+        id: client.id,
+        nutricionista_id: nutricionistaId,
+        nome: client.nome,
+        info: client.info || {}
       });
-      return;
+      if (cErr) throw cErr;
+
+      for (const plan of client.plans) {
+        planIds.push(plan.id);
+        const { error: pErr } = await sb.from('plans').upsert({
+          id: plan.id,
+          client_id: client.id,
+          nome: plan.nome,
+          macro_targets: plan.macroTargets,
+          water_ml: plan.waterMl,
+          days: plan.days
+        });
+        if (pErr) throw pErr;
+      }
+
+      for (const cons of (client.consultations || [])) {
+        consultationIds.push(cons.id);
+        const { error: xErr } = await sb.from('consultations').upsert({
+          id: cons.id,
+          client_id: client.id,
+          date: new Date(cons.date).toISOString(),
+          peso: numOrNull(cons.peso), altura: numOrNull(cons.altura), imc: numOrNull(cons.imc),
+          massa_gorda: numOrNull(cons.massaGorda), mig: numOrNull(cons.mig),
+          somatorio_pregas: numOrNull(cons.somatorioPregas),
+          per_cintura_isak: numOrNull(cons.perCinturaISAK), per_anca: numOrNull(cons.perAnca), per_braco: numOrNull(cons.perBraco),
+          notes: cons.notes || null
+        });
+        if (xErr) throw xErr;
+      }
     }
-    // Migrate from old single-patient format
-    const oldRaw = localStorage.getItem('nutriplan_state');
-    if (oldRaw) {
-      const oldState = JSON.parse(oldRaw);
-      const oldInfo  = JSON.parse(localStorage.getItem('cachos_patient') || '{}');
-      appData = {
-        version: 1,
-        clients: [{
-          id: crypto.randomUUID(),
-          nome: oldInfo.pNome || 'Paciente importado',
-          createdAt: Date.now(),
-          info: oldInfo,
-          consultations: [],
-          plans: [{
-            id: crypto.randomUUID(),
-            nome: 'Plano 1',
-            createdAt: Date.now(),
-            days: oldState.days || makeDefaultDays()
-          }]
-        }]
-      };
-      saveAppData();
+
+    await pruneDeleted('clients', 'nutricionista_id', nutricionistaId, clientIds);
+    if (clientIds.length) {
+      await pruneDeletedByParent('plans', 'client_id', clientIds, planIds);
+      await pruneDeletedByParent('consultations', 'client_id', clientIds, consultationIds);
     }
-  } catch(e) {}
+    setSyncStatus('idle');
+  } catch (e) {
+    console.error('Erro ao sincronizar com Supabase:', e);
+    setSyncStatus('error');
+    if (retryCount < 3) {
+      setTimeout(() => syncAppDataToSupabase(retryCount + 1), 2000 * Math.pow(2, retryCount));
+    }
+  }
+}
+
+async function pruneDeleted(table, ownerCol, ownerId, keepIds) {
+  const { data, error } = await sb.from(table).select('id').eq(ownerCol, ownerId);
+  if (error || !data) return;
+  const keepSet = new Set(keepIds);
+  const toDelete = data.map(r => r.id).filter(id => !keepSet.has(id));
+  if (toDelete.length) await sb.from(table).delete().in('id', toDelete);
+}
+
+async function pruneDeletedByParent(table, parentCol, parentIds, keepIds) {
+  const { data, error } = await sb.from(table).select('id').in(parentCol, parentIds);
+  if (error || !data) return;
+  const keepSet = new Set(keepIds);
+  const toDelete = data.map(r => r.id).filter(id => !keepSet.has(id));
+  if (toDelete.length) await sb.from(table).delete().in('id', toDelete);
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
@@ -339,6 +622,18 @@ function showPage(name) {
   const sniPac  = document.getElementById('sni-pacientes');
   if (sniDash) sniDash.classList.toggle('active', name === 'clients');
   if (sniPac)  sniPac.classList.toggle('active', name === 'client');
+  closeMobileSidebar();
+}
+
+// ── Mobile sidebar (off-canvas drawer) ──────────────────────────────────────────
+function toggleMobileSidebar() {
+  document.querySelector('.sidebar-nav').classList.toggle('mobile-open');
+  document.getElementById('sidebar-backdrop').classList.toggle('active');
+}
+
+function closeMobileSidebar() {
+  document.querySelector('.sidebar-nav')?.classList.remove('mobile-open');
+  document.getElementById('sidebar-backdrop')?.classList.remove('active');
 }
 
 function updateBreadcrumb() {
@@ -611,9 +906,23 @@ function loadInfoForm(info) {
   document.querySelectorAll('.formula-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.formula === formula);
   });
+  document.getElementById('pConsentimento').checked = !!info.pConsentimento;
+  renderConsentimentoLabel(info.pConsentimentoData);
   updateAge();
   updateMetrics();
   updateSomatorio();
+}
+
+function renderConsentimentoLabel(isoDate) {
+  const el = document.getElementById('pConsentimentoData-label');
+  if (!el) return;
+  el.textContent = isoDate
+    ? `Consentimento registado em ${new Date(isoDate).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}`
+    : '';
+}
+
+function onConsentimentoChange() {
+  renderConsentimentoLabel(document.getElementById('pConsentimento').checked ? Date.now() : null);
 }
 
 function savePatientInfo() {
@@ -627,6 +936,10 @@ function savePatientInfo() {
     const el = document.getElementById(id);
     if (el) client.info[id] = el.value;
   });
+  const consentChecked = document.getElementById('pConsentimento').checked;
+  client.info.pConsentimento = consentChecked;
+  client.info.pConsentimentoData = consentChecked ? (client.info.pConsentimentoData || new Date().toISOString()) : null;
+  renderConsentimentoLabel(client.info.pConsentimentoData);
   const newNome = client.info.pNome?.trim();
   if (newNome) {
     client.nome = newNome;
@@ -643,6 +956,30 @@ function savePatientInfo() {
   btn.innerHTML = '✓ Guardado';
   btn.style.background = '#16a34a';
   setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+}
+
+// Exporta todos os dados de um paciente em JSON (RGPD — direito de acesso/portabilidade,
+// tipicamente usado antes de um pedido de eliminação/direito ao esquecimento).
+function exportClientDataJson() {
+  if (!nav.clientId) return;
+  let client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client && draftClient && draftClient.id === nav.clientId) client = draftClient;
+  if (!client) return;
+
+  const exportPayload = {
+    exportadoEm: new Date().toISOString(),
+    paciente: client
+  };
+  const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const safeName = (client.nome || 'paciente').trim().replace(/[^\w\- ]/g, '').replace(/\s+/g, '_');
+  a.href = url;
+  a.download = `cachosnutri_${safeName || 'paciente'}_dados.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // ── Plans CRUD ────────────────────────────────────────────────────────────────
@@ -951,6 +1288,12 @@ function renderDayTabs() {
   document.getElementById('dayTabs').innerHTML = DAYS.map((d, i) => `
     <button class="day-tab${i === state.activeDay ? ' active' : ''}" onclick="switchDay(${i})">${d}</button>
   `).join('');
+
+  const mobileSelect = document.getElementById('day-select-mobile');
+  if (mobileSelect) {
+    mobileSelect.innerHTML = DAYS.map((d, i) => `<option value="${i}">${d}</option>`).join('');
+    mobileSelect.value = state.activeDay;
+  }
 }
 
 function renderPlan() {
@@ -1820,9 +2163,9 @@ function renderEvolutionTab() {
       </button>
     </div>
     ${hasCharts ? `<div class="evolution-charts">
-      <div class="evol-chart-card"><div class="evol-chart-title">Peso (kg)</div><canvas id="chartPeso"></canvas></div>
-      <div class="evol-chart-card"><div class="evol-chart-title">% Massa Gorda</div><canvas id="chartGordura"></canvas></div>
-      <div class="evol-chart-card"><div class="evol-chart-title">IMC</div><canvas id="chartIMC"></canvas></div>
+      <div class="evol-chart-card"><div class="evol-chart-title">Peso (kg)</div><div class="evol-chart-canvas-wrap"><canvas id="chartPeso"></canvas></div></div>
+      <div class="evol-chart-card"><div class="evol-chart-title">% Massa Gorda</div><div class="evol-chart-canvas-wrap"><canvas id="chartGordura"></canvas></div></div>
+      <div class="evol-chart-card"><div class="evol-chart-title">IMC</div><div class="evol-chart-canvas-wrap"><canvas id="chartIMC"></canvas></div></div>
     </div>` : ''}
     <div class="consultations-list">${cardsHTML}</div>
   `;
@@ -1869,6 +2212,7 @@ function renderEvolutionCharts(consultations) {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
           x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } },
@@ -1928,6 +2272,11 @@ function generatePdf() {
 
   const bodyHTML = isMulti ? buildWeeklyTableHTML(selected) : buildSingleDayHTML(selected[0]);
 
+  const nutriName   = escHtml(appProfile.name || 'Nutricionista');
+  const nutriSubLine = appProfile.cedula
+    ? `${nutriName} · Cédula nº ${escHtml(appProfile.cedula)}`
+    : nutriName;
+
   document.getElementById('pdf-output').innerHTML = `
     ${pageStyle}
     <div class="pdf-page">
@@ -1936,6 +2285,7 @@ function generatePdf() {
           <img src="img/fav.png" class="pdf-logo" alt="">
           <div>
             <div class="pdf-plan-title">Plano Nutricional</div>
+            <div class="pdf-plan-sub">${nutriSubLine}</div>
           </div>
         </div>
         <div class="pdf-topbar-right">
@@ -2029,12 +2379,9 @@ function buildWeeklyTableHTML(selected) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadAppData();
   loadProfile();
-  updateWelcomeStats();
-  updateWelcomeUser();
-  updateWelcomeDate();
   initSearch();
+  checkSession();
 
   document.addEventListener('click', e => {
     const dd = document.getElementById('foodDropdown');

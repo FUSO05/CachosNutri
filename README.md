@@ -1,4 +1,4 @@
-# NutriPlan
+# CachosNutri
 
 Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INSA completa.
 
@@ -9,57 +9,49 @@ Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INS
 - **Pesquisa em tempo real** com filtro por categoria
 - **Macros por porção** — ajuste de gramas com recálculo automático
 - **Piechart** sempre visível com totais do dia (kcal, proteína, HC, lípidos)
-- **Persistência local** — plano guardado automaticamente no browser
-- **Impressão** — layout limpo para imprimir ou exportar para PDF
+- **Conta + sincronização (Supabase)** — dados de pacientes/planos/consultas guardados na cloud, com login por nutricionista e isolamento por RLS
+- **Responsivo** — utilizável em telemóvel/tablet, com menu em drawer
+- **Consentimento informado + exportação RGPD** — registo de consentimento por paciente e exportação de todos os dados em JSON
+- **Impressão** — layout limpo para imprimir ou exportar para PDF, com nome e nº de cédula profissional do nutricionista
 
-## Como usar localmente
+## Configuração (Supabase)
 
-Não precisa de servidor. Basta abrir:
+A app fala diretamente com o Supabase a partir do browser (sem servidor próprio):
+
+1. Cria um projeto em [supabase.com](https://supabase.com).
+2. Corre `supabase/schema.sql` no SQL Editor do projeto (tabelas + RLS).
+3. Em `public/js/supabase-client.js`, atualiza `SUPABASE_URL` e `SUPABASE_ANON_KEY` com as chaves do teu projeto (Project Settings → API).
+4. Abre `public/index.html` — não precisa de build nem de servidor para correr.
+
+## Estrutura do projeto
 
 ```
-index.html
+public/          site estático servido em produção (Vercel) — index.html, css/, js/, img/
+supabase/        schema.sql (tabelas + RLS)
+tests/           suite Playwright (ver secção abaixo)
 ```
 
-no browser (Chrome, Firefox, Edge, Safari).
+## Testes automatizados
 
-## Deploy — GitHub Pages (gratuito)
+Testes end-to-end com Playwright, correndo contra um projeto Supabase real (não há mocks).
 
 ```bash
-# 1. Criar repo no GitHub: github.com/new
-git clone https://github.com/teu-user/nutriplan.git
-cd nutriplan
-
-# 2. Copiar estes ficheiros para a pasta
-# (ou mover directamente)
-
-# 3. Push
-git add .
-git commit -m "NutriPlan v1.0"
-git push origin main
-
-# 4. Activar GitHub Pages
-# → Settings → Pages → Source: main branch / root
-# URL: https://teu-user.github.io/nutriplan
+npm install
+npx playwright install chromium   # só na primeira vez
+npm test
 ```
 
-## Deploy — Netlify (arrastar e largar)
+Os testes de autenticação (`tests/auth.spec.js`) correm sempre. Os restantes (CRUD, importação, mobile, isolamento entre contas) precisam de uma conta de teste já existente no Supabase — cria-a manualmente em *Authentication → Users → Add user* (com "Auto Confirm User") e exporta:
 
-1. Ir a [netlify.com](https://netlify.com)
-2. Arrastar a pasta `nutriplan/` para a área de deploy
-3. URL gerado automaticamente: `https://xxxxx.netlify.app`
-
-## Estrutura
-
+```bash
+export TEST_NUTRI_EMAIL="teste@exemplo.com"
+export TEST_NUTRI_PASSWORD="a-tua-password"
+# opcional, só para o teste de isolamento entre contas (tests/rls.spec.js):
+export TEST_NUTRI2_EMAIL="teste2@exemplo.com"
+export TEST_NUTRI2_PASSWORD="outra-password"
 ```
-nutriplan/
-├── index.html          # App principal
-├── css/
-│   └── style.css       # Estilos completos
-├── js/
-│   ├── tca_data.js     # Base de dados TCA-INSA (1376 alimentos, 237KB)
-│   └── app.js          # Lógica da aplicação
-└── README.md
-```
+
+Sem estas variáveis definidas, esses testes aparecem como *skipped* — nunca falham por falta de credenciais. Os testes limpam os pacientes que criam no fim de cada execução (`deleteAllClients`), para a conta de teste ficar sempre vazia entre execuções.
 
 ## Fonte dos dados
 

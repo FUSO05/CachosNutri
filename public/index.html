@@ -5,15 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CachosNutri</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="icon" type="image/png" href="/img/fav.ico">
+  <link rel="icon" type="image/png" href="img/fav.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
+<!-- ══ AUTH ══ -->
+<div id="pg-auth" class="pg-auth">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img src="img/fav.png" alt="CachosNutri" class="auth-logo-img">
+      <span class="auth-logo-text">CachosNutri</span>
+    </div>
+    <p class="auth-tagline">Planeamento alimentar profissional para nutricionistas</p>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')" type="button">Entrar</button>
+      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')" type="button">Criar conta</button>
+    </div>
+
+    <form class="auth-form" id="auth-form-login" onsubmit="event.preventDefault(); handleLogin();">
+      <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="auth-login-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
+      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-login-password" placeholder="••••••••" autocomplete="current-password" required></div>
+      <div class="auth-error" id="auth-login-error"></div>
+      <button class="btn-primary auth-submit" type="submit" id="auth-login-btn">Entrar</button>
+    </form>
+
+    <form class="auth-form" id="auth-form-signup" onsubmit="event.preventDefault(); handleSignup();" style="display:none">
+      <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="auth-signup-nome" placeholder="O seu nome" autocomplete="name" required></div>
+      <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="auth-signup-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
+      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-signup-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required></div>
+      <div class="auth-error" id="auth-signup-error"></div>
+      <button class="btn-primary auth-submit" type="submit" id="auth-signup-btn">Criar conta</button>
+    </form>
+
+    <div class="auth-import-notice" id="auth-import-notice" style="display:none">
+      <p>Encontrámos dados guardados neste browser (modo local). Quer importá-los para a sua conta?</p>
+      <div class="auth-import-actions">
+        <button class="btn-back" onclick="skipImport()" type="button">Ignorar</button>
+        <button class="btn-primary" onclick="importLocalData()" type="button">Importar dados</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ WELCOME ══ -->
-<div id="pg-welcome" class="pg-welcome">
+<div id="pg-welcome" class="pg-welcome" style="display:none">
 
   <!-- LEFT SIDEBAR -->
   <div class="welcome-left">
@@ -179,6 +219,15 @@
 <!-- ══ APP SHELL ══ -->
 <div id="app-shell" class="app-shell" style="display:none">
 
+  <!-- MOBILE TOPBAR -->
+  <div class="mobile-topbar" id="mobile-topbar">
+    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" type="button" aria-label="Abrir menu">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="mobile-topbar-title">CachosNutri</span>
+  </div>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- SIDEBAR NAV -->
   <nav class="sidebar-nav">
     <div class="sn-header">
@@ -228,9 +277,13 @@
         <div class="sn-avatar" id="sidebar-avatar">N</div>
         <div class="sn-user-info">
           <div class="sn-user-name" id="sidebar-user-name">Nutricionista</div>
-          <div class="sn-user-role">CachosNutri · local</div>
+          <div class="sn-user-role" id="sn-sync-status">CachosNutri · sincronizado</div>
         </div>
         <svg class="sn-edit-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <button class="sn-logout-btn" onclick="handleLogout()" type="button">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Terminar sessão
       </button>
     </div>
   </nav>
@@ -274,13 +327,19 @@
       <div class="info-container">
         <div class="info-page-header">
           <div class="info-page-title">Informações do Paciente</div>
-          <button class="btn-save-info" onclick="savePatientInfo()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-              <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-            </svg>
-            Guardar
-          </button>
+          <div class="info-page-actions">
+            <button class="btn-back" onclick="exportClientDataJson()" title="Exportar todos os dados do paciente em JSON (RGPD)">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar dados
+            </button>
+            <button class="btn-save-info" onclick="savePatientInfo()">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+              </svg>
+              Guardar
+            </button>
+          </div>
         </div>
         <div class="info-grid">
 
@@ -303,6 +362,13 @@
             </div>
             <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="pEmail" placeholder="email@exemplo.com"></div>
             <div class="form-field"><label class="field-label">Telefone</label><input class="field-input" type="tel" id="pTelefone" placeholder="+351 912 345 678"></div>
+            <div class="consent-field">
+              <label class="consent-check-label">
+                <input type="checkbox" id="pConsentimento" onchange="onConsentimentoChange()">
+                <span>Consentimento informado obtido — o paciente autoriza o tratamento dos seus dados de saúde para fins de acompanhamento nutricional (RGPD)</span>
+              </label>
+              <div class="consent-timestamp" id="pConsentimentoData-label"></div>
+            </div>
           </div>
 
           <!-- AVALIAÇÃO ANTROPOMÉTRICA -->
@@ -475,6 +541,7 @@
         <input class="plan-name-input" id="plan-name-input" type="text" onchange="updatePlanName(this.value)">
       </div>
       <div id="dayTabs"></div>
+      <select class="day-select-mobile" id="day-select-mobile" onchange="switchDay(parseInt(this.value))"></select>
       <div class="day-tabs-right">
         <button class="btn-icon" onclick="openTemplateModal()" title="Templates pré-definidos">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -621,6 +688,7 @@
           </div>
         </div>
         <div class="form-field"><label class="field-label">E-mail profissional</label><input class="field-input" type="email" id="profEmail" placeholder="email@exemplo.com"></div>
+        <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="profCedula" placeholder="Ex: 1234N (Ordem dos Nutricionistas)"></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -768,7 +836,8 @@
   </div>
 </div>
 
-<script src="js/tca_data.js"></script>
+<script src="js/data/tca_data.js"></script>
+<script src="js/supabase-client.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
