@@ -8,836 +8,130 @@
   <link rel="icon" type="image/png" href="img/fav.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<!-- ══ AUTH ══ -->
-<div id="pg-auth" class="pg-auth">
-  <div class="auth-box">
-    <div class="auth-logo">
-      <img src="img/fav.png" alt="CachosNutri" class="auth-logo-img">
-      <span class="auth-logo-text">CachosNutri</span>
+<!-- ══ LANDING PAGE PÚBLICA ══ -->
+<div id="pg-welcome" class="lp">
+
+  <nav class="lp-nav">
+    <div class="lp-nav-brand">
+      <img src="img/fav.png" alt="CachosNutri" class="lp-nav-logo">
+      <span>CachosNutri</span>
     </div>
-    <p class="auth-tagline">Planeamento alimentar profissional para nutricionistas</p>
-
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')" type="button">Entrar</button>
-      <button class="auth-tab" id="auth-tab-signup" onclick="switchAuthTab('signup')" type="button">Criar conta</button>
-    </div>
-
-    <form class="auth-form" id="auth-form-login" onsubmit="event.preventDefault(); handleLogin();">
-      <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="auth-login-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
-      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-login-password" placeholder="••••••••" autocomplete="current-password" required></div>
-      <div class="auth-error" id="auth-login-error"></div>
-      <button class="btn-primary auth-submit" type="submit" id="auth-login-btn">Entrar</button>
-    </form>
-
-    <form class="auth-form" id="auth-form-signup" onsubmit="event.preventDefault(); handleSignup();" style="display:none">
-      <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="auth-signup-nome" placeholder="O seu nome" autocomplete="name" required></div>
-      <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="auth-signup-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
-      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-signup-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required></div>
-      <div class="auth-error" id="auth-signup-error"></div>
-      <button class="btn-primary auth-submit" type="submit" id="auth-signup-btn">Criar conta</button>
-    </form>
-
-    <div class="auth-import-notice" id="auth-import-notice" style="display:none">
-      <p>Encontrámos dados guardados neste browser (modo local). Quer importá-los para a sua conta?</p>
-      <div class="auth-import-actions">
-        <button class="btn-back" onclick="skipImport()" type="button">Ignorar</button>
-        <button class="btn-primary" onclick="importLocalData()" type="button">Importar dados</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ WELCOME ══ -->
-<div id="pg-welcome" class="pg-welcome" style="display:none">
-
-  <!-- LEFT SIDEBAR -->
-  <div class="welcome-left">
-    <div class="wl-logo">
-      <div class="wl-logo-icon">
-        <img src="img/fav.png" alt="CachosNutri" class="wl-logo-img">
-      </div>
-      <span class="wl-logo-text">CachosNutri</span>
-    </div>
-    <p class="wl-tagline">Planeamento alimentar profissional para nutricionistas</p>
-
-    <div class="wl-features">
-      <div class="wl-feature">
-        <div class="wl-feat-icon">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/></svg>
-        </div>
-        <div>
-          <div class="wl-feat-title">Gestão de Pacientes</div>
-          <div class="wl-feat-sub">Fichas completas com dados antropométricos, pregas, perímetros e clínicos</div>
-        </div>
-      </div>
-      <div class="wl-feature">
-        <div class="wl-feat-icon">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-        </div>
-        <div>
-          <div class="wl-feat-title">Planos Alimentares</div>
-          <div class="wl-feat-sub">Crie e organize refeições dia a dia com cálculo automático de macronutrientes</div>
-        </div>
-      </div>
-      <div class="wl-feature">
-        <div class="wl-feat-icon">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </div>
-        <div>
-          <div class="wl-feat-title">Cálculo Energético</div>
-          <div class="wl-feat-sub">TMB com 4 fórmulas: Harris-Benedict, ten Haaf, De Lorenzo e Cunningham</div>
-        </div>
-      </div>
-      <div class="wl-feature">
-        <div class="wl-feat-icon">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        </div>
-        <div>
-          <div class="wl-feat-title">Base TCA-INSA</div>
-          <div class="wl-feat-sub">+1376 alimentos da tabela de composição portuguesa</div>
-        </div>
-      </div>
-      <div class="wl-feature">
-        <div class="wl-feat-icon">
-          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        </div>
-        <div>
-          <div class="wl-feat-title">Relatórios Inteligentes</div>
-          <div class="wl-feat-sub">Acompanhe a evolução dos seus pacientes com gráficos e insights</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="wl-sep"></div>
-    <div class="wl-profile-card">
-      <div class="wl-profile-avatar" id="wl-avatar">N</div>
-      <div class="wl-profile-info">
-        <div class="wl-profile-name" id="wl-profile-name">Nutricionista</div>
-        <div class="wl-profile-role">Nutricionista</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT MAIN -->
-  <div class="welcome-right">
-
-    <div class="wl-topbar">
-      <div class="wl-date-chip">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span id="wl-date-text">—</span>
-        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-      </div>
-    </div>
-
-    <div class="wl-hero">
-      <div class="wl-hero-text">
-        <div class="wl-hero-greet" id="welcome-greeting">Olá!</div>
-        <h1 class="wl-hero-title" id="wl-hero-title">Bem-vindo</h1>
-        <p class="wl-hero-sub">Este é o seu centro de controlo. Gerencie pacientes, crie planos alimentares e acompanhe resultados com mais praticidade e inteligência.</p>
-        <button class="btn-enter-new" type="button" onclick="enterApp()">
-          Entrar na Plataforma
-          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-      </div>
-
-      <div class="wl-hero-img">
-        <div class="wl-img-bg"></div>
-        <img src="img/plate.png" alt="Prato saudável" class="wl-plate-img">
-        <svg class="wl-scatter" style="top:6%;left:10%;transform:rotate(-25deg)" width="34" height="34" viewBox="0 0 24 24" fill="#27865a" opacity="0.55"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c.19-2.78.79-5.55 2.2-8.02C7.33 9.06 9.82 7.17 13 6.5c.85-.18 2.28.06 3.5.5-.18-1.78-1-3.5-1-3.5s1.5 2 1.5 5z"/></svg>
-        <svg class="wl-scatter" style="bottom:10%;right:6%;transform:rotate(20deg)" width="44" height="44" viewBox="0 0 24 24" fill="#2fa368" opacity="0.45"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c.19-2.78.79-5.55 2.2-8.02C7.33 9.06 9.82 7.17 13 6.5c.85-.18 2.28.06 3.5.5-.18-1.78-1-3.5-1-3.5s1.5 2 1.5 5z"/></svg>
-        <svg class="wl-scatter" style="top:3%;right:16%;transform:rotate(45deg)" width="24" height="24" viewBox="0 0 24 24" fill="#3daf74" opacity="0.4"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c.19-2.78.79-5.55 2.2-8.02C7.33 9.06 9.82 7.17 13 6.5c.85-.18 2.28.06 3.5.5-.18-1.78-1-3.5-1-3.5s1.5 2 1.5 5z"/></svg>
-        <svg class="wl-scatter" style="top:48%;left:3%;transform:rotate(-10deg)" width="22" height="22" viewBox="0 0 24 24" fill="#27865a" opacity="0.3"><path d="M17 8C8 10 5.9 16.17 3.82 19.5c.19-2.78.79-5.55 2.2-8.02C7.33 9.06 9.82 7.17 13 6.5c.85-.18 2.28.06 3.5.5-.18-1.78-1-3.5-1-3.5s1.5 2 1.5 5z"/></svg>
-        <div class="wl-dot" style="width:9px;height:9px;top:26%;right:10%;background:rgba(39,134,90,.22)"></div>
-        <div class="wl-dot" style="width:7px;height:7px;bottom:28%;left:12%;background:rgba(255,165,0,.22)"></div>
-        <div class="wl-dot" style="width:6px;height:6px;top:62%;right:18%;background:rgba(39,134,90,.18)"></div>
-        <div class="wl-dot" style="width:11px;height:11px;top:15%;right:4%;background:rgba(100,100,100,.1)"></div>
-      </div>
-    </div>
-
-    <div class="wl-stats">
-      <div class="wl-stat-card">
-        <div class="wl-stat-icon wl-sic-green">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/></svg>
-        </div>
-        <div>
-          <div class="wl-stat-num" id="ws-clients">0</div>
-          <div class="wl-stat-label">Pacientes ativos</div>
-          <div class="wl-stat-trend" style="color:var(--green)">↑ Dados locais</div>
-        </div>
-      </div>
-      <div class="wl-stat-card">
-        <div class="wl-stat-icon wl-sic-blue">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-        </div>
-        <div>
-          <div class="wl-stat-num" id="ws-plans">0</div>
-          <div class="wl-stat-label">Planos criados</div>
-          <div class="wl-stat-trend" style="color:#4285f4">↑ Este mês</div>
-        </div>
-      </div>
-      <div class="wl-stat-card">
-        <div class="wl-stat-icon wl-sic-orange">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </div>
-        <div>
-          <div class="wl-stat-num">4</div>
-          <div class="wl-stat-label">Fórmulas TMB</div>
-          <div class="wl-stat-trend" style="color:#f57c00">Excelente precisão!</div>
-        </div>
-      </div>
-      <div class="wl-stat-card">
-        <div class="wl-stat-icon wl-sic-cyan">
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        </div>
-        <div>
-          <div class="wl-stat-num">1.376</div>
-          <div class="wl-stat-label">Alimentos TCA</div>
-          <div class="wl-stat-trend" style="color:#0097a7">✓ Base atualizada</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="wl-tca-bar">
-      <div class="wl-tca-icon">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
-      </div>
-      <div>
-        <div class="wl-tca-title">Base de Dados TCA-INSA</div>
-        <div class="wl-tca-sub">Tabela de Composição de Alimentos · Instituto Nacional de Saúde Doutor Ricardo Jorge</div>
-      </div>
-      <span class="wl-tca-count">+1.376 alimentos</span>
-    </div>
-
-  </div>
-</div>
-
-<!-- ══ APP SHELL ══ -->
-<div id="app-shell" class="app-shell" style="display:none">
-
-  <!-- MOBILE TOPBAR -->
-  <div class="mobile-topbar" id="mobile-topbar">
-    <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" type="button" aria-label="Abrir menu">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
-    <span class="mobile-topbar-title">CachosNutri</span>
-  </div>
-  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
-
-  <!-- SIDEBAR NAV -->
-  <nav class="sidebar-nav">
-    <div class="sn-header">
-      <div class="sn-logo-mark">
-        <img src="img/fav.png" alt="CachosNutri" class="sn-logo-img">
-      </div>
-      <div>
-        <div class="sn-brand-name">CachosNutri</div>
-        <div class="sn-brand-sub">Planeamento alimentar profissional</div>
-      </div>
-    </div>
-    <div class="sn-menu">
-      <div class="sn-label">Principal</div>
-      <button class="sn-item" id="sni-dashboard" onclick="goToClients()">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard
-      </button>
-      <div class="sn-sep"></div>
-      <div class="sn-label">Ferramentas</div>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-        Planos Alimentares
-      </button>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        Alimentos (TCA)
-      </button>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Cálculo Energético
-      </button>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>
-        Fórmulas TMB
-      </button>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Gráficos de Evolução
-      </button>
-      <button class="sn-item sn-disabled">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 16H3l4 4m0-4-4-4M17 8h4l-4-4m0 4 4 4"/></svg>
-        Equivalências Alimentares
-      </button>
-    </div>
-    <div class="sn-footer">
-      <button class="sn-profile-btn" onclick="openProfileModal()">
-        <div class="sn-avatar" id="sidebar-avatar">N</div>
-        <div class="sn-user-info">
-          <div class="sn-user-name" id="sidebar-user-name">Nutricionista</div>
-          <div class="sn-user-role" id="sn-sync-status">CachosNutri · sincronizado</div>
-        </div>
-        <svg class="sn-edit-icon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      </button>
-      <button class="sn-logout-btn" onclick="handleLogout()" type="button">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Terminar sessão
-      </button>
-    </div>
+    <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">Entrar</button>
   </nav>
 
-  <!-- CONTENT AREA -->
-  <div class="app-content">
-
-  <!-- ── DASHBOARD ── -->
-  <div id="pg-clients" class="pg-scroll">
-    <div id="dashboard-content"></div>
-  </div>
-
-  <!-- ── PACIENTE ── -->
-  <div id="pg-client" class="pg-scroll" style="display:none">
-    <div class="pg-header">
-      <div class="pg-header-left">
-        <button class="btn-back" onclick="goToClients()">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Voltar
-        </button>
-        <div class="pg-title" id="client-page-name">Paciente</div>
-      </div>
-    </div>
-    <div class="client-tabs">
-      <button class="client-tab active" id="ct-info" onclick="showClientTab('info')">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-        Informações
-      </button>
-      <button class="client-tab" id="ct-plans" onclick="showClientTab('plans')">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
-        Planos
-      </button>
-      <button class="client-tab" id="ct-evolution" onclick="showClientTab('evolution')">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Evolução
+  <header class="lp-hero">
+    <div class="lp-hero-text">
+      <span class="lp-eyebrow">Para nutricionistas profissionais</span>
+      <h1>Planeamento alimentar que acompanha o seu ritmo clínico</h1>
+      <p>Fichas de paciente, planos semanais com cálculo automático de macros, antropometria completa e relatórios — tudo num só lugar, sincronizado e seguro.</p>
+      <button class="btn-enter-new" type="button" onclick="window.location.href='login.html'">
+        Começar agora
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
     </div>
+    <div class="lp-hero-img">
+      <img src="img/pexels-janetrangdoan-1105166.jpg" alt="Taça de fruta e frutos vermelhos" loading="lazy">
+    </div>
+  </header>
 
-    <!-- Informações -->
-    <div id="ct-info-view">
-      <div class="info-container">
-        <div class="info-page-header">
-          <div class="info-page-title">Informações do Paciente</div>
-          <div class="info-page-actions">
-            <button class="btn-back" onclick="exportClientDataJson()" title="Exportar todos os dados do paciente em JSON (RGPD)">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Exportar dados
-            </button>
-            <button class="btn-save-info" onclick="savePatientInfo()">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-                <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-              </svg>
-              Guardar
-            </button>
-          </div>
-        </div>
-        <div class="info-grid">
-
-          <!-- DADOS PESSOAIS -->
-          <div class="info-card">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              Dados Pessoais
-            </div>
-            <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="pNome" placeholder="Nome do paciente"></div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Data de nascimento</label><input class="field-input" type="date" id="pNascimento" oninput="updateAge()"></div>
-              <div class="form-field"><label class="field-label">Idade</label><input class="field-input field-calc" type="text" id="pIdade" readonly placeholder="—"></div>
-            </div>
-            <div class="form-field">
-              <label class="field-label">Género</label>
-              <select class="field-select" id="pGenero" onchange="updateTMB()">
-                <option value="">Selecionar…</option><option value="M">Masculino</option><option value="F">Feminino</option>
-              </select>
-            </div>
-            <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="pEmail" placeholder="email@exemplo.com"></div>
-            <div class="form-field"><label class="field-label">Telefone</label><input class="field-input" type="tel" id="pTelefone" placeholder="+351 912 345 678"></div>
-            <div class="consent-field">
-              <label class="consent-check-label">
-                <input type="checkbox" id="pConsentimento" onchange="onConsentimentoChange()">
-                <span>Consentimento informado obtido — o paciente autoriza o tratamento dos seus dados de saúde para fins de acompanhamento nutricional (RGPD)</span>
-              </label>
-              <div class="consent-timestamp" id="pConsentimentoData-label"></div>
-            </div>
-          </div>
-
-          <!-- AVALIAÇÃO ANTROPOMÉTRICA -->
-          <div class="info-card">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="4" rx="1"/><rect x="3" y="10" width="8" height="4" rx="1"/><rect x="3" y="17" width="8" height="4" rx="1"/></svg>
-              Avaliação Antropométrica
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Altura (cm)</label><input class="field-input" type="number" id="pAltura" min="50" max="250" placeholder="175" oninput="updateMetrics()"></div>
-              <div class="form-field"><label class="field-label">Peso atual (kg)</label><input class="field-input" type="number" id="pPeso" min="20" max="300" step="0.1" placeholder="70" oninput="updateMetrics()"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">IMC</label><input class="field-input field-calc" type="text" id="pIMC" readonly placeholder="—"></div>
-              <div class="form-field"><label class="field-label">Classificação IMC</label><input class="field-input field-calc" type="text" id="pIMCClass" readonly placeholder="—"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Peso referência (kg)</label><input class="field-input" type="number" id="pPesoRef" min="20" max="300" step="0.1" placeholder="—"></div>
-              <div class="form-field"><label class="field-label">Peso objetivo (kg)</label><input class="field-input" type="number" id="pPesoObj" min="20" max="300" step="0.1" placeholder="65"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">% Massa gorda</label><input class="field-input" type="number" id="pMassaGorda" min="1" max="70" step="0.1" placeholder="—" oninput="updateMetrics()"></div>
-              <div class="form-field"><label class="field-label">MIG — Massa Isenta de Gordura</label><input class="field-input field-calc" type="text" id="pMIG" readonly placeholder="—"></div>
-            </div>
-          </div>
-
-          <!-- PREGAS CUTÂNEAS -->
-          <div class="info-card info-card-full">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C8 2 4 6 4 10c0 6 8 12 8 12s8-6 8-12c0-4-4-8-8-8z"/></svg>
-              Pregas Cutâneas (mm)
-            </div>
-            <div class="pregas-grid">
-              <div class="form-field"><label class="field-label">Tricipital</label><input class="field-input" type="number" id="pPregaTricipital" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Bicipital</label><input class="field-input" type="number" id="pPregaBicipital" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Subescapular</label><input class="field-input" type="number" id="pPregaSubescapular" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Abdominal</label><input class="field-input" type="number" id="pPregaAbdominal" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Supraespinal</label><input class="field-input" type="number" id="pPregaSupraespinal" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Ileocristal</label><input class="field-input" type="number" id="pPregaIleocristal" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Crural</label><input class="field-input" type="number" id="pPregaCrural" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-              <div class="form-field"><label class="field-label">Geminal</label><input class="field-input" type="number" id="pPregaGeminal" min="1" max="80" step="0.1" placeholder="—" oninput="updateSomatorio()"></div>
-            </div>
-            <div class="form-field soma-field">
-              <label class="field-label">Somatório de pregas</label>
-              <input class="field-input field-calc" type="text" id="pSomatorioPregas" readonly placeholder="—">
-            </div>
-          </div>
-
-          <!-- PERÍMETROS -->
-          <div class="info-card">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/></svg>
-              Perímetros (cm)
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Cefálico</label><input class="field-input" type="number" id="pPerCefalico" min="30" max="80" step="0.1" placeholder="—"></div>
-              <div class="form-field"><label class="field-label">Braço</label><input class="field-input" type="number" id="pPerBraco" min="10" max="60" step="0.1" placeholder="—"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Cintura ISAK</label><input class="field-input" type="number" id="pPerCinturaISAK" min="40" max="200" step="0.1" placeholder="—"></div>
-              <div class="form-field"><label class="field-label">Anca</label><input class="field-input" type="number" id="pPerAnca" min="50" max="200" step="0.1" placeholder="—"></div>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">Crural</label><input class="field-input" type="number" id="pPerCrural" min="20" max="100" step="0.1" placeholder="—"></div>
-              <div class="form-field"><label class="field-label">Geminal</label><input class="field-input" type="number" id="pPerGeminal" min="15" max="80" step="0.1" placeholder="—"></div>
-            </div>
-          </div>
-
-          <!-- ATIVIDADE & ENERGIA -->
-          <div class="info-card">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              Atividade &amp; Energia
-            </div>
-            <div class="form-field">
-              <label class="field-label">Fórmula de cálculo do TMB</label>
-              <input type="hidden" id="pFormula" value="harris">
-              <div class="formula-group">
-                <button type="button" class="formula-btn active" data-formula="harris" onclick="setFormula('harris', this)">Harris-Benedict</button>
-                <button type="button" class="formula-btn" data-formula="tenhaaf" onclick="setFormula('tenhaaf', this)">ten Haaf</button>
-                <button type="button" class="formula-btn" data-formula="delorenzo" onclick="setFormula('delorenzo', this)">De Lorenzo</button>
-                <button type="button" class="formula-btn" data-formula="cunningham" onclick="setFormula('cunningham', this)">Cunningham</button>
-              </div>
-            </div>
-            <div class="form-field">
-              <label class="field-label">Nível de atividade física (PAL — EFSA)</label>
-              <select class="field-select" id="pAtividade" onchange="updateTMB()">
-                <option value="">Selecionar…</option>
-                <option value="1.4">Sedentário (PAL 1.4)</option>
-                <option value="1.6">Moderado (PAL 1.6)</option>
-                <option value="1.8">Ativo (PAL 1.8)</option>
-                <option value="2.0">Muito Ativo (PAL 2.0)</option>
-              </select>
-            </div>
-            <div class="form-field">
-              <label class="field-label">Objetivo principal</label>
-              <select class="field-select" id="pObjetivo">
-                <option value="">Selecionar…</option>
-                <option value="perda">Perda de peso</option>
-                <option value="manutencao">Manutenção de peso</option>
-                <option value="ganho">Ganho de massa muscular</option>
-                <option value="saude">Melhoria da saúde geral</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <div class="form-field"><label class="field-label">TMB (kcal/dia)</label><input class="field-input field-calc" type="text" id="pTMB" readonly placeholder="—"></div>
-              <div class="form-field"><label class="field-label">GET — Gasto Energético Total</label><input class="field-input field-calc field-calc-highlight" type="text" id="pGET" readonly placeholder="—"></div>
-            </div>
-          </div>
-
-          <!-- INFORMAÇÕES CLÍNICAS -->
-          <div class="info-card info-card-full">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6M12 9v6"/><circle cx="12" cy="12" r="10"/></svg>
-              Informações Clínicas
-            </div>
-            <div class="info-3col">
-              <div class="form-field"><label class="field-label">Alergias / Intolerâncias</label><textarea class="field-textarea" id="pAlergias" placeholder="Ex: intolerância à lactose…"></textarea></div>
-              <div class="form-field"><label class="field-label">Patologias / Condições</label><textarea class="field-textarea" id="pPatologias" placeholder="Ex: diabetes tipo 2, hipertensão…"></textarea></div>
-              <div class="form-field"><label class="field-label">Medicação atual</label><textarea class="field-textarea" id="pMedicacao" placeholder="Medicação relevante…"></textarea></div>
-            </div>
-          </div>
-
-          <!-- OBSERVAÇÕES -->
-          <div class="info-card info-card-full">
-            <div class="info-card-title">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              Observações e Notas
-            </div>
-            <div class="form-field"><textarea class="field-textarea field-textarea-lg" id="pNotas" placeholder="Observações clínicas, preferências alimentares, histórico relevante…"></textarea></div>
-          </div>
-
-        </div>
+  <section class="lp-stats">
+    <div class="lp-stat-card">
+      <div class="lp-stat-icon lp-sic-orange">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div>
+        <div class="lp-stat-num">4</div>
+        <div class="lp-stat-label">Fórmulas de TMB</div>
       </div>
     </div>
-
-    <!-- Planos -->
-    <div id="ct-plans-view" style="display:none">
-      <div class="plans-layout">
-        <div class="plans-toolbar">
-          <div class="info-page-title">Planos Alimentares</div>
-          <button class="btn-primary" onclick="createPlan()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            Novo plano
-          </button>
-        </div>
-        <div class="plans-top-row">
-          <div id="plans-list" class="plans-list"></div>
-          <div id="pd-resumo-panel" class="pd-section pd-resumo-panel"></div>
-        </div>
-        <div id="pd-bottom-row" class="pd-bottom-row"></div>
+    <div class="lp-stat-card">
+      <div class="lp-stat-icon lp-sic-cyan">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+      </div>
+      <div>
+        <div class="lp-stat-num">1.376</div>
+        <div class="lp-stat-label">Alimentos na base TCA-INSA</div>
       </div>
     </div>
+  </section>
 
-    <!-- Evolução -->
-    <div id="ct-evolution-view" style="display:none">
-      <div id="evolution-content" class="evolution-wrap"></div>
-    </div>
-  </div>
-
-  <!-- ── PLANO ── -->
-  <div id="pg-plan" style="display:none">
-    <div class="day-tabs">
-      <div class="plan-nav">
-        <button class="btn-back-plan" id="plan-back-btn">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            Voltar
-        </button>
-        <input class="plan-name-input" id="plan-name-input" type="text" onchange="updatePlanName(this.value)">
+  <section class="lp-features">
+    <h2 class="lp-section-title">Tudo o que precisa numa consulta</h2>
+    <div class="lp-feature-grid">
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75M21 21v-2a4 4 0 00-3-3.87"/></svg>
+        </div>
+        <div class="lp-feature-title">Gestão de Pacientes</div>
+        <div class="lp-feature-sub">Fichas completas com dados antropométricos, pregas, perímetros e clínicos</div>
       </div>
-      <div id="dayTabs"></div>
-      <select class="day-select-mobile" id="day-select-mobile" onchange="switchDay(parseInt(this.value))"></select>
-      <div class="day-tabs-right">
-        <button class="btn-icon" onclick="openTemplateModal()" title="Templates pré-definidos">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-          </svg>
-        </button>
-        <button class="btn-icon" onclick="openCopyDayModal()" title="Copiar dia">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        </button>
-        <button class="btn-icon" onclick="openExportModal()" title="Exportar PDF">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
-            <rect x="6" y="14" width="12" height="8"/>
-          </svg>
-        </button>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+        </div>
+        <div class="lp-feature-title">Planos Alimentares</div>
+        <div class="lp-feature-sub">Crie e organize refeições dia a dia com cálculo automático de macronutrientes</div>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="lp-feature-title">Cálculo Energético</div>
+        <div class="lp-feature-sub">TMB com 4 fórmulas: Harris-Benedict, ten Haaf, De Lorenzo e Cunningham</div>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        </div>
+        <div class="lp-feature-title">Base TCA-INSA</div>
+        <div class="lp-feature-sub">+1376 alimentos da tabela de composição portuguesa</div>
+      </div>
+      <div class="lp-feature-card">
+        <div class="lp-feature-icon">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="lp-feature-title">Relatórios Inteligentes</div>
+        <div class="lp-feature-sub">Acompanhe a evolução dos seus pacientes com gráficos e insights</div>
       </div>
     </div>
-    <div class="main-layout">
-      <main class="plan-area" id="planArea"></main>
-      <aside class="sidebar">
-        <div class="sidebar-section">
-          <div class="sidebar-title">Análise global</div>
-          <div class="kcal-total">
-            <div class="kcal-num" id="kcalNum">0</div>
-            <div class="kcal-label">kcal totais do dia</div>
-          </div>
-          <div class="chart-wrap">
-            <div class="chart-canvas-wrap"><canvas id="pieChart"></canvas></div>
-            <div class="chart-legend">
-              <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div><span class="legend-label">Proteína</span><span class="legend-val" id="legProt">0g</span><span class="legend-pct" id="legProtPct">0%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#f39c12"></div><span class="legend-label">Hidratos C.</span><span class="legend-val" id="legHc">0g</span><span class="legend-pct" id="legHcPct">0%</span></div>
-              <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div><span class="legend-label">Lípidos</span><span class="legend-val" id="legLip">0g</span><span class="legend-pct" id="legLipPct">0%</span></div>
-            </div>
-          </div>
-        </div>
-        <!-- CTA quando sem metas -->
-        <div class="sidebar-section" id="macro-targets-cta">
-          <button class="btn-set-targets" onclick="openMacroTargetsModal()">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-            Definir metas do dia
-          </button>
-        </div>
-        <!-- Secção de metas (visível após definição) -->
-        <div class="sidebar-section" id="macro-targets-section" style="display:none">
-          <div class="sidebar-title-row">
-            <div class="sidebar-title">Metas do dia</div>
-            <button class="btn-edit-targets" onclick="openMacroTargetsModal()" title="Editar metas">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-          </div>
-          <div class="macro-target-list">
-            <div class="mt-row" id="mt-kcal"></div>
-            <div class="mt-row" id="mt-prot"></div>
-            <div class="mt-row" id="mt-hc"></div>
-            <div class="mt-row" id="mt-lip"></div>
-          </div>
-        </div>
-        <!-- Água diária -->
-        <div class="sidebar-section" id="water-section">
-          <div class="sidebar-title-row">
-            <div class="sidebar-title">Água diária</div>
-          </div>
-          <div class="water-widget">
-            <svg width="22" height="22" fill="none" stroke="#3b9bd4" stroke-width="1.8" viewBox="0 0 24 24">
-              <path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/>
-            </svg>
-            <div class="water-input-wrap">
-              <input id="water-input" type="number" min="0" max="9999" step="50"
-                     class="water-input" onchange="updateWater(this.value)" oninput="updateWater(this.value)">
-              <span class="water-unit">ml/dia</span>
-            </div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </div>
+    <img class="lp-features-banner" src="img/pexels-alxs-3025236.jpg" alt="Frutas e vegetais frescos" loading="lazy">
+  </section>
 
-  </div><!-- /app-content -->
-
-</div><!-- /app-shell -->
-
-<!-- DROPDOWN PESQUISA -->
-<div class="food-dropdown" id="foodDropdown">
-  <div class="dropdown-inner">
-    <div class="search-input-wrap">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="foodSearch" type="text" placeholder="Pesquisar alimento…" autocomplete="off">
+  <section class="lp-showcase">
+    <div class="lp-showcase-img-wrap">
+      <img src="img/pexels-saad-meliani-3671245-5881607.jpg" alt="Vegetais e leguminosas variadas" loading="lazy">
+      <div class="lp-showcase-overlay">
+        <div class="lp-showcase-num">100%</div>
+        <div class="lp-showcase-label">Dados sincronizados e seguros</div>
+      </div>
     </div>
-    <div class="search-results" id="searchResults">
-      <div class="search-hint">Escreva para pesquisar</div>
+    <div class="lp-showcase-text">
+      <h2>Conceção clínica, não genérica</h2>
+      <p>Equivalências alimentares algorítmicas, antropometria ISAK completa e classificação IMC automática — construído para a prática real de um nutricionista, não adaptado de uma app de contagem de calorias.</p>
     </div>
-  </div>
+  </section>
+
+  <section class="lp-gallery">
+    <img src="img/pexels-mike-jones-8805091.jpg" alt="Taça de fruta variada" loading="lazy">
+    <img src="img/pexels-dalia-al-refai-235376732-17131199.jpg" alt="Taça em forma de coração com fruta" loading="lazy">
+    <img src="img/pexels-anhelina-vasylyk-734724285-34337569.jpg" alt="Salada grega" loading="lazy">
+  </section>
+
+  <section class="lp-cta-final">
+    <h2>Pronto para simplificar a sua prática clínica?</h2>
+    <button class="btn-enter-new" type="button" onclick="window.location.href='login.html'">
+      Entrar na plataforma
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </section>
+
+  <footer class="lp-footer">
+    <span>© 2026 CachosNutri</span>
+    <span>Planeamento alimentar profissional para nutricionistas</span>
+  </footer>
 </div>
-
-<!-- CONFIRM MODAL -->
-<div id="confirmModal" class="modal-overlay" onclick="if(event.target===this)closeConfirm()" style="display:none">
-  <div class="confirm-box">
-    <button class="modal-close confirm-close" onclick="closeConfirm()">&times;</button>
-    <div class="confirm-icon-wrap">
-      <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-    </div>
-    <div class="confirm-title" id="confirm-title">Confirmar ação</div>
-    <p class="confirm-message" id="confirm-message"></p>
-    <div class="confirm-actions">
-      <button class="confirm-btn-cancel" onclick="closeConfirm()">Cancelar</button>
-      <button class="confirm-btn-ok" id="confirm-ok-btn" onclick="confirmOk()">Continuar</button>
-    </div>
-  </div>
-</div>
-
-<!-- PROFILE MODAL -->
-<div id="profileModal" class="modal-overlay" onclick="if(event.target===this)closeProfileModal()" style="display:none">
-  <div class="modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Perfil do Nutricionista</div>
-      <button class="modal-close" onclick="closeProfileModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="profile-photo-area">
-        <div class="profile-photo-wrap" onclick="document.getElementById('profPhotoInput').click()" title="Alterar foto">
-          <div class="profile-photo-circle" id="profPhotoCircle">
-            <span id="profPhotoInitial">N</span>
-            <img id="profPhotoImg" alt="" style="display:none">
-          </div>
-          <div class="profile-photo-edit">
-            <svg width="11" height="11" fill="none" stroke="white" stroke-width="2.2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          </div>
-        </div>
-        <input type="file" id="profPhotoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
-        <span class="profile-photo-hint">Clique para alterar a foto</span>
-      </div>
-      <div class="profile-fields">
-        <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" id="profName" placeholder="O seu nome"></div>
-        <div class="form-row">
-          <div class="form-field"><label class="field-label">Idade</label><input class="field-input" type="number" id="profAge" min="18" max="99" placeholder="—"></div>
-          <div class="form-field">
-            <label class="field-label">Sexo</label>
-            <select class="field-select" id="profSex">
-              <option value="">Selecionar…</option>
-              <option value="M">Masculino</option>
-              <option value="F">Feminino</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-field"><label class="field-label">E-mail profissional</label><input class="field-input" type="email" id="profEmail" placeholder="email@exemplo.com"></div>
-        <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="profCedula" placeholder="Ex: 1234N (Ordem dos Nutricionistas)"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-back" onclick="closeProfileModal()">Cancelar</button>
-      <button class="btn-primary" onclick="saveProfile()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Guardar
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- COPY DAY MODAL -->
-<div id="copyDayModal" class="modal-overlay" onclick="if(event.target===this)closeCopyDayModal()" style="display:none">
-  <div class="modal-box copy-day-box">
-    <button class="modal-close confirm-close" onclick="closeCopyDayModal()">&times;</button>
-    <div class="copy-day-icon-wrap">
-      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-    </div>
-    <div class="copy-day-title" id="copy-day-title">Copiar Segunda-feira</div>
-    <p class="copy-day-sub">Escolhe o dia de destino. As refeições existentes serão substituídas.</p>
-    <div class="copy-day-grid" id="copy-day-grid"></div>
-    <button class="confirm-btn-cancel" style="width:100%;margin-top:8px" onclick="closeCopyDayModal()">Cancelar</button>
-  </div>
-</div>
-
-<!-- EXPORT PDF MODAL -->
-<div id="exportModal" class="modal-overlay" onclick="if(event.target===this)closeExportModal()" style="display:none">
-  <div class="modal-box export-modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Exportar plano para PDF</div>
-      <button class="modal-close" onclick="closeExportModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p class="export-hint">Seleciona os dias a incluir:</p>
-      <label class="export-check-all">
-        <input type="checkbox" id="export-all" onchange="toggleAllDays(this.checked)" checked>
-        <span>Selecionar todos</span>
-      </label>
-      <div class="export-days-grid" id="export-days-grid"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-back" onclick="closeExportModal()">Cancelar</button>
-      <button class="btn-primary" onclick="generatePdf()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Gerar PDF
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- PDF OUTPUT (only visible during print) -->
-<div id="pdf-output"></div>
-
-<!-- MACRO TARGETS MODAL -->
-<div id="macroTargetsModal" class="modal-overlay" onclick="if(event.target===this)closeMacroTargetsModal()" style="display:none">
-  <div class="modal-box macro-targets-box">
-    <div class="modal-header">
-      <div class="modal-title">Metas diárias</div>
-      <button class="modal-close" onclick="closeMacroTargetsModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="tg-banner">
-        <svg width="15" height="15" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-        <span>Os valores sugeridos baseiam-se no perfil do paciente.</span>
-      </div>
-      <div class="targets-grid">
-        <div class="tg-field">
-          <label><span class="tg-dot" style="background:#27865a"></span>Calorias</label>
-          <div class="tg-input-wrap"><input id="tg-kcal" type="number" min="0" placeholder="2200"><span class="tg-unit">kcal</span></div>
-        </div>
-        <div class="tg-field">
-          <label><span class="tg-dot" style="background:#e74c3c"></span>Proteína</label>
-          <div class="tg-input-wrap"><input id="tg-prot" type="number" min="0" placeholder="180"><span class="tg-unit">g</span></div>
-        </div>
-        <div class="tg-field">
-          <label><span class="tg-dot" style="background:#f39c12"></span>Hidratos</label>
-          <div class="tg-input-wrap"><input id="tg-hc" type="number" min="0" placeholder="250"><span class="tg-unit">g</span></div>
-        </div>
-        <div class="tg-field">
-          <label><span class="tg-dot" style="background:#9b59b6"></span>Lípidos</label>
-          <div class="tg-input-wrap"><input id="tg-lip" type="number" min="0" placeholder="70"><span class="tg-unit">g</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-back" onclick="closeMacroTargetsModal()">Cancelar</button>
-      <button class="btn-primary" onclick="saveMacroTargets()">Guardar metas</button>
-    </div>
-  </div>
-</div>
-
-<!-- EQUIV MODAL -->
-<div id="equivModal" class="modal-overlay" onclick="if(event.target===this)closeEquivModal()" style="display:none">
-  <div class="modal-box equiv-modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Equivalências — <span id="equiv-food-name"></span></div>
-      <button class="modal-close" onclick="closeEquivModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-hint">Alternativas com valor calórico equivalente. Clica para substituir o alimento.</p>
-      <div class="equiv-results" id="equiv-results"></div>
-    </div>
-  </div>
-</div>
-
-<!-- TEMPLATE MODAL -->
-<div id="templateModal" class="modal-overlay" onclick="if(event.target===this)closeTemplateModal()" style="display:none">
-  <div class="modal-box template-modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Templates pré-definidos</div>
-      <button class="modal-close" onclick="closeTemplateModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p class="modal-hint">Seleciona um plano base. Os alimentos serão aplicados a todos os 7 dias e podes editar depois.</p>
-      <div id="template-grid" class="template-grid"></div>
-      <div class="template-footer">
-        <button class="btn-back btn-sm" onclick="openSaveTemplateModal()">➕ Guardar plano atual como template</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- SAVE TEMPLATE MODAL -->
-<div id="saveTemplateModal" class="modal-overlay" onclick="if(event.target===this)closeSaveTemplateModal()" style="display:none">
-  <div class="modal-box" style="width:360px">
-    <div class="modal-header">
-      <div class="modal-title">Guardar como template</div>
-      <button class="modal-close" onclick="closeSaveTemplateModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="tg-field">
-        <label class="tg-label">Nome do template</label>
-        <input id="st-label" type="text" style="border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;width:100%;outline:none;box-sizing:border-box" placeholder="Ex: Défice Personalizado">
-      </div>
-      <div class="tg-field" style="margin-top:10px">
-        <label class="tg-label">Descrição (opcional)</label>
-        <input id="st-desc" type="text" style="border:1.5px solid var(--gray-200);border-radius:8px;padding:8px 12px;font-size:13px;width:100%;outline:none;box-sizing:border-box" placeholder="Ex: ~1600 kcal">
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-        <button class="btn-back" onclick="closeSaveTemplateModal()">Cancelar</button>
-        <button class="btn-primary" onclick="saveCurrentAsTemplate()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="js/data/tca_data.js"></script>
-<script src="js/supabase-client.js"></script>
-<script src="js/app.js"></script>
 </body>
 </html>

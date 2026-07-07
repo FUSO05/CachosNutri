@@ -12,17 +12,15 @@ function hasTestAccount() {
   return Boolean(TEST_EMAIL && TEST_PASSWORD);
 }
 
+// Faz login em login.html e espera pela navegação real para app.html — já não
+// há um passo "entrar na plataforma" à parte, o login leva direto à app.
 async function login(page) {
-  await page.goto('/index.html');
+  await page.goto('/login.html');
   await page.waitForSelector('#pg-auth', { state: 'visible' });
   await page.fill('#auth-login-email', TEST_EMAIL);
   await page.fill('#auth-login-password', TEST_PASSWORD);
   await page.click('#auth-login-btn');
-  await page.waitForSelector('#pg-welcome', { state: 'visible', timeout: 20000 });
-}
-
-async function enterApp(page) {
-  await page.click('.btn-enter-new');
+  await page.waitForURL('**/app.html', { timeout: 20000 });
   await page.waitForSelector('#pg-clients', { state: 'visible' });
 }
 
@@ -51,4 +49,4 @@ async function deleteAllClients(page) {
   }
 }
 
-module.exports = { TEST_EMAIL, TEST_PASSWORD, hasTestAccount, login, enterApp, createClient, deleteAllClients };
+module.exports = { TEST_EMAIL, TEST_PASSWORD, hasTestAccount, login, createClient, deleteAllClients };

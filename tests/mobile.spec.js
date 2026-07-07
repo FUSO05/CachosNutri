@@ -1,11 +1,11 @@
 const { test, expect } = require('@playwright/test');
-const { hasTestAccount, login, enterApp, createClient, deleteAllClients } = require('./helpers');
+const { hasTestAccount, login, createClient, deleteAllClients } = require('./helpers');
 
 test.describe('Responsividade mobile', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
   test('ecrã de login não tem overflow horizontal', async ({ page }) => {
-    await page.goto('/index.html');
+    await page.goto('/login.html');
     await page.waitForSelector('#pg-auth', { state: 'visible' });
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
     expect(hasOverflow).toBe(false);
@@ -20,7 +20,6 @@ test.describe('Responsividade mobile', () => {
 
     test('sidebar abre em drawer e fecha pelo backdrop, sem overflow horizontal', async ({ page }) => {
       await login(page);
-      await enterApp(page);
 
       const noOverflow = async () =>
         !(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1));
@@ -35,7 +34,6 @@ test.describe('Responsividade mobile', () => {
 
     test('ficha do paciente é utilizável sem overflow horizontal', async ({ page }) => {
       await login(page);
-      await enterApp(page);
       await createClient(page, `Paciente Mobile ${Date.now()}`);
 
       const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);

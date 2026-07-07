@@ -114,8 +114,7 @@ let state      = { activeDay: 0, days: [] };
 let draftClient = null;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-let currentUser        = null;
-let _pendingLocalImport = null;
+let currentUser = null;
 
 let selectedFood   = null;
 let activeMealCtx  = null;
@@ -139,96 +138,14 @@ function saveProfile() {
   appProfile.cedula = document.getElementById('profCedula').value.trim();
   try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
   updateSidebarUser();
-  updateWelcomeUser();
   closeProfileModal();
   if (nav.view === 'clients') renderDashboard();
 }
 
 // ── Auth (Supabase) ───────────────────────────────────────────────────────────
-function switchAuthTab(which) {
-  const isLogin = which === 'login';
-  document.getElementById('auth-tab-login').classList.toggle('active', isLogin);
-  document.getElementById('auth-tab-signup').classList.toggle('active', !isLogin);
-  document.getElementById('auth-form-login').style.display  = isLogin ? '' : 'none';
-  document.getElementById('auth-form-signup').style.display = isLogin ? 'none' : '';
-}
-
-function showAuthError(which, msg) {
-  const el = document.getElementById(`auth-${which}-error`);
-  if (!el) return;
-  el.textContent = msg || '';
-  el.classList.toggle('visible', !!msg);
-}
-
-function traduzErroAuth(msg) {
-  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou password incorretos.';
-  if (/User already registered/i.test(msg))   return 'Já existe uma conta com este e-mail.';
-  if (/Password should be at least/i.test(msg)) return 'A password deve ter pelo menos 6 caracteres.';
-  if (/Unable to validate email address/i.test(msg)) return 'E-mail inválido.';
-  return msg;
-}
-
-async function checkSession() {
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (session && session.user) {
-      currentUser = session.user;
-      await completeAuthFlow();
-      return;
-    }
-  } catch (e) { console.error('Erro ao verificar sessão:', e); }
-  document.getElementById('pg-auth').style.display = '';
-}
-
-async function handleLogin() {
-  const email    = document.getElementById('auth-login-email').value.trim();
-  const password = document.getElementById('auth-login-password').value;
-  showAuthError('login', '');
-  const btn = document.getElementById('auth-login-btn');
-  btn.disabled = true; btn.textContent = 'A entrar…';
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  btn.disabled = false; btn.textContent = 'Entrar';
-  if (error) { showAuthError('login', traduzErroAuth(error.message)); return; }
-  currentUser = data.user;
-  await completeAuthFlow();
-}
-
-async function handleSignup() {
-  const nome     = document.getElementById('auth-signup-nome').value.trim();
-  const email    = document.getElementById('auth-signup-email').value.trim();
-  const password = document.getElementById('auth-signup-password').value;
-  showAuthError('signup', '');
-  const btn = document.getElementById('auth-signup-btn');
-  btn.disabled = true; btn.textContent = 'A criar conta…';
-  const { data, error } = await sb.auth.signUp({
-    email, password,
-    options: { data: { role: 'nutricionista', nome } }
-  });
-  btn.disabled = false; btn.textContent = 'Criar conta';
-  if (error) { showAuthError('signup', traduzErroAuth(error.message)); return; }
-  if (!data.session) {
-    showAuthError('signup', 'Conta criada! Verifique o seu e-mail para confirmar antes de entrar.');
-    return;
-  }
-  currentUser = data.user;
-  appProfile.name = nome;
-  await completeAuthFlow();
-}
-
-async function handleLogout() {
-  clearTimeout(_remoteSyncTimer);
-  await sb.auth.signOut();
-  currentUser = null;
-  appData = { version: 1, clients: [] };
-  nav = { view: 'welcome', clientId: null, planId: null };
-  document.getElementById('app-shell').style.display = 'none';
-  document.getElementById('pg-welcome').style.display = 'none';
-  document.getElementById('auth-login-email').value = '';
-  document.getElementById('auth-login-password').value = '';
-  showAuthError('login', '');
-  switchAuthTab('login');
-  document.getElementById('pg-auth').style.display = '';
-}
+// app.html assume que já está autenticado (login.html trata do login/registo em
+// si). Aqui só é preciso: confirmar a sessão ao iniciar (initApp), saber quem é
+// o utilizador atual, e terminar sessão.
 
 async function fetchProfileName() {
   try {
@@ -240,65 +157,43 @@ async function fetchProfileName() {
   } catch (e) {}
 }
 
-async function completeAuthFlow() {
-  await fetchProfileName();
-  await loadAppData();
+async function handleLogout() {
+  clearTimeout(_remoteSyncTimer);
+  await sb.auth.signOut();
+  currentUser = null;
+  appData = { version: 1, clients: [] };
+  nav = { view: 'welcome', clientId: null, planId: null };
+  window.location.href = 'index.html';
+}
 
-  const alreadyImportedKey = 'cachos_imported_' + currentUser.id;
-  const localRaw = localStorage.getItem('cachos_data');
-  let localHasData = false;
-  if (localRaw && !localStorage.getItem(alreadyImportedKey)) {
-    try {
-      const parsed = JSON.parse(localRaw);
-      if (parsed.clients && parsed.clients.length) {
-        localHasData = true;
-        _pendingLocalImport = parsed;
-      }
-    } catch (e) {}
-  }
-
-  if (localHasData && appData.clients.length === 0) {
-    showImportNotice();
+// Ponto de entrada de app.html: confirma sessão (redireciona para a landing se
+// não houver), trata de uma importação pendente vinda de login.html, carrega
+// os dados e mostra o dashboard.
+async function initApp() {
+  let session;
+  try {
+    ({ data: { session } } = await sb.auth.getSession());
+  } catch (e) { console.error('Erro ao verificar sessão:', e); }
+  if (!session || !session.user) {
+    window.location.href = 'index.html';
     return;
   }
-  finishEnteringApp();
-}
+  currentUser = session.user;
+  await fetchProfileName();
 
-function showImportNotice() {
-  document.getElementById('auth-form-login').style.display = 'none';
-  document.getElementById('auth-form-signup').style.display = 'none';
-  document.querySelector('#pg-auth .auth-tabs').style.display = 'none';
-  document.getElementById('auth-import-notice').style.display = '';
-}
-
-async function importLocalData() {
-  if (_pendingLocalImport) {
-    appData = { version: 1, clients: _pendingLocalImport.clients || [] };
-    await syncAppDataToSupabase();
+  const pendingImport = sessionStorage.getItem('cachos_pending_import');
+  if (pendingImport) {
+    sessionStorage.removeItem('cachos_pending_import');
+    try {
+      appData = { version: 1, clients: JSON.parse(pendingImport).clients || [] };
+      await syncAppDataToSupabase();
+    } catch (e) { console.error('Erro ao importar dados locais:', e); }
   }
-  localStorage.setItem('cachos_imported_' + currentUser.id, '1');
-  _pendingLocalImport = null;
-  finishEnteringApp();
-}
 
-function skipImport() {
-  localStorage.setItem('cachos_imported_' + currentUser.id, '1');
-  _pendingLocalImport = null;
-  finishEnteringApp();
-}
-
-function finishEnteringApp() {
-  document.getElementById('auth-import-notice').style.display = 'none';
-  document.querySelector('#pg-auth .auth-tabs').style.display = '';
-  document.getElementById('auth-form-login').style.display = 'none';
-  document.getElementById('auth-form-signup').style.display = 'none';
-  switchAuthTab('login');
-  document.getElementById('pg-auth').style.display = 'none';
-  updateWelcomeStats();
+  await loadAppData();
+  loadProfile();
   updateSidebarUser();
-  updateWelcomeUser();
-  updateWelcomeDate();
-  document.getElementById('pg-welcome').style.display = '';
+  goToClients();
 }
 
 // ── Confirm modal ─────────────────────────────────────────────────────────────
@@ -345,7 +240,6 @@ function handlePhotoUpload(input) {
     appProfile.photo = ev.target.result;
     updateProfilePhotoUI();
     updateSidebarUser();
-    updateWelcomeUser();
   };
   reader.readAsDataURL(file);
   input.value = '';
@@ -377,41 +271,6 @@ function updateSidebarUser() {
       avatarEl.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
     }
   }
-}
-
-function updateWelcomeUser() {
-  const nameEl   = document.getElementById('wl-profile-name');
-  const avatarEl = document.getElementById('wl-avatar');
-  const greetEl  = document.getElementById('welcome-greeting');
-  const greetName = appProfile.name || 'Nutricionista';
-  if (nameEl) nameEl.textContent = appProfile.name || 'Nutricionista';
-  if (avatarEl) {
-    if (appProfile.photo) {
-      avatarEl.innerHTML = `<img src="${escHtml(appProfile.photo)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
-    } else {
-      avatarEl.textContent = appProfile.name ? appProfile.name[0].toUpperCase() : 'N';
-    }
-  }
-  if (greetEl) greetEl.textContent = `Olá, ${greetName}`;
-}
-
-function updateWelcomeStats() {
-  const clientsEl = document.getElementById('ws-clients');
-  const plansEl   = document.getElementById('ws-plans');
-  if (!clientsEl && !plansEl) return;
-  const totalClients = appData.clients.length;
-  const totalPlans   = appData.clients.reduce((s, c) => s + c.plans.length, 0);
-  if (clientsEl) clientsEl.textContent = totalClients;
-  if (plansEl) plansEl.textContent = totalPlans;
-}
-
-function updateWelcomeDate() {
-  const el = document.getElementById('wl-date-text');
-  if (!el) return;
-  const today = new Date();
-  const day = today.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long' });
-  const year = today.getFullYear();
-  el.textContent = `${day}, ${year}`;
 }
 
 // ── Data helpers ──────────────────────────────────────────────────────────────
@@ -448,7 +307,6 @@ function saveAppData() {
     }
   }
   try { localStorage.setItem('cachos_data', JSON.stringify(appData)); } catch(e) {}
-  updateWelcomeStats();
   scheduleRemoteSync();
 }
 
@@ -643,15 +501,6 @@ function updateBreadcrumb() {
     const el = document.getElementById('client-page-name');
     if (el) el.textContent = client.nome;
   }
-}
-
-function enterApp() {
-  document.getElementById('pg-welcome').style.display = 'none';
-  document.getElementById('app-shell').style.display  = '';
-  loadProfile();
-  updateSidebarUser();
-  updateWelcomeUser();
-  goToClients();
 }
 
 function goToClients() {
@@ -2379,9 +2228,8 @@ function buildWeeklyTableHTML(selected) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadProfile();
   initSearch();
-  checkSession();
+  initApp();
 
   document.addEventListener('click', e => {
     const dd = document.getElementById('foodDropdown');

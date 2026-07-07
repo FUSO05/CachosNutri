@@ -60,3 +60,15 @@ Tabela de Composição de Alimentos (BDCA), versão 7.1, 2026
 https://portfir.insa.min-saude.pt/
 
 Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos saturados, hidratos de carbono, açúcares, sal, fibra, proteínas, colesterol, água.
+
+
+## TO DO'S
+
+Prompt: Cria uma CI/CD pipeline para testar as várias fases de desenvolvimento
+
+
+Prompt: Preciso que melhores o UI da landing page para parecer mais profissional, algo parecido ao nutrium.com, a maior plataforma. Em termos de butões apenas temos o de "entrar" por agora, pois não precisamos de mais nenhum por enquanto, por isso tu és um designer profissional e preciso de uma landing page de qualidade.
+
+
+Prompt: Agora sim podemos passar a fase 3 APENAS.(- **Fase 3**: Portal do paciente MVP (read-only) — novo entry point (`portal.html`), fluxo de convite nutricionista→paciente, vista "plano do dia" simplificada, vista de evolução reaproveitando `renderEvolutionCharts` (js/app.js:2025).
+- **Fase 4 (prioridade do utilizador)**: Engagement — registo diário de água (`daily_water_logs`), refeições feitas vs. planeadas (`meal_logs`), fotos de progresso (Supabase Storage), lembretes (Notification API local primeiro; push via Edge Function depois). Indicadores de adesão visíveis ao nutricionista na tab "Evolução".)

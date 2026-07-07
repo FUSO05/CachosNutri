@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { login, enterApp, createClient, deleteAllClients } = require('./helpers');
+const { login, createClient, deleteAllClients } = require('./helpers');
 
 // Teste opcional: confirma que duas contas de nutricionista diferentes não
 // partilham dados entre si (isolamento por RLS no Supabase). Requer uma
@@ -18,17 +18,16 @@ test.describe('Isolamento entre contas (RLS)', () => {
 
     const pageA = await (await browser.newContext()).newPage();
     await login(pageA);
-    await enterApp(pageA);
     await createClient(pageA, nome);
 
     const pageB = await (await browser.newContext()).newPage();
-    await pageB.goto('/index.html');
+    await pageB.goto('/login.html');
     await pageB.waitForSelector('#pg-auth', { state: 'visible' });
     await pageB.fill('#auth-login-email', EMAIL_B);
     await pageB.fill('#auth-login-password', PASS_B);
     await pageB.click('#auth-login-btn');
-    await pageB.waitForSelector('#pg-welcome', { state: 'visible', timeout: 20000 });
-    await enterApp(pageB);
+    await pageB.waitForURL('**/app.html', { timeout: 20000 });
+    await pageB.waitForSelector('#pg-clients', { state: 'visible' });
 
     await expect(pageB.locator('#dashboard-content')).not.toContainText(nome);
 
