@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="portal-page-body">
 
 <!-- ══ AUTENTICAÇÃO DO PACIENTE ══ -->
 <div id="portal-auth" class="pg-auth">
@@ -75,15 +75,29 @@
     </div>
 
     <div id="portal-main" style="display:none">
-      <div class="portal-client-name" id="portal-client-name"></div>
+      <div class="portal-client-name-row">
+        <div class="portal-client-name" id="portal-client-name"></div>
+        <div class="portal-plan-sub" id="portal-plan-sub"></div>
+      </div>
 
       <div class="client-tabs portal-tabs">
-        <button class="client-tab active" id="pt-plano" onclick="showPortalTab('plano')" type="button">Plano de hoje</button>
-        <button class="client-tab" id="pt-evolucao" onclick="showPortalTab('evolucao')" type="button">Evolução</button>
+        <button class="client-tab active" id="pt-plano" onclick="showPortalTab('plano')" type="button">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+          Plano de hoje
+        </button>
+        <button class="client-tab" id="pt-evolucao" onclick="showPortalTab('evolucao')" type="button">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Evolução
+        </button>
+        <button class="client-tab" id="pt-fotos" onclick="showPortalTab('fotos')" type="button">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Fotos
+        </button>
       </div>
 
       <div id="portal-view-plano"></div>
       <div id="portal-view-evolucao" style="display:none"></div>
+      <div id="portal-view-fotos" style="display:none"></div>
     </div>
 
   </div>
@@ -137,6 +151,10 @@
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>
+
+<!-- Input de ficheiro escondido para as fotos de refeições — reutilizado para qualquer
+     refeição (openMealPhotoPicker define _pendingPhotoMealIndex antes de o acionar). -->
+<input type="file" id="portal-foto-file-input" accept="image/*" capture="environment" style="display:none" onchange="handleMealPhotoFileChange(this)">
 
 <script src="js/supabase-client.js"></script>
 <script src="js/shared.js"></script>

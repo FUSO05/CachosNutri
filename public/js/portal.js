@@ -8,6 +8,7 @@ let portalClients = [];
 let portalClient  = null;
 let portalPlan    = null;
 let portalDayIdx  = 0;
+let portalMealViewIdx = 0;      // posição na lista de refeições do dia (com alimentos) atualmente visível
 let portalWaterToday = 0;
 let portalTodayIdx = 0;          // dia real de hoje — não muda ao navegar com changePortalDay
 // { [day_index]: { [meal_index]: { status, note } } } — estado mais recente conhecido por
@@ -15,6 +16,20 @@ let portalTodayIdx = 0;          // dia real de hoje — não muda ao navegar co
 // já que day_index sozinho não tem data associada — só a edição fica restrita a "hoje").
 let portalMealStatusByDay = {};
 let _noteModalMealIndex = null;
+
+// ── Fotos de refeições ─────────────────────────────────────────────────────
+// Cada foto liga-se à refeição real do plano (meal_index, tal como meal_logs) — não há
+// categorias fixas, já que o nutricionista pode ter qualquer número de refeições por dia.
+// meal_name é guardado em duplicado (denormalizado) para a legenda continuar correta mesmo
+// que o plano mude de estrutura mais tarde. Tirar a foto acontece no card da refeição (tab
+// "Plano de hoje"); a tab "Fotos" é só um calendário/visualizador (estilo Instagram).
+let portalFotosByDate = {};             // { [date]: { [meal_index]: {storage_path, meal_name} } }
+let portalFotosTodayDate = null;        // fixo no load, como portalTodayIdx
+let portalFotosLoadedMonths = new Set();// 'yyyy-m' já carregados — evita repetir queries ao navegar
+let portalCalYear = null;
+let portalCalMonth = null;              // 0-indexado
+let portalFotosSelectedDate = null;     // dia selecionado no calendário da tab Fotos
+let _pendingPhotoMealIndex = null;      // definido antes de abrir o file picker escondido
 
 // O código de convite tem de sobreviver ao hiato entre "criar conta" e
 // "confirmar o e-mail" (que normalmente reabre o browser sem estado em memória),
@@ -267,13 +282,25 @@ async function loadPortalData() {
   portalClient = portalClients[0];
   portalPlan   = portalClient.plans[0] || null;
   document.getElementById('portal-client-name').textContent = portalClient.nome;
+  document.getElementById('portal-plan-sub').textContent = portalPlan
+    ? `· ${portalPlan.nome || 'Sem nome'}`
+    : '';
 
   const jsDay = new Date().getDay();
   portalDayIdx = (jsDay + 6) % 7; // JS: 0=Domingo..6=Sábado → DAYS: 0=Segunda..6=Domingo
   portalTodayIdx = portalDayIdx;
 
+  portalFotosTodayDate = localDateStr();
+  portalFotosSelectedDate = portalFotosTodayDate;
+  const today = new Date();
+  portalCalYear = today.getFullYear();
+  portalCalMonth = today.getMonth();
+  portalFotosByDate = {};
+  portalFotosLoadedMonths = new Set();
+
   await loadWaterToday();
   await loadMealStatusByDay();
+  await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
 
   showPortalTab('plano');
 }
@@ -377,17 +404,26 @@ async function saveNoteModal() {
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 function showPortalTab(tab) {
-  const isPlano = tab === 'plano';
-  document.getElementById('pt-plano').classList.toggle('active', isPlano);
-  document.getElementById('pt-evolucao').classList.toggle('active', !isPlano);
-  document.getElementById('portal-view-plano').style.display    = isPlano ? '' : 'none';
-  document.getElementById('portal-view-evolucao').style.display = isPlano ? 'none' : '';
-  if (isPlano) renderPortalPlano(); else renderPortalEvolucao();
+  document.getElementById('pt-plano').classList.toggle('active', tab === 'plano');
+  document.getElementById('pt-evolucao').classList.toggle('active', tab === 'evolucao');
+  document.getElementById('pt-fotos').classList.toggle('active', tab === 'fotos');
+  document.getElementById('portal-view-plano').style.display    = tab === 'plano'    ? '' : 'none';
+  document.getElementById('portal-view-evolucao').style.display = tab === 'evolucao' ? '' : 'none';
+  document.getElementById('portal-view-fotos').style.display    = tab === 'fotos'    ? '' : 'none';
+  if (tab === 'plano') renderPortalPlano();
+  else if (tab === 'evolucao') renderPortalEvolucao();
+  else renderPortalFotos();
 }
 
 // ── Plano de hoje (read-only) ────────────────────────────────────────────────
 function changePortalDay(delta) {
   portalDayIdx = (portalDayIdx + delta + 7) % 7;
+  portalMealViewIdx = 0;
+  renderPortalPlano();
+}
+
+function changePortalMeal(delta) {
+  portalMealViewIdx += delta;
   renderPortalPlano();
 }
 
@@ -411,13 +447,20 @@ function renderPortalPlano() {
     .filter(x => x.meal.foods && x.meal.foods.length);
   const isToday = portalDayIdx === portalTodayIdx;
 
+  portalMealViewIdx = indexedMeals.length
+    ? ((portalMealViewIdx % indexedMeals.length) + indexedMeals.length) % indexedMeals.length
+    : 0;
+
   const dayTot = { kcal: 0, prot: 0, hc: 0, lip: 0 };
   allMeals.forEach(m => (m.foods || []).forEach(fi => {
     const s = scale(fi.food, fi.qty);
     dayTot.kcal += s.kcal; dayTot.prot += s.prot; dayTot.hc += s.hc; dayTot.lip += s.lip;
   }));
 
-  const mealsHTML = indexedMeals.length ? indexedMeals.map(({ meal, idx }) => {
+  let mealNavHTML = '';
+  let mealsHTML;
+  if (indexedMeals.length) {
+    const { meal, idx } = indexedMeals[portalMealViewIdx];
     const rows = meal.foods.map(fi => {
       const s = scale(fi.food, fi.qty);
       return `
@@ -429,14 +472,18 @@ function renderPortalPlano() {
     }).join('');
     const entry = portalMealStatusByDay[portalDayIdx]?.[idx];
     const status = entry?.status;
+    const photoEntry = isToday ? portalFotosByDate[portalFotosTodayDate]?.[idx] : null;
     const statusHTML = isToday ? `
       <div class="portal-meal-status">
         <button class="portal-meal-btn portal-meal-btn--done${status === 'done' ? ' active' : ''}" onclick="logMealStatus(${idx}, 'done')" type="button">Feita</button>
         <button class="portal-meal-btn portal-meal-btn--skip${status === 'skipped' ? ' active' : ''}" onclick="logMealStatus(${idx}, 'skipped')" type="button">Saltada</button>
         <button class="portal-meal-btn portal-meal-btn--note${entry?.note ? ' active' : ''}" onclick="openNoteModal(${idx})" type="button">Nota</button>
+        <button class="portal-meal-btn-icon portal-meal-btn-icon--photo${photoEntry ? ' active' : ''}" onclick="handleMealPhotoTap(${idx})" type="button" title="${photoEntry ? 'Ver/substituir foto' : 'Adicionar foto'}">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
       </div>` : '';
     const cardClass = status === 'done' ? ' portal-meal-card--done' : status === 'skipped' ? ' portal-meal-card--skipped' : '';
-    return `
+    mealsHTML = `
       <div class="portal-meal-card${cardClass}">
         <div class="portal-meal-header">
           <span class="portal-meal-name">${escHtml(meal.nome)}</span>
@@ -445,42 +492,70 @@ function renderPortalPlano() {
         <div class="portal-food-rows">${rows}</div>
         ${statusHTML}
       </div>`;
-  }).join('') : `
+    const hasMultiple = indexedMeals.length > 1;
+    mealNavHTML = `
+      <div class="portal-meal-nav">
+        <button class="portal-day-nav-btn" onclick="changePortalMeal(-1)" type="button" aria-label="Refeição anterior"${hasMultiple ? '' : ' style="visibility:hidden"'}>‹</button>
+        <span class="portal-meal-nav-label">Refeições<span class="portal-meal-nav-count">${portalMealViewIdx + 1}/${indexedMeals.length}</span></span>
+        <button class="portal-day-nav-btn" onclick="changePortalMeal(1)" type="button" aria-label="Próxima refeição"${hasMultiple ? '' : ' style="visibility:hidden"'}>›</button>
+      </div>`;
+  } else {
+    mealsHTML = `
       <div class="empty-state">
         <div class="empty-state-title">Sem refeições planeadas</div>
         <div class="empty-state-sub">Não há alimentos registados para ${DAYS[portalDayIdx]}.</div>
       </div>`;
+  }
 
   const target = portalPlan.waterMl;
   const pct = target ? Math.min(100, Math.round((portalWaterToday / target) * 100)) : 0;
   const waterHTML = `
-    <div class="portal-water-widget">
-      <div class="portal-water-header">
-        <span>💧 <b>${portalWaterToday} ml</b>${target ? ` / ${target} ml` : ' hoje'}</span>
-        ${target ? `<span class="portal-water-pct">${pct}%</span>` : ''}
+    <div class="portal-section">
+      <div class="portal-section-title">
+        <svg width="14" height="14" fill="none" stroke="#3b9bd4" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg>
+        Água diária
       </div>
-      ${target ? `<div class="portal-water-bar"><div class="portal-water-fill" style="width:${pct}%"></div></div>` : ''}
-      <div class="portal-water-actions">
-        <button class="btn-back" onclick="logWater(250)" type="button">+250 ml</button>
-        <button class="btn-back" onclick="logWater(500)" type="button">+500 ml</button>
-        <input class="field-input portal-water-custom-input" type="number" id="portal-water-custom-input" placeholder="ml" min="1">
-        <button class="btn-primary" onclick="logWaterCustom()" type="button">Registar</button>
+      <div class="portal-water-widget">
+        <div class="portal-water-header">
+          <span>💧 <b>${portalWaterToday} ml</b>${target ? ` / ${target} ml` : ' hoje'}</span>
+          ${target ? `<span class="portal-water-pct">${pct}%</span>` : ''}
+        </div>
+        ${target ? `<div class="portal-water-bar"><div class="portal-water-fill" style="width:${pct}%"></div></div>` : ''}
+        <div class="portal-water-actions">
+          <button class="btn-back" onclick="logWater(250)" type="button">+250 ml</button>
+          <button class="btn-back" onclick="logWater(500)" type="button">+500 ml</button>
+          <input class="field-input portal-water-custom-input" type="number" id="portal-water-custom-input" placeholder="ml" min="1">
+          <button class="btn-primary" onclick="logWaterCustom()" type="button">Registar</button>
+        </div>
       </div>
     </div>`;
 
   el.innerHTML = `
-    <div class="portal-day-nav">
-      <button class="btn-back" onclick="changePortalDay(-1)" type="button">‹</button>
-      <span class="portal-day-label">${DAYS[portalDayIdx]}</span>
-      <button class="btn-back" onclick="changePortalDay(1)" type="button">›</button>
+    <div class="portal-page-header">
+      <div class="portal-page-title">Plano de hoje</div>
+      <div class="portal-day-nav">
+        <button class="portal-day-nav-btn" onclick="changePortalDay(-1)" type="button" aria-label="Dia anterior">‹</button>
+        <span class="portal-day-label">${DAYS[portalDayIdx]}</span>
+        <button class="portal-day-nav-btn" onclick="changePortalDay(1)" type="button" aria-label="Dia seguinte">›</button>
+      </div>
     </div>
-    <div class="portal-day-totals">
-      <span><b>${dayTot.kcal.toFixed(0)}</b> kcal</span>
-      <span>P <b>${dayTot.prot.toFixed(1)}g</b></span>
-      <span>HC <b>${dayTot.hc.toFixed(1)}g</b></span>
-      <span>L <b>${dayTot.lip.toFixed(1)}g</b></span>
+
+    <div class="portal-section">
+      <div class="portal-section-title">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Resumo nutricional
+      </div>
+      <div class="portal-day-totals">
+        <div class="portal-stat"><div class="portal-stat-value">${dayTot.kcal.toFixed(0)}</div><div class="portal-stat-label">kcal</div></div>
+        <div class="portal-stat"><div class="portal-stat-value">${dayTot.prot.toFixed(1)}g</div><div class="portal-stat-label">Proteína</div></div>
+        <div class="portal-stat"><div class="portal-stat-value">${dayTot.hc.toFixed(1)}g</div><div class="portal-stat-label">Hidratos</div></div>
+        <div class="portal-stat"><div class="portal-stat-value">${dayTot.lip.toFixed(1)}g</div><div class="portal-stat-label">Gordura</div></div>
+      </div>
     </div>
+
     ${waterHTML}
+
+    ${mealNavHTML}
     <div class="portal-meals">${mealsHTML}</div>
   `;
 }
@@ -532,6 +607,197 @@ function renderPortalEvolucao() {
   `;
 
   if (hasCharts) renderEvolutionCharts(consultations);
+}
+
+// ── Fotos de refeições — tirar a foto (card da refeição, tab "Plano de hoje") ─
+// Só é possível tirar/substituir/apagar para a refeição de hoje que está a ser mostrada em
+// renderPortalPlano() (mesma restrição "só hoje" das outras ações do card).
+function handleMealPhotoTap(mealIndex) {
+  const entry = portalFotosByDate[portalFotosTodayDate]?.[mealIndex];
+  if (entry) {
+    openStoryForDay(portalFotosTodayDate, mealIndex);
+  } else {
+    openMealPhotoPicker(mealIndex);
+  }
+}
+
+function openMealPhotoPicker(mealIndex) {
+  _pendingPhotoMealIndex = mealIndex;
+  document.getElementById('portal-foto-file-input').click();
+}
+
+async function handleMealPhotoFileChange(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file || _pendingPhotoMealIndex == null) return;
+  const mealIndex = _pendingPhotoMealIndex;
+  _pendingPhotoMealIndex = null;
+  try {
+    const blob = await compressImageFile(file);
+    await uploadMealPhoto(mealIndex, blob);
+  } catch (e) {
+    console.error('Erro ao processar foto:', e);
+    showAlertModal('Não foi possível processar esta foto. Tente outra.', { title: 'Erro' });
+  }
+}
+
+async function uploadMealPhoto(mealIndex, blob) {
+  const date = portalFotosTodayDate;
+  const mealName = portalPlan?.days?.[portalTodayIdx]?.meals?.[mealIndex]?.nome || 'Refeição';
+  const path = `${portalClient.id}/${date}/meal-${mealIndex}.jpg`;
+  const { error: uploadError } = await sb.storage.from('meal-photos').upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
+  if (uploadError) {
+    console.error('Erro ao enviar foto:', uploadError);
+    showToast('Não foi possível enviar a foto. Tente novamente.', 'error');
+    return;
+  }
+  const { error: dbError } = await sb.from('progress_photos').upsert({
+    client_id: portalClient.id,
+    storage_path: path,
+    meal_index: mealIndex,
+    meal_name: mealName,
+    photo_date: date,
+    taken_at: new Date().toISOString(),
+  }, { onConflict: 'client_id,photo_date,meal_index' });
+  if (dbError) {
+    console.error('Erro ao guardar foto:', dbError);
+    showToast('Não foi possível guardar a foto. Tente novamente.', 'error');
+    return;
+  }
+  invalidateSignedPhotoUrl(path);
+  portalFotosByDate[date] = portalFotosByDate[date] || {};
+  portalFotosByDate[date][mealIndex] = { storage_path: path, meal_name: mealName };
+  showToast('📷 Foto guardada');
+  renderPortalPlano();
+  if (document.getElementById('pt-fotos').classList.contains('active')) renderPortalFotos();
+}
+
+function deleteMealPhoto(mealIndex) {
+  const date = portalFotosTodayDate;
+  const entry = portalFotosByDate[date]?.[mealIndex];
+  if (!entry) return;
+  showConfirm(
+    'Apagar foto',
+    'Tem a certeza que quer apagar esta foto?',
+    async () => {
+      const path = entry.storage_path;
+      const { error: storageError } = await sb.storage.from('meal-photos').remove([path]);
+      if (storageError) console.error('Erro ao apagar foto do storage:', storageError);
+      const { error: dbError } = await sb.from('progress_photos').delete()
+        .match({ client_id: portalClient.id, photo_date: date, meal_index: mealIndex });
+      if (dbError) {
+        console.error('Erro ao apagar foto:', dbError);
+        showToast('Não foi possível apagar a foto.', 'error');
+        return;
+      }
+      invalidateSignedPhotoUrl(path);
+      delete portalFotosByDate[date][mealIndex];
+      showToast('Foto apagada');
+      renderPortalPlano();
+      if (document.getElementById('pt-fotos').classList.contains('active')) renderPortalFotos();
+    },
+    'Apagar'
+  );
+}
+
+// ── Fotos de refeições — calendário mensal (tab "Fotos") ──────────────────────
+// Só um visualizador (estilo Instagram: calendário do mês, toca num dia para ver as fotos
+// desse dia com o nome de cada refeição) — tirar/substituir a foto acontece no card da
+// refeição, não aqui. Carrega os dados mês a mês (só quando ainda não foram pedidos) em vez
+// de uma janela fixa de dias, já que o calendário pode navegar para meses anteriores.
+async function loadPortalFotosForMonth(year, month) {
+  if (!portalClient) return;
+  const first = new Date(year, month, 1);
+  const next = new Date(year, month + 1, 1);
+  const fromStr = dateToYmd(first);
+  const toStr = dateToYmd(next);
+  const { data, error } = await sb
+    .from('progress_photos')
+    .select('storage_path, meal_index, meal_name, photo_date')
+    .eq('client_id', portalClient.id)
+    .gte('photo_date', fromStr)
+    .lt('photo_date', toStr);
+  if (error) { console.error('Erro ao carregar fotos de refeições:', error); return; }
+  (data || []).forEach(r => {
+    portalFotosByDate[r.photo_date] = portalFotosByDate[r.photo_date] || {};
+    portalFotosByDate[r.photo_date][r.meal_index] = { storage_path: r.storage_path, meal_name: r.meal_name };
+  });
+}
+
+async function ensurePortalFotosMonthLoaded(year, month) {
+  const key = `${year}-${month}`;
+  if (portalFotosLoadedMonths.has(key)) return;
+  await loadPortalFotosForMonth(year, month);
+  portalFotosLoadedMonths.add(key);
+}
+
+async function changePortalFotosMonth(delta) {
+  portalCalMonth += delta;
+  if (portalCalMonth < 0) { portalCalMonth = 11; portalCalYear--; }
+  if (portalCalMonth > 11) { portalCalMonth = 0; portalCalYear++; }
+  await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
+  renderPortalFotos();
+}
+
+// Toca num dia do calendário → abre a story diretamente (estilo Instagram: tocar no anel de
+// story de um dia mostra logo as fotos, sem passo intermédio). Dias sem fotos só ficam
+// selecionados/realçados — openStoryForDay já não faz nada se não houver fotos.
+async function selectPortalFotosCalendarDay(date) {
+  portalFotosSelectedDate = date;
+  renderPortalFotos();
+  await openStoryForDay(date);
+}
+
+function renderPortalFotos() {
+  const el = document.getElementById('portal-view-fotos');
+  const firstOfMonth = new Date(portalCalYear, portalCalMonth, 1);
+  const daysInMonth = new Date(portalCalYear, portalCalMonth + 1, 0).getDate();
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7; // 0=Segunda
+
+  let cellsHTML = '';
+  for (let i = 0; i < startWeekday; i++) cellsHTML += `<div class="fotos-cal-cell fotos-cal-cell--empty"></div>`;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${portalCalYear}-${String(portalCalMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const hasPhotos = !!(portalFotosByDate[dateStr] && Object.keys(portalFotosByDate[dateStr]).length);
+    const isToday = dateStr === portalFotosTodayDate;
+    const isSelected = dateStr === portalFotosSelectedDate;
+    cellsHTML += `
+      <button class="fotos-cal-cell${isToday ? ' fotos-cal-cell--today' : ''}${isSelected ? ' fotos-cal-cell--selected' : ''}" onclick="selectPortalFotosCalendarDay('${dateStr}')" type="button">
+        <span class="fotos-cal-cell-num">${day}</span>
+        ${hasPhotos ? '<span class="fotos-cal-cell-dot"></span>' : ''}
+      </button>`;
+  }
+
+  const now = new Date();
+  const isCurrentMonth = portalCalYear === now.getFullYear() && portalCalMonth === now.getMonth();
+
+  el.innerHTML = `
+    <div class="fotos-cal-header">
+      <button class="portal-day-nav-btn" onclick="changePortalFotosMonth(-1)" type="button" aria-label="Mês anterior">‹</button>
+      <span class="fotos-cal-title">${FOTOS_MONTH_NAMES[portalCalMonth]} ${portalCalYear}</span>
+      <button class="portal-day-nav-btn" onclick="changePortalFotosMonth(1)" type="button" aria-label="Mês seguinte"${isCurrentMonth ? ' style="visibility:hidden"' : ''}>›</button>
+    </div>
+    <div class="fotos-cal-weekdays"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    <div class="fotos-cal-grid">${cellsHTML}</div>
+    <div class="fotos-cal-hint">Toca num dia com <span class="fotos-cal-hint-dot"></span> para ver as fotos desse dia</div>
+  `;
+}
+
+async function openStoryForDay(date, startMealIndex) {
+  const dayEntry = portalFotosByDate[date] || {};
+  const indices = Object.keys(dayEntry).map(Number).sort((a, b) => a - b);
+  if (!indices.length) return;
+  const paths = indices.map(i => dayEntry[i].storage_path);
+  const urls = await getSignedPhotoUrls(paths);
+  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: urls[dayEntry[i].storage_path] }));
+  const startIndex = Math.max(0, indices.indexOf(startMealIndex));
+  const isToday = date === portalFotosTodayDate;
+  showStoryViewer(slots, {
+    startIndex,
+    canManage: isToday,
+    onReplace: isToday ? (categoryStr) => openMealPhotoPicker(Number(categoryStr)) : undefined,
+    onDelete: isToday ? (categoryStr) => deleteMealPhoto(Number(categoryStr)) : undefined,
+  });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

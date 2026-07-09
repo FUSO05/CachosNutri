@@ -10,7 +10,7 @@ Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INS
 - **Macros por porção** — ajuste de gramas com recálculo automático
 - **Piechart** sempre visível com totais do dia (kcal, proteína, HC, lípidos)
 - **Conta + sincronização (Supabase)** — dados de pacientes/planos/consultas guardados na cloud, com login por nutricionista e isolamento por RLS
-- **Portal do Paciente** (`public/portal.html`) — convite por email (nutricionista → paciente), vista read-only do plano do dia e da evolução do próprio paciente
+- **Portal do Paciente** (`public/portal.html`) — convite por email (nutricionista → paciente), plano do dia interativo (água, refeições feitas/saltadas com notas), timeline "story" de fotos das refeições por categoria, e vista da evolução do próprio paciente
 - **Responsivo** — utilizável em telemóvel/tablet, com menu em drawer
 - **Consentimento informado + exportação RGPD** — registo de consentimento por paciente e exportação de todos os dados em JSON
 - **Impressão** — layout limpo para imprimir ou exportar para PDF, com nome e nº de cédula profissional do nutricionista
@@ -48,6 +48,27 @@ Sem isto configurado, o convite continua a ser criado normalmente (código + lin
 visíveis na ficha do paciente para copiar e enviar manualmente) — só o envio automático
 por email é que falha, com aviso na interface.
 
+### Fotos de refeições — bucket e limpeza automática
+
+As fotos de refeições (tab "Fotos" do portal do paciente) usam o Supabase Storage:
+
+1. Corre `supabase/schema.sql` novamente após o `git pull` (a secção 7 cria o bucket
+   `meal-photos` e as políticas de RLS de `storage.objects` — é idempotente, seguro repetir).
+2. Cada foto é comprimida no browser antes do upload (800×800px, JPEG a 70%), por isso o
+   armazenamento cresce devagar — mas fotos de comida não precisam de ficar para sempre, por
+   isso há uma Edge Function que as apaga automaticamente passados 45 dias:
+   ```bash
+   supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<a-tua-service-role-key>   # Project Settings → API
+   supabase functions deploy cleanup-meal-photos
+   ```
+3. Agenda a function para correr 1×/dia no dashboard do Supabase: **Database → Cron Jobs →
+   Create a new cron job → tipo "Supabase Edge Function"** → escolhe `cleanup-meal-photos`.
+   Isto fica-se pelo dashboard (não em SQL committed) para nunca escrever a service-role key
+   em controlo de versão.
+
+Sem o passo 3, a app continua a funcionar normalmente — só o armazenamento deixa de se
+reciclar sozinho, o que só importa a longo prazo (o limite gratuito do Supabase é 1GB).
+
 ## Estrutura do projeto
 
 ```
@@ -58,8 +79,9 @@ public/          site estático servido em produção (Vercel)
   portal.html      portal do paciente (autenticado, read-only)
   css/, js/, img/
 supabase/
-  schema.sql               tabelas + RLS
-  functions/send-invite-email/   Edge Function do convite por email
+  schema.sql               tabelas + RLS + bucket de Storage
+  functions/send-invite-email/     Edge Function do convite por email
+  functions/cleanup-meal-photos/   Edge Function agendada — apaga fotos de refeições >45 dias
 tests/           suite Playwright (ver secção abaixo)
 ```
 

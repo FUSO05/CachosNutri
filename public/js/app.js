@@ -2242,13 +2242,177 @@ function buildDailyAdherenceHTML(activePlan, waterRows, mealRows) {
     </div>`;
 }
 
+// Reel só-leitura das fotos de refeições do cliente (feature 3 da Fase 4) — só os últimos 2
+// dias, para caber na tab Evolução sem a alongar muito; o ícone de calendário ao lado abre o
+// calendário do mês completo (openNutriPhotosCalendarModal), com o mesmo padrão do portal do
+// paciente, para navegar qualquer dia/mês. O nutricionista nunca tira/substitui/apaga fotos,
+// só as vê na mesma story viewer partilhada (showStoryViewer, em shared.js), com canManage:false.
+let _nutriMealPhotosByDate = {};
+let _nutriMealPhotoUrls = {};
+
+async function buildMealPhotosTimelineHTML(client) {
+  const fromDate = localDateStr(-1);
+  const { data, error } = await sb
+    .from('progress_photos')
+    .select('storage_path, meal_index, meal_name, photo_date')
+    .eq('client_id', client.id)
+    .gte('photo_date', fromDate);
+  if (error) console.error('Erro ao carregar fotos de refeições:', error);
+
+  const byDate = {};
+  (data || []).forEach(r => {
+    byDate[r.photo_date] = byDate[r.photo_date] || {};
+    byDate[r.photo_date][r.meal_index] = { storage_path: r.storage_path, meal_name: r.meal_name };
+  });
+  _nutriMealPhotosByDate = byDate;
+  _nutriMealPhotoUrls = data && data.length ? await getSignedPhotoUrls(data.map(r => r.storage_path)) : {};
+
+  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  const daysHTML = dates.length ? dates.map(date => {
+    const dayEntry = byDate[date];
+    const indices = Object.keys(dayEntry).map(Number).sort((a, b) => a - b);
+    const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' });
+    const thumbsHTML = indices.map(i => `
+      <div class="fotos-reel-thumb" onclick="openNutriStoryForDay('${date}')" title="${escHtml(dayEntry[i].meal_name)}">
+        <img src="${_nutriMealPhotoUrls[dayEntry[i].storage_path] || ''}" alt="${escHtml(dayEntry[i].meal_name)}">
+      </div>`).join('');
+    return `
+      <div class="fotos-reel-day">
+        <div class="fotos-reel-day-label">${dateLabel}</div>
+        <div class="fotos-reel-thumbs">${thumbsHTML}</div>
+      </div>`;
+  }).join('') : `<div class="adherence-card-empty">Sem fotos nos últimos 2 dias</div>`;
+
+  return `
+    <div class="daily-adherence fotos-reel">
+      <div class="daily-adherence-title-row">
+        <div class="daily-adherence-title">📷 Fotos das refeições (últimos 2 dias)</div>
+        <button class="btn-icon" onclick="openNutriPhotosCalendarModal()" type="button" title="Ver calendário de fotos">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </button>
+      </div>
+      <div class="fotos-reel-days">${daysHTML}</div>
+    </div>`;
+}
+
+function openNutriStoryForDay(date) {
+  const dayEntry = _nutriMealPhotosByDate[date] || {};
+  const indices = Object.keys(dayEntry).map(Number).sort((a, b) => a - b);
+  if (!indices.length) return;
+  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: _nutriMealPhotoUrls[dayEntry[i].storage_path] }));
+  showStoryViewer(slots, { canManage: false });
+}
+
+// ── Calendário de fotos (modal, abre a partir do ícone junto ao reel acima) ───
+// Mesmo padrão do calendário do portal do paciente (mês a mês, carrega só quando ainda não
+// foi pedido), mas sempre só-leitura — nunca há upload/substituição/apagar deste lado.
+let _nutriCalClientId = null;
+let _nutriCalYear = null;
+let _nutriCalMonth = null;
+let _nutriCalPhotosByDate = {};
+let _nutriCalLoadedMonths = new Set();
+
+async function openNutriPhotosCalendarModal() {
+  const client = currentClient();
+  if (!client) return;
+  _nutriCalClientId = client.id;
+  const now = new Date();
+  _nutriCalYear = now.getFullYear();
+  _nutriCalMonth = now.getMonth();
+  // Semeia com o que o reel já carregou (últimos 2 dias) — evita um pedido a mais se o mês
+  // atual só tiver essas fotos.
+  _nutriCalPhotosByDate = { ..._nutriMealPhotosByDate };
+  _nutriCalLoadedMonths = new Set();
+  document.getElementById('nutriPhotosCalendarModal').style.display = '';
+  await ensureNutriCalMonthLoaded(_nutriCalYear, _nutriCalMonth);
+  renderNutriPhotosCalendarModal();
+}
+
+function closeNutriPhotosCalendarModal() {
+  document.getElementById('nutriPhotosCalendarModal').style.display = 'none';
+}
+
+async function ensureNutriCalMonthLoaded(year, month) {
+  const key = `${year}-${month}`;
+  if (_nutriCalLoadedMonths.has(key)) return;
+  const first = new Date(year, month, 1);
+  const next = new Date(year, month + 1, 1);
+  const { data, error } = await sb
+    .from('progress_photos')
+    .select('storage_path, meal_index, meal_name, photo_date')
+    .eq('client_id', _nutriCalClientId)
+    .gte('photo_date', dateToYmd(first))
+    .lt('photo_date', dateToYmd(next));
+  if (error) { console.error('Erro ao carregar calendário de fotos:', error); return; }
+  (data || []).forEach(r => {
+    _nutriCalPhotosByDate[r.photo_date] = _nutriCalPhotosByDate[r.photo_date] || {};
+    _nutriCalPhotosByDate[r.photo_date][r.meal_index] = { storage_path: r.storage_path, meal_name: r.meal_name };
+  });
+  _nutriCalLoadedMonths.add(key);
+}
+
+async function changeNutriCalMonth(delta) {
+  _nutriCalMonth += delta;
+  if (_nutriCalMonth < 0) { _nutriCalMonth = 11; _nutriCalYear--; }
+  if (_nutriCalMonth > 11) { _nutriCalMonth = 0; _nutriCalYear++; }
+  await ensureNutriCalMonthLoaded(_nutriCalYear, _nutriCalMonth);
+  renderNutriPhotosCalendarModal();
+}
+
+function renderNutriPhotosCalendarModal() {
+  const el = document.getElementById('nutri-cal-modal-body');
+  const firstOfMonth = new Date(_nutriCalYear, _nutriCalMonth, 1);
+  const daysInMonth = new Date(_nutriCalYear, _nutriCalMonth + 1, 0).getDate();
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7;
+  const todayStr = localDateStr();
+
+  let cellsHTML = '';
+  for (let i = 0; i < startWeekday; i++) cellsHTML += `<div class="fotos-cal-cell fotos-cal-cell--empty"></div>`;
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${_nutriCalYear}-${String(_nutriCalMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const hasPhotos = !!(_nutriCalPhotosByDate[dateStr] && Object.keys(_nutriCalPhotosByDate[dateStr]).length);
+    const isToday = dateStr === todayStr;
+    cellsHTML += `
+      <button class="fotos-cal-cell${isToday ? ' fotos-cal-cell--today' : ''}" onclick="openNutriCalendarDayStory('${dateStr}')" type="button">
+        <span class="fotos-cal-cell-num">${day}</span>
+        ${hasPhotos ? '<span class="fotos-cal-cell-dot"></span>' : ''}
+      </button>`;
+  }
+
+  const now = new Date();
+  const isCurrentMonth = _nutriCalYear === now.getFullYear() && _nutriCalMonth === now.getMonth();
+
+  el.innerHTML = `
+    <div class="fotos-cal-header">
+      <button class="portal-day-nav-btn" onclick="changeNutriCalMonth(-1)" type="button" aria-label="Mês anterior">‹</button>
+      <span class="fotos-cal-title">${FOTOS_MONTH_NAMES[_nutriCalMonth]} ${_nutriCalYear}</span>
+      <button class="portal-day-nav-btn" onclick="changeNutriCalMonth(1)" type="button" aria-label="Mês seguinte"${isCurrentMonth ? ' style="visibility:hidden"' : ''}>›</button>
+    </div>
+    <div class="fotos-cal-weekdays"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+    <div class="fotos-cal-grid">${cellsHTML}</div>
+  `;
+}
+
+async function openNutriCalendarDayStory(date) {
+  const dayEntry = _nutriCalPhotosByDate[date] || {};
+  const indices = Object.keys(dayEntry).map(Number).sort((a, b) => a - b);
+  if (!indices.length) return;
+  const paths = indices.map(i => dayEntry[i].storage_path);
+  const urls = await getSignedPhotoUrls(paths);
+  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: urls[dayEntry[i].storage_path] }));
+  showStoryViewer(slots, { canManage: false });
+}
+
 async function renderEvolutionTab() {
   const client = currentClient();
   if (!client) return;
   const container = document.getElementById('evolution-content');
   if (!container) return;
 
-  const adherenceHTML = await buildAdherenceCardsHTML(client);
+  const [adherenceHTML, mealPhotosHTML] = await Promise.all([
+    buildAdherenceCardsHTML(client),
+    buildMealPhotosTimelineHTML(client)
+  ]);
   if (nav.clientId !== client.id) return; // navegou para outro cliente durante o await
 
   const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
@@ -2289,6 +2453,7 @@ async function renderEvolutionTab() {
 
   container.innerHTML = `
     ${adherenceHTML}
+    ${mealPhotosHTML}
     <div class="evolution-header">
       <div class="evolution-title">Histórico de Evolução</div>
       <button class="btn-primary" onclick="registerConsultation()">

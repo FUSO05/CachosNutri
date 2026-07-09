@@ -319,3 +319,67 @@ create policy "paciente gere as suas próprias fotos de progresso"
     select 1 from clients c
     where c.id = progress_photos.client_id and c.paciente_id = auth.uid()
   ));
+
+-- ============================================================
+-- 7. Fotos de refeições (por refeição real do plano) + Storage (Fase 4, feature 3)
+-- ============================================================
+-- progress_photos passa a modelar 1 foto por (cliente, dia, refeição real do plano —
+-- meal_index, tal como em meal_logs). Não há categorias fixas: o nutricionista pode ter
+-- qualquer número de refeições por dia, por isso a foto liga-se ao índice real da refeição,
+-- não a um enum. meal_name fica guardado em duplicado (denormalizado) para a legenda da
+-- timeline continuar correta mesmo que a estrutura do plano mude mais tarde (mesma
+-- imprecisão de meal_index já aceite para meal_logs). Uma nova foto na mesma refeição/dia
+-- substitui a anterior (caminho determinístico no Storage + upsert), por isso a unique
+-- constraint permite usar upsert(...).onConflict(...).
+alter table progress_photos add column if not exists meal_index int;
+alter table progress_photos add column if not exists meal_name text;
+alter table progress_photos add column if not exists photo_date date default current_date;
+
+alter table progress_photos drop constraint if exists progress_photos_meal_category_check;
+alter table progress_photos drop column if exists meal_category;
+
+alter table progress_photos alter column meal_index set not null;
+alter table progress_photos alter column meal_name set not null;
+alter table progress_photos alter column photo_date set not null;
+
+alter table progress_photos drop constraint if exists progress_photos_client_date_category_key;
+alter table progress_photos drop constraint if exists progress_photos_client_date_meal_key;
+alter table progress_photos add constraint progress_photos_client_date_meal_key
+  unique (client_id, photo_date, meal_index);
+
+-- Bucket privado — o acesso é sempre via RLS de storage.objects abaixo, nunca servido publicamente.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('meal-photos', 'meal-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+-- Caminho: {client_id}/{yyyy-mm-dd}/meal-{meal_index}.jpg — storage.foldername(name)[1] = client_id.
+drop policy if exists "paciente gere as suas fotos de refeições" on storage.objects;
+create policy "paciente gere as suas fotos de refeições"
+  on storage.objects for all
+  using (
+    bucket_id = 'meal-photos'
+    and exists (
+      select 1 from clients c
+      where c.id::text = (storage.foldername(name))[1] and c.paciente_id = auth.uid()
+    )
+  )
+  with check (
+    bucket_id = 'meal-photos'
+    and exists (
+      select 1 from clients c
+      where c.id::text = (storage.foldername(name))[1] and c.paciente_id = auth.uid()
+    )
+  );
+
+drop policy if exists "nutricionista vê fotos de refeições dos seus clientes" on storage.objects;
+create policy "nutricionista vê fotos de refeições dos seus clientes"
+  on storage.objects for select
+  using (
+    bucket_id = 'meal-photos'
+    and exists (
+      select 1 from clients c
+      where c.id::text = (storage.foldername(name))[1] and c.nutricionista_id = auth.uid()
+    )
+  );
