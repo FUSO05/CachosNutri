@@ -4,4 +4,13 @@
 const SUPABASE_URL = 'https://heninsfwxfnbyngnqbnw.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_H8ppOByYKnmhgCyeCv2-OQ_lXhLY4OM';
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// login.html/app.html (nutricionista) e portal.html (paciente) carregam este
+// mesmo ficheiro — mas precisam de sessões de autenticação isoladas. Por
+// omissão o supabase-js guarda a sessão numa única chave de localStorage
+// partilhada por todas as páginas da mesma origem (e sincroniza-a entre
+// separadores), por isso iniciar sessão numa área substituía/terminava a
+// sessão da outra se ambas estivessem abertas ao mesmo tempo no mesmo browser.
+const _isPortal = location.pathname.toLowerCase().includes('portal');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storageKey: _isPortal ? 'cachosnutri-paciente-auth' : 'cachosnutri-nutricionista-auth' }
+});

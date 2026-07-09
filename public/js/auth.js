@@ -13,6 +13,10 @@ function switchAuthTab(which) {
   document.getElementById('auth-tab-signup').classList.toggle('active', !isLogin);
   document.getElementById('auth-form-login').style.display  = isLogin ? '' : 'none';
   document.getElementById('auth-form-signup').style.display = isLogin ? 'none' : '';
+  // Limpa sempre o formulário que fica escondido — nunca deixar dados (nome,
+  // email, password) preenchidos num ecrã de autenticação que já não está visível.
+  const hiddenForm = document.getElementById(isLogin ? 'auth-form-signup' : 'auth-form-login');
+  if (hiddenForm) hiddenForm.reset();
 }
 
 function showAuthError(which, msg) {
@@ -41,15 +45,43 @@ async function checkExistingSession() {
   } catch (e) { console.error('Erro ao verificar sessão:', e); }
 }
 
+// Contas de paciente não devem entrar na app do nutricionista (têm o próprio
+// portal, portal.html) — esta app só carrega dados via nutricionista_id, então
+// uma conta de paciente ficaria só a ver um dashboard vazio e confuso.
+//
+// Devolve true (é nutricionista), false (é paciente) ou null (sessão órfã —
+// utilizador autenticado sem linha em "profiles", ex: apagada manualmente).
+async function verificarRoleNutricionista(user) {
+  const { data: prof, error } = await sb.from('profiles').select('role').eq('id', user.id).single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // 0 linhas — sessão órfã
+    return true; // erro transitório (rede, etc.) — não bloqueia
+  }
+  return prof.role !== 'paciente';
+}
+
 async function handleLogin() {
   const email    = document.getElementById('auth-login-email').value.trim();
   const password = document.getElementById('auth-login-password').value;
   showAuthError('login', '');
   const btn = document.getElementById('auth-login-btn');
-  btn.disabled = true; btn.textContent = 'A entrar…';
+  setButtonLoading(btn, true);
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  btn.disabled = false; btn.textContent = 'Entrar';
-  if (error) { showAuthError('login', traduzErroAuth(error.message)); return; }
+  if (error) { setButtonLoading(btn, false); showAuthError('login', traduzErroAuth(error.message)); return; }
+  const isNutri = await verificarRoleNutricionista(data.user);
+  if (isNutri === null) {
+    await sb.auth.signOut();
+    setButtonLoading(btn, false);
+    showAuthError('login', 'Esta conta não tem um perfil válido. Contacte o suporte.');
+    return;
+  }
+  if (!isNutri) {
+    await sb.auth.signOut();
+    setButtonLoading(btn, false);
+    showAuthError('login', 'Esta conta é de paciente. Aceda ao portal do paciente (portal.html) em vez da aplicação principal.');
+    return;
+  }
+  setButtonLoading(btn, false);
   currentUser = data.user;
   await completeAuthFlow();
 }
@@ -60,12 +92,12 @@ async function handleSignup() {
   const password = document.getElementById('auth-signup-password').value;
   showAuthError('signup', '');
   const btn = document.getElementById('auth-signup-btn');
-  btn.disabled = true; btn.textContent = 'A criar conta…';
+  setButtonLoading(btn, true);
   const { data, error } = await sb.auth.signUp({
     email, password,
     options: { data: { role: 'nutricionista', nome } }
   });
-  btn.disabled = false; btn.textContent = 'Criar conta';
+  setButtonLoading(btn, false);
   if (error) { showAuthError('signup', traduzErroAuth(error.message)); return; }
   if (!data.session) {
     showAuthError('signup', 'Conta criada! Verifique o seu e-mail para confirmar antes de entrar.');
@@ -138,5 +170,11 @@ function skipImport() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  const erro = new URLSearchParams(window.location.search).get('erro');
+  if (erro === 'role_paciente') {
+    showAuthError('login', 'Esta conta é de paciente. Aceda ao portal do paciente (portal.html) em vez da aplicação principal.');
+  } else if (erro === 'sessao_invalida') {
+    showAuthError('login', 'A tua sessão já não é válida. Inicia sessão novamente.');
+  }
   checkExistingSession();
 });

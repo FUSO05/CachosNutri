@@ -1,6 +1,7 @@
 // ── CachosNutri app.js ────────────────────────────────────────────────────────
+// DAYS, escHtml, scale, formatDate e renderEvolutionCharts vêm de js/shared.js
+// (partilhado com o portal do paciente, js/portal.js).
 
-const DAYS          = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const DEFAULT_MEALS = ['Pequeno-almoço','Lanche da manhã','Almoço','Lanche da tarde','Jantar'];
 const MEAL_TIMES    = ['07:30','10:30','13:00','16:00','20:00','','',''];
 
@@ -157,6 +158,27 @@ async function fetchProfileName() {
   } catch (e) {}
 }
 
+// Contas de paciente não devem entrar na app do nutricionista (usam portal.html).
+// Devolve true (é nutricionista), false (é paciente) ou null (sessão órfã —
+// utilizador autenticado sem linha em "profiles", ex: apagada manualmente).
+async function verificarRoleNutricionista() {
+  const { data: prof, error } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
+  if (error) {
+    if (error.code === 'PGRST116') return null; // 0 linhas — sessão órfã
+    return true; // erro transitório (rede, etc.) — não bloqueia
+  }
+  return prof.role !== 'paciente';
+}
+
+function confirmLogout() {
+  showConfirm(
+    'Terminar sessão',
+    'Tem a certeza que quer terminar a sessão?',
+    handleLogout,
+    'Terminar sessão'
+  );
+}
+
 async function handleLogout() {
   clearTimeout(_remoteSyncTimer);
   await sb.auth.signOut();
@@ -179,6 +201,17 @@ async function initApp() {
     return;
   }
   currentUser = session.user;
+  const isNutri = await verificarRoleNutricionista();
+  if (isNutri === null) {
+    await sb.auth.signOut();
+    window.location.href = 'login.html?erro=sessao_invalida';
+    return;
+  }
+  if (!isNutri) {
+    await sb.auth.signOut();
+    window.location.href = 'login.html?erro=role_paciente';
+    return;
+  }
   await fetchProfileName();
 
   const pendingImport = sessionStorage.getItem('cachos_pending_import');
@@ -194,28 +227,6 @@ async function initApp() {
   loadProfile();
   updateSidebarUser();
   goToClients();
-}
-
-// ── Confirm modal ─────────────────────────────────────────────────────────────
-let _confirmCallback = null;
-
-function showConfirm(title, message, onConfirm, okLabel) {
-  document.getElementById('confirm-title').textContent   = title;
-  document.getElementById('confirm-message').textContent = message;
-  document.getElementById('confirm-ok-btn').textContent  = okLabel || 'Eliminar';
-  _confirmCallback = onConfirm;
-  document.getElementById('confirmModal').style.display = '';
-}
-
-function closeConfirm() {
-  document.getElementById('confirmModal').style.display = 'none';
-  _confirmCallback = null;
-}
-
-function confirmOk() {
-  const cb = _confirmCallback;
-  closeConfirm();
-  if (cb) cb();
 }
 
 function openProfileModal() {
@@ -289,10 +300,6 @@ function getInitials(nome) {
   const parts = (nome || '?').trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function formatDate(ts) {
-  return new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ── Persistence (Supabase, com localStorage como cache local) ──────────────────
@@ -386,6 +393,7 @@ async function loadAppData() {
   } catch (e) {
     console.error('Erro ao carregar dados do Supabase:', e);
     appData = { version: 1, clients: [] };
+    showAlertModal('Não foi possível carregar os seus dados. Tente novamente mais tarde.');
   }
 }
 
@@ -728,6 +736,7 @@ function filterPatients(query) {
 function renderClientPage(client) {
   loadInfoForm(client.info || {});
   renderPlansList(client);
+  renderInviteSection(client);
 }
 
 function showClientTab(tab) {
@@ -829,6 +838,167 @@ function exportClientDataJson() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// ── Portal do Paciente — convite ────────────────────────────────────────────
+// Sem letras/números ambíguos (0/O, 1/I) para reduzir erros de transcrição manual.
+const INVITE_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function genInviteCode() {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, b => INVITE_CODE_CHARS[b % INVITE_CODE_CHARS.length]).join('');
+}
+
+function buildInviteUrl(code, email, nome) {
+  const base = `${window.location.origin}${window.location.pathname.replace(/app\.html$/, '')}portal.html`;
+  const params = new URLSearchParams({ invite: code });
+  if (email) params.set('email', email);
+  if (nome) params.set('nome', nome);
+  return `${base}?${params.toString()}`;
+}
+
+async function loadInviteLink(clientId) {
+  if (!currentUser) return null;
+  const { data, error } = await sb
+    .from('nutricionista_paciente_links')
+    .select('id, code, email, status, invited_at, accepted_at')
+    .eq('client_id', clientId)
+    .eq('nutricionista_id', currentUser.id)
+    .order('invited_at', { ascending: false })
+    .limit(1);
+  if (error) { console.error('Erro ao carregar estado do convite:', error); return null; }
+  const link = (data && data[0]) || null;
+  if (!link || link.status !== 'active') return link;
+
+  // Um convite pode continuar marcado como "active" mesmo depois de a conta do
+  // paciente ter sido apagada no Supabase (ex: apagada manualmente em
+  // Authentication → Users). Confirma que o cliente continua mesmo associado
+  // antes de mostrar "Associado" — senão trata como se nunca tivesse sido.
+  const { data: clientRow } = await sb.from('clients').select('paciente_id').eq('id', clientId).single();
+  if (!clientRow || !clientRow.paciente_id) {
+    await sb.from('nutricionista_paciente_links').update({ status: 'revoked' }).eq('id', link.id);
+    return null;
+  }
+  return link;
+}
+
+async function renderInviteSection(client) {
+  const el = document.getElementById('invite-section');
+  if (!el) return;
+
+  if (!appData.clients.find(c => c.id === client.id)) {
+    el.innerHTML = `<p class="modal-hint">Guarde a informação do paciente para poder enviar um convite de acesso ao portal.</p>`;
+    return;
+  }
+
+  el.innerHTML = `<p class="modal-hint">A verificar estado do convite…</p>`;
+  const link = await loadInviteLink(client.id);
+  if (nav.clientId !== client.id) return; // utilizador já navegou para outro paciente
+
+  if (!link || link.status === 'revoked') {
+    el.innerHTML = `
+      <div class="invite-row">
+        <input class="field-input" type="email" id="invite-email" placeholder="email@paciente.com" value="${escHtml(client.info?.pEmail || '')}">
+        <button class="btn-primary" onclick="sendInvite('${client.id}')">Enviar convite</button>
+      </div>`;
+    return;
+  }
+
+  if (link.status === 'pending') {
+    const inviteUrl = buildInviteUrl(link.code, link.email, client.nome);
+    el.innerHTML = `
+      <div class="invite-status">
+        <span class="invite-badge invite-badge--pending">Pendente</span>
+        Convite enviado para ${escHtml(link.email || '—')} em ${formatDate(link.invited_at)}
+      </div>
+      <div class="invite-row">
+        <input class="field-input" readonly value="${escHtml(inviteUrl)}" onclick="this.select()">
+        <button class="btn-back" onclick="copyInviteLink('${inviteUrl}')">Copiar link</button>
+      </div>
+      <div class="invite-actions">
+        <button class="btn-back" onclick="resendInvite('${client.id}')">Reenviar email</button>
+        <button class="btn-danger-sm-text" onclick="revokeInvite('${client.id}','${link.id}')">Cancelar convite</button>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="invite-status">
+      <span class="invite-badge invite-badge--active">✓ Associado</span>
+      Paciente com acesso ao portal${link.accepted_at ? ` desde ${formatDate(link.accepted_at)}` : ''}
+    </div>
+    <div class="invite-actions">
+      <button class="btn-danger-sm-text" onclick="revokeInvite('${client.id}','${link.id}')">Remover acesso</button>
+    </div>`;
+}
+
+async function deliverInviteEmail(code, email, clientNome) {
+  try {
+    const { error } = await sb.functions.invoke('send-invite-email', {
+      body: { code, email, clientNome, nutricionistaNome: appProfile.name || 'O seu nutricionista' }
+    });
+    if (error) throw error;
+  } catch (e) {
+    console.error('Erro ao enviar email de convite:', e);
+    showAlertModal('O convite foi criado, mas o email pode não ter sido enviado (confirme se a Edge Function "send-invite-email" já está publicada no Supabase). Pode copiar o link e enviar manualmente.', { type: 'info', title: 'Convite criado' });
+  }
+}
+
+async function sendInvite(clientId) {
+  const emailEl = document.getElementById('invite-email');
+  const email = emailEl?.value.trim();
+  if (!email) return;
+  const client = appData.clients.find(c => c.id === clientId);
+  if (!client || !currentUser) return;
+
+  const code = genInviteCode();
+  const { error } = await sb.from('nutricionista_paciente_links').insert({
+    nutricionista_id: currentUser.id,
+    client_id: clientId,
+    code,
+    email,
+    status: 'pending'
+  });
+  if (error) {
+    console.error('Erro ao criar convite:', error);
+    showAlertModal('Não foi possível criar o convite. Tente novamente.');
+    return;
+  }
+  await deliverInviteEmail(code, email, client.nome);
+  renderInviteSection(client);
+}
+
+async function resendInvite(clientId) {
+  const client = appData.clients.find(c => c.id === clientId);
+  if (!client) return;
+  const link = await loadInviteLink(clientId);
+  if (!link || link.status !== 'pending' || !link.email) return;
+  await deliverInviteEmail(link.code, link.email, client.nome);
+  renderInviteSection(client);
+}
+
+function revokeInvite(clientId, linkId) {
+  showConfirm(
+    'Remover acesso ao portal',
+    'Tem a certeza que quer remover o acesso deste paciente ao portal? Pode voltar a convidar mais tarde.',
+    async () => {
+      const { error: linkErr } = await sb.from('nutricionista_paciente_links').update({ status: 'revoked' }).eq('id', linkId);
+      const { error: clientErr } = await sb.from('clients').update({ paciente_id: null }).eq('id', clientId);
+      if (linkErr || clientErr) {
+        console.error('Erro ao remover acesso ao portal:', linkErr || clientErr);
+        showAlertModal('Não foi possível remover o acesso. Tente novamente.');
+        return;
+      }
+      const client = appData.clients.find(c => c.id === clientId);
+      if (client) renderInviteSection(client);
+    },
+    'Remover'
+  );
+}
+
+function copyInviteLink(url) {
+  navigator.clipboard?.writeText(url).catch(() => {});
 }
 
 // ── Plans CRUD ────────────────────────────────────────────────────────────────
@@ -1094,17 +1264,6 @@ function renderPlanDetail(plan, client) {
 }
 
 // ── Nutritional helpers ───────────────────────────────────────────────────────
-function scale(food, qty) {
-  const f = qty / 100;
-  return {
-    kcal: +(food.kcal * f).toFixed(1),
-    prot: +(food.prot * f).toFixed(1),
-    hc:   +(food.hc   * f).toFixed(1),
-    lip:  +(food.lip  * f).toFixed(1),
-    fib:  +(food.fib  * f).toFixed(1),
-  };
-}
-
 function dayTotals(dayIdx) {
   let tot = { kcal: 0, prot: 0, hc: 0, lip: 0 };
   state.days[dayIdx].meals.forEach(meal => {
@@ -1513,7 +1672,7 @@ function closeSaveTemplateModal() {
 
 function saveCurrentAsTemplate() {
   const label = document.getElementById('st-label').value.trim();
-  if (!label) { alert('Dá um nome ao template.'); return; }
+  if (!label) { showAlertModal('Dá um nome ao template.', { title: 'Nome em falta' }); return; }
   const desc  = document.getElementById('st-desc').value.trim();
   const day   = state.days[state.activeDay];
   if (!day) return;
@@ -1911,14 +2070,7 @@ function updateTMB() {
   }
 }
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 // ── Evolução do Paciente ──────────────────────────────────────────────────────
-let evolutionCharts = [];
-
 function currentClient() {
   return appData.clients.find(c => c.id === nav.clientId) || null;
 }
@@ -1961,11 +2113,143 @@ function deleteConsultation(consultationId) {
   );
 }
 
-function renderEvolutionTab() {
+// Agrega os registos de água e refeições dos últimos 7 dias do cliente em cards de
+// adesão, mostrados no topo da tab Evolução. A meta de água e a estrutura de refeições
+// vêm do plano mais recente do cliente (nenhuma das tabelas de log fica presa a um plano
+// específico de forma obrigatória — plan_id em meal_logs é só informativo).
+async function buildAdherenceCardsHTML(client) {
+  const [start7, end7] = [localDayRangeISO(-6)[0], localDayRangeISO(0)[1]];
+
+  const [{ data: waterRows, error: waterErr }, { data: mealRows, error: mealErr }] = await Promise.all([
+    sb.from('daily_water_logs').select('amount_ml, logged_at').eq('client_id', client.id).gte('logged_at', start7).lt('logged_at', end7),
+    sb.from('meal_logs').select('meal_index, status, note, logged_at').eq('client_id', client.id).gte('logged_at', start7).lt('logged_at', end7)
+  ]);
+  if (waterErr) console.error('Erro ao carregar adesão de água:', waterErr);
+  if (mealErr) console.error('Erro ao carregar adesão de refeições:', mealErr);
+
+  const activePlan = client.plans && client.plans.length
+    ? client.plans.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
+    : null;
+
+  const waterByDay = {};
+  (waterRows || []).forEach(r => {
+    const day = new Date(r.logged_at).toDateString();
+    waterByDay[day] = (waterByDay[day] || 0) + r.amount_ml;
+  });
+  const waterDays = Object.values(waterByDay);
+  const waterAvg = waterDays.length ? Math.round(waterDays.reduce((a, b) => a + b, 0) / waterDays.length) : 0;
+  const target = activePlan?.waterMl;
+
+  const waterCard = `
+    <div class="adherence-card">
+      <div class="adherence-card-title">💧 Água — média últimos 7 dias</div>
+      ${waterDays.length
+        ? `<div class="adherence-card-value">${waterAvg} ml${target ? ` <span class="adherence-card-target">/ ${target} ml meta</span>` : ''}</div>`
+        : `<div class="adherence-card-empty">Sem registos de água nos últimos 7 dias</div>`}
+    </div>`;
+
+  // Total de "slots" possíveis (refeições com alimentos) na janela de 7 dias: qualquer
+  // janela de 7 dias consecutivos contém cada dia da semana exatamente uma vez, por isso
+  // basta somar os slots-com-alimentos de cada dia do plano atual (sem multiplicar por 7).
+  const totalSlots = activePlan?.days
+    ? activePlan.days.reduce((sum, d) => sum + (d.meals || []).filter(m => m.foods && m.foods.length).length, 0)
+    : 0;
+
+  const mealCounts = { done: 0, skipped: 0, modified: 0 };
+  (mealRows || []).forEach(r => { if (mealCounts[r.status] != null) mealCounts[r.status]++; });
+  const donePct = totalSlots ? Math.round((mealCounts.done / totalSlots) * 100) : 0;
+
+  const mealCard = `
+    <div class="adherence-card">
+      <div class="adherence-card-title">🍽️ Refeições — últimos 7 dias</div>
+      ${totalSlots
+        ? `<div class="adherence-card-value">${donePct}% feitas <span class="adherence-card-target">(${mealCounts.done}/${totalSlots})</span></div>
+           <div class="adherence-card-empty">${mealCounts.skipped} saltada(s) · ${mealCounts.modified} modificada(s)</div>`
+        : `<div class="adherence-card-empty">Sem plano com refeições definidas</div>`}
+    </div>`;
+
+  const dailyHTML = buildDailyAdherenceHTML(activePlan, waterRows || [], mealRows || []);
+
+  return `<div class="adherence-cards">${waterCard}${mealCard}</div>${dailyHTML}`;
+}
+
+// Notas de refeições mostradas via "Ver detalhes" (showMealNoteByIndex) — guardadas num
+// array em vez de embutidas no onclick, para nunca ter de escapar texto livre do paciente
+// dentro de um atributo HTML.
+let _dailyMealNotes = [];
+
+function showMealNoteByIndex(i) {
+  const entry = _dailyMealNotes[i];
+  if (!entry) return;
+  showAlertModal(entry.note, { type: 'info', title: `Nota — ${entry.mealName}` });
+}
+
+// Quebra a adesão dos últimos 7 dias dia a dia (água + refeições + notas), ao contrário
+// dos cards acima que só mostram agregados da semana. Usa sempre a estrutura de
+// refeições do plano atual para cada dia da semana (mesma imprecisão aceite para o
+// card semanal, caso o plano tenha mudado a meio da janela).
+function buildDailyAdherenceHTML(activePlan, waterRows, mealRows) {
+  _dailyMealNotes = [];
+  if (!activePlan || !activePlan.days) {
+    return `<div class="daily-adherence"><div class="daily-adherence-title">Adesão diária</div><div class="adherence-card-empty">Sem plano definido</div></div>`;
+  }
+
+  const rowsHTML = [];
+  for (let offset = 0; offset < 7; offset++) {
+    const [start, end] = localDayRangeISO(-offset);
+    const dateObj = new Date(start);
+    const dayIndex = (dateObj.getDay() + 6) % 7;
+
+    const waterTotal = waterRows
+      .filter(r => r.logged_at >= start && r.logged_at < end)
+      .reduce((s, r) => s + r.amount_ml, 0);
+
+    const dayMealsInPlan = (activePlan.days[dayIndex]?.meals || [])
+      .map((m, idx) => ({ meal: m, idx }))
+      .filter(x => x.meal.foods && x.meal.foods.length);
+
+    const logsForDay = mealRows.filter(r => r.logged_at >= start && r.logged_at < end);
+    const logByIdx = {};
+    logsForDay.forEach(r => { logByIdx[r.meal_index] = r; });
+
+    const mealChips = dayMealsInPlan.map(({ meal, idx }) => {
+      const log = logByIdx[idx];
+      const statusClass = !log ? 'daily-meal-chip--none'
+        : log.status === 'done' ? 'daily-meal-chip--done'
+        : log.status === 'skipped' ? 'daily-meal-chip--skipped'
+        : 'daily-meal-chip--modified';
+      let noteBtn = '';
+      if (log?.note) {
+        const noteIdx = _dailyMealNotes.push({ mealName: meal.nome, note: log.note }) - 1;
+        noteBtn = `<button class="daily-note-btn" onclick="showMealNoteByIndex(${noteIdx})" type="button">Ver detalhes</button>`;
+      }
+      return `<span class="daily-meal-chip ${statusClass}">${escHtml(meal.nome)}${noteBtn}</span>`;
+    }).join('');
+
+    const dateLabel = dateObj.toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' });
+    rowsHTML.push(`
+      <div class="daily-adherence-row">
+        <div class="daily-adherence-date">${dateLabel}</div>
+        <div class="daily-adherence-water">💧 ${waterTotal} ml</div>
+        <div class="daily-adherence-meals">${mealChips || '<span class="adherence-card-empty">Sem refeições no plano</span>'}</div>
+      </div>`);
+  }
+
+  return `
+    <div class="daily-adherence">
+      <div class="daily-adherence-title">Adesão diária (últimos 7 dias)</div>
+      ${rowsHTML.join('')}
+    </div>`;
+}
+
+async function renderEvolutionTab() {
   const client = currentClient();
   if (!client) return;
   const container = document.getElementById('evolution-content');
   if (!container) return;
+
+  const adherenceHTML = await buildAdherenceCardsHTML(client);
+  if (nav.clientId !== client.id) return; // navegou para outro cliente durante o await
 
   const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
   const hasData = consultations.length > 0;
@@ -2004,6 +2288,7 @@ function renderEvolutionTab() {
       </div>`;
 
   container.innerHTML = `
+    ${adherenceHTML}
     <div class="evolution-header">
       <div class="evolution-title">Histórico de Evolução</div>
       <button class="btn-primary" onclick="registerConsultation()">
@@ -2020,57 +2305,6 @@ function renderEvolutionTab() {
   `;
 
   if (hasCharts) renderEvolutionCharts(consultations);
-}
-
-function renderEvolutionCharts(consultations) {
-  evolutionCharts.forEach(c => c.destroy());
-  evolutionCharts = [];
-
-  const labels = consultations.map(c =>
-    new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })
-  );
-
-  const chartDefs = [
-    { id: 'chartPeso',    label: 'Peso (kg)',       key: 'peso',       color: '#27865a' },
-    { id: 'chartGordura', label: '% Massa Gorda',   key: 'massaGorda', color: '#f59e0b' },
-    { id: 'chartIMC',     label: 'IMC',             key: 'imc',        color: '#4285f4' },
-  ];
-
-  chartDefs.forEach(({ id, label, key, color }) => {
-    const canvas = document.getElementById(id);
-    if (!canvas) return;
-    const data = consultations.map(c => c[key]);
-    if (data.every(v => v == null)) return;
-
-    const chart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels,
-        datasets: [{
-          label,
-          data,
-          borderColor: color,
-          backgroundColor: color + '18',
-          borderWidth: 2.5,
-          pointRadius: 4,
-          pointBackgroundColor: color,
-          tension: 0.35,
-          fill: true,
-          spanGaps: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } }
-        }
-      }
-    });
-    evolutionCharts.push(chart);
-  });
 }
 
 // ── Exportação PDF ────────────────────────────────────────────────────────────

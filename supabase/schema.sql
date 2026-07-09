@@ -15,6 +15,7 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
+drop policy if exists "utilizador vê e edita o seu próprio perfil" on profiles;
 create policy "utilizador vê e edita o seu próprio perfil"
   on profiles for all
   using (id = auth.uid())
@@ -55,14 +56,72 @@ create table if not exists nutricionista_paciente_links (
 
 alter table nutricionista_paciente_links enable row level security;
 
+drop policy if exists "nutricionista gere os seus próprios convites" on nutricionista_paciente_links;
 create policy "nutricionista gere os seus próprios convites"
   on nutricionista_paciente_links for all
   using (nutricionista_id = auth.uid())
   with check (nutricionista_id = auth.uid());
 
+drop policy if exists "paciente vê convites endereçados a si" on nutricionista_paciente_links;
 create policy "paciente vê convites endereçados a si"
   on nutricionista_paciente_links for select
   using (paciente_id = auth.uid());
+
+-- Colunas adicionadas na Fase 3: cada convite refere-se a um cliente específico
+-- (client_id) e usa um código curto partilhável (code) para o paciente reivindicar
+-- o acesso via accept_invite(), abaixo.
+alter table nutricionista_paciente_links add column if not exists client_id uuid references clients(id) on delete cascade;
+alter table nutricionista_paciente_links add column if not exists code text;
+alter table nutricionista_paciente_links add column if not exists email text;
+
+create unique index if not exists nutricionista_paciente_links_code_idx
+  on nutricionista_paciente_links(code) where code is not null;
+
+-- ============================================================
+-- 2b. accept_invite — paciente reivindica um convite pelo código
+-- ============================================================
+-- security definer: o paciente autenticado não tem (nem deve ter) permissão RLS
+-- direta para editar nutricionista_paciente_links ou clients de outra pessoa. Esta
+-- function corre com privilégios elevados mas só age sobre o link cujo código
+-- corresponde exatamente ao fornecido, e só escreve auth.uid() do próprio chamador.
+create or replace function accept_invite(p_code text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_link nutricionista_paciente_links%rowtype;
+begin
+  if p_code is null or length(trim(p_code)) = 0 then
+    raise exception 'Código de convite inválido.';
+  end if;
+
+  -- "for update" bloqueia a linha até esta transação terminar — se duas
+  -- pessoas submeterem o mesmo código ao mesmo tempo, a segunda espera pela
+  -- primeira e, ao acordar, já não encontra o convite como "pending" (a
+  -- condição where deixa de bater certo), garantindo uso único mesmo em corrida.
+  select * into v_link
+  from nutricionista_paciente_links
+  where code = upper(trim(p_code)) and status = 'pending'
+  limit 1
+  for update;
+
+  if not found then
+    raise exception 'Convite inválido ou já utilizado.';
+  end if;
+
+  update nutricionista_paciente_links
+    set paciente_id = auth.uid(), status = 'active', accepted_at = now()
+    where id = v_link.id;
+
+  update clients set paciente_id = auth.uid() where id = v_link.client_id;
+
+  return json_build_object('ok', true, 'client_id', v_link.client_id, 'nutricionista_id', v_link.nutricionista_id);
+end;
+$$;
+
+grant execute on function accept_invite(text) to authenticated;
 
 -- ============================================================
 -- 3. clients — substitui appData.clients[] do localStorage
@@ -78,11 +137,13 @@ create table if not exists clients (
 
 alter table clients enable row level security;
 
+drop policy if exists "nutricionista gere os seus próprios clientes" on clients;
 create policy "nutricionista gere os seus próprios clientes"
   on clients for all
   using (nutricionista_id = auth.uid())
   with check (nutricionista_id = auth.uid());
 
+drop policy if exists "paciente vê o seu próprio registo de cliente" on clients;
 create policy "paciente vê o seu próprio registo de cliente"
   on clients for select
   using (paciente_id = auth.uid());
@@ -102,6 +163,7 @@ create table if not exists plans (
 
 alter table plans enable row level security;
 
+drop policy if exists "nutricionista gere planos dos seus clientes" on plans;
 create policy "nutricionista gere planos dos seus clientes"
   on plans for all
   using (exists (
@@ -113,6 +175,7 @@ create policy "nutricionista gere planos dos seus clientes"
     where c.id = plans.client_id and c.nutricionista_id = auth.uid()
   ));
 
+drop policy if exists "paciente vê os seus próprios planos" on plans;
 create policy "paciente vê os seus próprios planos"
   on plans for select
   using (exists (
@@ -142,6 +205,7 @@ create table if not exists consultations (
 
 alter table consultations enable row level security;
 
+drop policy if exists "nutricionista gere consultas dos seus clientes" on consultations;
 create policy "nutricionista gere consultas dos seus clientes"
   on consultations for all
   using (exists (
@@ -153,6 +217,7 @@ create policy "nutricionista gere consultas dos seus clientes"
     where c.id = consultations.client_id and c.nutricionista_id = auth.uid()
   ));
 
+drop policy if exists "paciente vê as suas próprias consultas" on consultations;
 create policy "paciente vê as suas próprias consultas"
   on consultations for select
   using (exists (
@@ -172,6 +237,7 @@ create table if not exists daily_water_logs (
 
 alter table daily_water_logs enable row level security;
 
+drop policy if exists "nutricionista vê logs de água dos seus clientes" on daily_water_logs;
 create policy "nutricionista vê logs de água dos seus clientes"
   on daily_water_logs for select
   using (exists (
@@ -179,6 +245,7 @@ create policy "nutricionista vê logs de água dos seus clientes"
     where c.id = daily_water_logs.client_id and c.nutricionista_id = auth.uid()
   ));
 
+drop policy if exists "paciente regista e vê a sua própria água" on daily_water_logs;
 create policy "paciente regista e vê a sua própria água"
   on daily_water_logs for all
   using (exists (
@@ -203,6 +270,7 @@ create table if not exists meal_logs (
 
 alter table meal_logs enable row level security;
 
+drop policy if exists "nutricionista vê logs de refeições dos seus clientes" on meal_logs;
 create policy "nutricionista vê logs de refeições dos seus clientes"
   on meal_logs for select
   using (exists (
@@ -210,6 +278,7 @@ create policy "nutricionista vê logs de refeições dos seus clientes"
     where c.id = meal_logs.client_id and c.nutricionista_id = auth.uid()
   ));
 
+drop policy if exists "paciente regista e vê as suas próprias refeições" on meal_logs;
 create policy "paciente regista e vê as suas próprias refeições"
   on meal_logs for all
   using (exists (
@@ -231,6 +300,7 @@ create table if not exists progress_photos (
 
 alter table progress_photos enable row level security;
 
+drop policy if exists "nutricionista vê fotos de progresso dos seus clientes" on progress_photos;
 create policy "nutricionista vê fotos de progresso dos seus clientes"
   on progress_photos for select
   using (exists (
@@ -238,6 +308,7 @@ create policy "nutricionista vê fotos de progresso dos seus clientes"
     where c.id = progress_photos.client_id and c.nutricionista_id = auth.uid()
   ));
 
+drop policy if exists "paciente gere as suas próprias fotos de progresso" on progress_photos;
 create policy "paciente gere as suas próprias fotos de progresso"
   on progress_photos for all
   using (exists (

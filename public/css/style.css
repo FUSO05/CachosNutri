@@ -113,19 +113,7 @@ body {
   background: radial-gradient(circle, rgba(124,77,214,.20), transparent 70%);
   left: 50%; margin-left: -230px;
 }
-.lp > *:not(.lp-glow-3):not(.lp-cursor-glow) { position: relative; z-index: 1; }
-
-/* Glow que segue o rato pela página inteira (não só dentro dos cards) —
-   camada fixa, sem cor berrante, sem bloquear cliques. */
-.lp-cursor-glow {
-  position: fixed;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  background: radial-gradient(60px circle at var(--px, 50%) var(--py, 50%), rgba(21, 93, 59, 0.24), transparent 90%);
-  opacity: 0;
-  transition: opacity .4s ease;
-}
+.lp > *:not(.lp-glow-3):not(.lp-nav) { position: relative; z-index: 1; }
 
 /* Glow minimalista que segue o rato dentro do card (verde da marca, sem cores
    berrantes) — posição vem de --mx/--my, definidas via JS em app.js inline. */
@@ -161,7 +149,63 @@ body {
 .lp-nav-links { display: flex; align-items: center; gap: 28px; margin: 0 auto; }
 .lp-nav-links a { font-size: 13.5px; font-weight: 600; color: var(--gray-600); text-decoration: none; transition: color .15s; }
 .lp-nav-links a:hover { color: var(--green-dark); }
+
+/* Funcionalidades / Como funciona: linha animada que "desenha" da esquerda para a direita */
+.lp-nav-link { position: relative; padding-bottom: 3px; }
+.lp-nav-link:not(.lp-nav-link--boxed)::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: -1px;
+  width: 100%; height: 2px;
+  background: var(--green);
+  border-radius: 2px;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .25s ease;
+}
+.lp-nav-link:not(.lp-nav-link--boxed):hover::after { transform: scaleX(1); }
+
+/* Área do Paciente: caixa que aparece à volta + seta que desliza para dentro —
+   transição mais lenta e com easing suave (em vez de "ease" linear-ish) para não
+   parecer que a caixa/seta aparecem de repente. */
+/* Seletor qualificado com "a" para ganhar de propósito a ".lp-nav-links a" (que também
+   define "transition", só para color) — como transition é shorthand, a regra com mais
+   especificidade substituía a nossa por completo, por isso a duração aqui não tinha
+   efeito nenhum antes desta correção. */
+.lp-nav-links a.lp-nav-link--boxed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: -6px -12px;
+  border-radius: 999px;
+  border: 1.5px solid transparent;
+  background-color: transparent;
+  transition: color .15s, border-color .8s cubic-bezier(.25,.1,.25,1), background-color .8s cubic-bezier(.25,.1,.25,1);
+}
+.lp-nav-link--boxed:hover { border-color: var(--green); background-color: var(--green-light); }
+.lp-nav-link-arrow {
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.lp-nav-link--boxed:hover .lp-nav-link-arrow { opacity: 1; transform: translateX(0); }
+.lp-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px; height: 36px;
+  border: none;
+  background: none;
+  color: var(--gray-700);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
 .lp-nav-cta {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
   background: rgba(39,134,90,.75);
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
@@ -176,6 +220,19 @@ body {
   box-shadow: 0 4px 16px rgba(39,134,90,.35), inset 0 1px 0 rgba(255,255,255,.3);
   transform: translateY(-1px);
 }
+/* Hover troca o texto pela seta no mesmo sítio — o texto fica em fluxo normal (define
+   a largura do botão, que assim nunca muda) e a seta fica centrada por cima em
+   absolute, por isso não há qualquer alteração de layout ao trocar. */
+.lp-nav-cta-text { transition: opacity .18s ease, transform .18s ease; }
+.lp-nav-cta-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(.6);
+  opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+}
+.lp-nav-cta:hover .lp-nav-cta-text { opacity: 0; transform: scale(.6); }
+.lp-nav-cta:hover .lp-nav-cta-icon { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 
 .lp-hero {
   display: flex; align-items: center; gap: 56px;
@@ -922,6 +979,66 @@ body {
   transform: translateY(-1px);
 }
 
+/* ── ALERT MODAL (substitui alert() nativo e erros silenciosos) ── */
+.alert-box {
+  background: white;
+  border-radius: 20px;
+  width: 380px;
+  max-width: 92vw;
+  padding: 36px 32px 28px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.18);
+  text-align: center;
+  position: relative;
+  animation: confirm-pop .18s cubic-bezier(.34,1.56,.64,1);
+}
+.alert-close { position: absolute; top: 14px; right: 14px; }
+.alert-icon-wrap {
+  width: 68px; height: 68px;
+  border-radius: 50%;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  color: #dc2626;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.alert-icon-wrap--info {
+  background: var(--green-light);
+  border-color: #b8ddc8;
+  color: var(--green);
+}
+.alert-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 10px;
+}
+.alert-message {
+  font-size: 13px;
+  color: var(--gray-500);
+  line-height: 1.65;
+  margin: 0 0 28px;
+  white-space: pre-line;
+}
+.alert-btn-ok {
+  width: 100%;
+  padding: 10px 0;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s;
+  box-shadow: 0 2px 10px rgba(39,134,90,.3);
+}
+.alert-btn-ok:hover {
+  background: linear-gradient(135deg, #163e28, var(--green-dark));
+  box-shadow: 0 4px 16px rgba(39,134,90,.4);
+  transform: translateY(-1px);
+}
+
 /* ── EVOLUÇÃO ── */
 #pg-client.evolution-active {
   overflow: hidden;
@@ -931,22 +1048,14 @@ body {
 #pg-client.evolution-active #ct-evolution-view {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-#pg-client.evolution-active .evolution-wrap {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 #pg-client.evolution-active .consultations-list {
-  flex: 1;
-  min-height: 0;
+  max-height: 50vh;
   overflow-y: auto;
-  padding-bottom: 24px;
+  padding-bottom: 4px;
 }
 .evolution-wrap {
   padding: 24px 28px 0;
@@ -955,6 +1064,92 @@ body {
   width: 100%;
   box-sizing: border-box;
 }
+.adherence-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.adherence-card {
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.adherence-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  margin-bottom: 6px;
+}
+.adherence-card-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+.adherence-card-target {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gray-400);
+}
+.adherence-card-empty {
+  font-size: 12.5px;
+  color: var(--gray-400);
+}
+
+.daily-adherence {
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  margin-bottom: 24px;
+}
+.daily-adherence-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 10px;
+}
+.daily-adherence-row {
+  display: grid;
+  grid-template-columns: 110px 90px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--gray-100);
+}
+.daily-adherence-row:first-of-type { border-top: none; }
+.daily-adherence-date { font-size: 12px; font-weight: 600; color: var(--gray-700); text-transform: capitalize; }
+.daily-adherence-water { font-size: 12px; color: #1e6091; white-space: nowrap; }
+.daily-adherence-meals { display: flex; flex-wrap: wrap; gap: 6px; }
+.daily-meal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+.daily-meal-chip--done { background: var(--green-light); color: var(--green-dark); }
+.daily-meal-chip--skipped { background: #fef2f2; color: #b91c1c; }
+.daily-meal-chip--modified { background: #fef3c7; color: #b45309; }
+.daily-note-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 .evolution-header {
   display: flex;
   align-items: center;
@@ -1910,12 +2105,53 @@ body {
 }
 .consent-check-label input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
 .consent-timestamp { font-size: 11px; color: var(--gray-400); margin: 6px 0 0 23px; }
+
+/* Portal do Paciente — convite (ct-info-view) */
+.invite-row { display: flex; gap: 8px; align-items: center; }
+.invite-row .field-input { flex: 1; }
+.invite-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--gray-600, #4b5563);
+  margin-bottom: 10px;
+}
+.invite-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.invite-badge--pending { background: #fef3c7; color: #b45309; }
+.invite-badge--active   { background: #dcfce7; color: #15803d; }
+.invite-actions { display: flex; gap: 14px; margin-top: 10px; }
+.btn-danger-sm-text {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--red);
+  cursor: pointer;
+}
+.btn-danger-sm-text:hover { text-decoration: underline; }
 .field-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: .4px;
+}
+.modal-hint {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gray-500);
+  margin: 0 0 14px;
+  text-align: center; 
 }
 .field-input, .field-select {
   width: 100%;
@@ -2567,6 +2803,52 @@ body {
 .auth-error.visible { display: block; }
 .auth-submit { width: 100%; justify-content: center; margin-top: 4px; }
 .auth-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ── Botão com spinner (login, registo, etc.) ── */
+.btn-loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn-loading svg { visibility: hidden; }
+.btn-spinner {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 15px; height: 15px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin .6s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.action-block-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  cursor: default;
+  background: transparent;
+}
+
+/* ── Toast (confirmação/erro rápido, não-bloqueante) ── */
+/* Desktop: canto inferior direito. Mobile (ver @media 480px): canto inferior centrado. */
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  transform: translateY(16px);
+  background: var(--gray-800);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+  z-index: 10000;
+  max-width: min(90vw, 360px);
+  text-align: center;
+}
+.toast--visible { opacity: 1; transform: translateY(0); }
+.toast--error { background: #b91c1c; }
 .auth-import-notice {
   margin-top: 18px;
   padding-top: 16px;
@@ -2651,7 +2933,27 @@ body {
 
   /* ── Landing page pública ── */
   .lp-nav { padding: 14px 20px; }
-  .lp-nav-links { display: none; }
+  .lp-nav-toggle { display: flex; }
+  .lp-nav-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    position: absolute;
+    top: 100%; left: 0; right: 0;
+    margin: 0;
+    background: white;
+    border-bottom: 1px solid var(--gray-100);
+    box-shadow: 0 12px 24px rgba(0,0,0,.08);
+    padding: 8px 20px 14px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .25s ease, opacity .2s ease, padding .25s ease;
+  }
+  .lp-nav-links a { width: 100%; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+  .lp-nav-links a:last-child { border-bottom: none; }
+  .lp-nav-links--open { max-height: 260px; opacity: 1; }
   .lp-hero { flex-direction: column; padding: 40px 20px 56px; gap: 28px; }
   .lp-hero-text h1 { font-size: 28px; }
   .lp-hero-text p { max-width: 100%; }
@@ -2795,4 +3097,141 @@ body {
   .lp-stats { grid-template-columns: 1fr; }
   .lp-gallery { grid-template-columns: 1fr; }
   .modal-box { width: 100%; }
+  .toast { left: 50%; right: auto; transform: translate(-50%, 16px); }
+  .toast--visible { transform: translate(-50%, 0); }
+  .daily-adherence-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PORTAL DO PACIENTE (portal.html)
+   ══════════════════════════════════════════════════════════════════════════ */
+.portal-shell { min-height: 100vh; background: var(--bg); }
+.portal-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 1px solid rgba(39,134,90,.10);
+}
+.portal-topbar-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--green-dark); font-size: 15px; }
+.portal-brand-img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
+.portal-topbar-user { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--gray-600); }
+
+.portal-container { max-width: 640px; margin: 0 auto; padding: 20px 16px 60px; }
+.portal-client-name { font-size: 18px; font-weight: 700; color: var(--gray-800); margin-bottom: 14px; }
+
+.portal-tabs.client-tabs { position: static; padding: 0; margin-bottom: 18px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--gray-100); background: white; }
+.portal-tabs .client-tab { flex: 1; justify-content: center; }
+
+.portal-day-nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; }
+.portal-day-label { font-size: 15px; font-weight: 700; color: var(--gray-800); min-width: 90px; text-align: center; }
+
+.portal-day-totals {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--gray-600);
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.portal-water-widget {
+  background: #eaf6fc;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.portal-water-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: #1e6091;
+  margin-bottom: 8px;
+}
+.portal-water-pct { font-weight: 700; }
+.portal-water-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  background: rgba(30,96,145,.14);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.portal-water-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4fa9d6, #1e6091);
+  border-radius: 5px;
+  transition: width .3s ease;
+}
+.portal-water-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.portal-water-custom-input {
+  width: 70px;
+  flex: 0 0 70px;
+}
+
+.portal-meals { display: flex; flex-direction: column; gap: 12px; }
+.portal-meal-card {
+  background: white;
+  border: 1px solid rgba(39,134,90,.10);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: background .2s, border-color .2s;
+}
+.portal-meal-card--done { background: var(--green-light); border-color: rgba(39,134,90,.25); }
+.portal-meal-card--skipped { background: #fef2f2; border-color: #fecaca; }
+.portal-meal-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.portal-meal-name { font-size: 13.5px; font-weight: 700; color: var(--gray-800); }
+.portal-meal-time { font-size: 11.5px; color: var(--gray-400); }
+.portal-food-rows { display: flex; flex-direction: column; gap: 6px; }
+.portal-food-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--gray-600);
+  padding: 4px 0;
+  border-top: 1px solid var(--gray-100);
+}
+.portal-food-row:first-child { border-top: none; }
+.portal-food-name { flex: 1; color: var(--gray-700); }
+.portal-food-qty { color: var(--gray-400); }
+.portal-food-kcal { font-weight: 600; color: var(--green-dark); white-space: nowrap; }
+
+.portal-meal-status { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100); }
+.portal-meal-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  background: white;
+  color: var(--gray-600);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.portal-meal-btn--done:hover { border-color: var(--green); color: var(--green-dark); }
+.portal-meal-btn--done.active { background: var(--green); border-color: var(--green); color: white; }
+.portal-meal-btn--skip:hover { border-color: #dc2626; color: #b91c1c; }
+.portal-meal-btn--skip.active { background: #dc2626; border-color: #dc2626; color: white; }
+.portal-meal-btn--note:hover { border-color: #d97706; color: #b45309; }
+.portal-meal-btn--note.active { background: #fef3c7; border-color: #d97706; color: #b45309; }
+
+@media (max-width: 480px) {
+  .portal-container { padding: 16px 12px 48px; }
+  .portal-topbar { padding: 10px 14px; }
 }

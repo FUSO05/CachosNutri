@@ -10,6 +10,7 @@ Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INS
 - **Macros por porção** — ajuste de gramas com recálculo automático
 - **Piechart** sempre visível com totais do dia (kcal, proteína, HC, lípidos)
 - **Conta + sincronização (Supabase)** — dados de pacientes/planos/consultas guardados na cloud, com login por nutricionista e isolamento por RLS
+- **Portal do Paciente** (`public/portal.html`) — convite por email (nutricionista → paciente), vista read-only do plano do dia e da evolução do próprio paciente
 - **Responsivo** — utilizável em telemóvel/tablet, com menu em drawer
 - **Consentimento informado + exportação RGPD** — registo de consentimento por paciente e exportação de todos os dados em JSON
 - **Impressão** — layout limpo para imprimir ou exportar para PDF, com nome e nº de cédula profissional do nutricionista
@@ -23,11 +24,42 @@ A app fala diretamente com o Supabase a partir do browser (sem servidor próprio
 3. Em `public/js/supabase-client.js`, atualiza `SUPABASE_URL` e `SUPABASE_ANON_KEY` com as chaves do teu projeto (Project Settings → API).
 4. Abre `public/index.html` — não precisa de build nem de servidor para correr.
 
+### Convite por email do Portal do Paciente
+
+O envio do email de convite (`public/js/app.js`: `sendInvite`/`resendInvite`) usa uma
+Edge Function do Supabase que fala com a [Resend](https://resend.com):
+
+1. Cria uma conta em [resend.com](https://resend.com) e gera uma API key.
+2. Instala a [Supabase CLI](https://supabase.com/docs/guides/cli) e faz login (`supabase login`).
+3. Configura os secrets da function (a partir da raiz do projeto):
+   ```bash
+   supabase link --project-ref <o-teu-project-ref>
+   supabase secrets set RESEND_API_KEY=re_xxxxxxxx
+   supabase secrets set PORTAL_URL=https://o-teu-dominio.vercel.app
+   # opcional — por omissão usa o domínio de teste da Resend:
+   supabase secrets set INVITE_FROM_EMAIL="CachosNutri <onboarding@resend.dev>"
+   ```
+4. Publica a function:
+   ```bash
+   supabase functions deploy send-invite-email
+   ```
+
+Sem isto configurado, o convite continua a ser criado normalmente (código + link ficam
+visíveis na ficha do paciente para copiar e enviar manualmente) — só o envio automático
+por email é que falha, com aviso na interface.
+
 ## Estrutura do projeto
 
 ```
-public/          site estático servido em produção (Vercel) — index.html, css/, js/, img/
-supabase/        schema.sql (tabelas + RLS)
+public/          site estático servido em produção (Vercel)
+  index.html       landing page pública
+  login.html       login/registo do nutricionista
+  app.html         aplicação do nutricionista (autenticado)
+  portal.html      portal do paciente (autenticado, read-only)
+  css/, js/, img/
+supabase/
+  schema.sql               tabelas + RLS
+  functions/send-invite-email/   Edge Function do convite por email
 tests/           suite Playwright (ver secção abaixo)
 ```
 
@@ -67,8 +99,5 @@ Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos satu
 Prompt: Cria uma CI/CD pipeline para testar as várias fases de desenvolvimento
 
 
-Prompt: Preciso que melhores o UI da landing page para parecer mais profissional, algo parecido ao nutrium.com, a maior plataforma. Em termos de butões apenas temos o de "entrar" por agora, pois não precisamos de mais nenhum por enquanto, por isso tu és um designer profissional e preciso de uma landing page de qualidade.
+Prompt: **Fase 4 (prioridade do utilizador)**: Engagement — registo diário de água (`daily_water_logs`), refeições feitas vs. planeadas (`meal_logs`), fotos de progresso (Supabase Storage), lembretes (Notification API local primeiro; push via Edge Function depois). Indicadores de adesão visíveis ao nutricionista na tab "Evolução".
 
-
-Prompt: Agora sim podemos passar a fase 3 APENAS.(- **Fase 3**: Portal do paciente MVP (read-only) — novo entry point (`portal.html`), fluxo de convite nutricionista→paciente, vista "plano do dia" simplificada, vista de evolução reaproveitando `renderEvolutionCharts` (js/app.js:2025).
-- **Fase 4 (prioridade do utilizador)**: Engagement — registo diário de água (`daily_water_logs`), refeições feitas vs. planeadas (`meal_logs`), fotos de progresso (Supabase Storage), lembretes (Notification API local primeiro; push via Edge Function depois). Indicadores de adesão visíveis ao nutricionista na tab "Evolução".)

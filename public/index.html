@@ -14,18 +14,26 @@
 
 <!-- ══ LANDING PAGE PÚBLICA ══ -->
 <div id="pg-welcome" class="lp">
-  <div class="lp-cursor-glow" id="lp-cursor-glow"></div>
-
   <nav class="lp-nav">
     <div class="lp-nav-brand">
       <img src="img/fav.png" alt="CachosNutri" class="lp-nav-logo">
       <span>CachosNutri</span>
     </div>
-    <div class="lp-nav-links">
-      <a href="#funcionalidades">Funcionalidades</a>
-      <a href="#como-funciona">Como funciona</a>
+    <div class="lp-nav-links" id="lp-nav-links">
+      <a href="#funcionalidades" class="lp-nav-link" onclick="closeMobileNav()">Funcionalidades</a>
+      <a href="#como-funciona" class="lp-nav-link" onclick="closeMobileNav()">Como funciona</a>
+      <a href="portal.html" class="lp-nav-link lp-nav-link--boxed">
+        Área do Paciente
+        <svg class="lp-nav-link-arrow" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
     </div>
-    <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">Entrar</button>
+    <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">
+      <span class="lp-nav-cta-text">Entrar</span>
+      <svg class="lp-nav-cta-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+    <button class="lp-nav-toggle" type="button" onclick="toggleMobileNav()" aria-label="Abrir menu">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </nav>
 
   <header class="lp-hero">
@@ -47,7 +55,7 @@
       <img src="img/pexels-janetrangdoan-1105166.jpg" alt="Taça de fruta e frutos vermelhos" loading="lazy">
       <div class="lp-hero-badge">
         <div class="lp-hero-badge-num">1.376</div>
-        <div class="lp-hero-badge-label">alimentos na base TCA-INSA</div>
+        <div class="lp-hero-badge-label">Alimentos na base TCA-INSA</div>
       </div>
     </div>
   </header>
@@ -220,6 +228,7 @@
     <div class="lp-footer-links">
       <a href="#funcionalidades">Funcionalidades</a>
       <a href="#como-funciona">Como funciona</a>
+      <a href="portal.html">Área do Paciente</a>
       <a href="login.html">Entrar</a>
     </div>
     <div class="lp-footer-copy">© 2026 CachosNutri</div>
@@ -227,6 +236,16 @@
 </div>
 
 <script>
+  // Menu mobile: os links (Funcionalidades/Como funciona/Área do Paciente) ficam
+  // escondidos no nav em ecrãs pequenos (ver CSS) — este botão hambúrguer revela-os
+  // num painel. Em desktop o botão fica sempre escondido via CSS, isto é inofensivo.
+  function toggleMobileNav() {
+    document.getElementById('lp-nav-links').classList.toggle('lp-nav-links--open');
+  }
+  function closeMobileNav() {
+    document.getElementById('lp-nav-links').classList.remove('lp-nav-links--open');
+  }
+
   // Glow minimalista que segue o rato dentro de cada card (posição só, sem cor —
   // a cor vem do CSS). Progressive enhancement: sem JS, os cards ficam sem glow.
   document.querySelectorAll('.lp-stat-card, .lp-feature-card, .lp-step-card').forEach(card => {
@@ -237,17 +256,6 @@
     });
   });
 
-  // Mesmo glow, mas a acompanhar o rato pela página inteira, não só dentro dos cards.
-  const lp = document.querySelector('.lp');
-  const cursorGlow = document.getElementById('lp-cursor-glow');
-  if (lp && cursorGlow) {
-    lp.addEventListener('mousemove', (e) => {
-      cursorGlow.style.setProperty('--px', `${e.clientX}px`);
-      cursorGlow.style.setProperty('--py', `${e.clientY}px`);
-      cursorGlow.style.opacity = '1';
-    });
-    lp.addEventListener('mouseleave', () => { cursorGlow.style.opacity = '0'; });
-  }
 </script>
 </body>
 </html>

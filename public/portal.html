@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portal do Paciente — CachosNutri</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="icon" type="image/png" href="img/fav.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ══ AUTENTICAÇÃO DO PACIENTE ══ -->
+<div id="portal-auth" class="pg-auth">
+  <div class="auth-right">
+    <div class="auth-box">
+      <div class="auth-logo" style="display:flex">
+        <img src="img/fav.png" alt="CachosNutri" class="auth-logo-img">
+        <span class="auth-logo-text">CachosNutri</span>
+      </div>
+      <p class="auth-tagline" style="display:block">Portal do Paciente</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="portal-tab-login" onclick="switchPortalAuthTab('login')" type="button">Entrar</button>
+        <button class="auth-tab" id="portal-tab-signup" onclick="switchPortalAuthTab('signup')" type="button">Criar conta</button>
+      </div>
+
+      <form class="auth-form" id="portal-form-login" onsubmit="event.preventDefault(); handlePortalLogin();">
+        <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="portal-login-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
+        <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="portal-login-password" placeholder="••••••••" autocomplete="current-password" required></div>
+        <div class="auth-error" id="portal-login-error"></div>
+        <button class="btn-primary auth-submit" type="submit" id="portal-login-btn">Entrar</button>
+      </form>
+
+      <form class="auth-form" id="portal-form-signup" onsubmit="event.preventDefault(); handlePortalSignup();" style="display:none">
+        <p class="modal-hint">A sua conta é criada a partir do convite enviado pelo seu nutricionista.</p>
+        <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="portal-signup-nome" placeholder="O seu nome" autocomplete="name" required></div>
+        <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="portal-signup-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
+        <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="portal-signup-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required></div>
+        <div class="form-field"><label class="field-label">Código de convite</label><input class="field-input" type="text" id="portal-signup-code" style="text-transform:uppercase" required></div>
+        <div class="auth-error" id="portal-signup-error"></div>
+        <button class="btn-primary auth-submit" type="submit" id="portal-signup-btn">Criar conta</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PORTAL (autenticado) ══ -->
+<div id="portal-app" class="portal-shell" style="display:none">
+  <div class="portal-topbar">
+    <div class="portal-topbar-brand">
+      <img src="img/fav.png" alt="CachosNutri" class="portal-brand-img">
+      <span>CachosNutri</span>
+    </div>
+    <div class="portal-topbar-user">
+      <span id="portal-user-name"></span>
+      <button class="btn-back" onclick="confirmPortalLogout()" type="button">Sair</button>
+    </div>
+  </div>
+
+  <div class="portal-container">
+
+    <div id="portal-empty" style="display:none">
+      <div class="empty-state">
+        <div class="empty-state-title">Ainda sem plano associado</div>
+        <div class="empty-state-sub">Se tem um código de convite do seu nutricionista, introduza-o abaixo.</div>
+        <form class="auth-form" style="max-width:320px;margin:16px auto 0" onsubmit="event.preventDefault(); submitManualInviteCode();">
+          <div class="form-field"><input class="field-input" type="text" id="portal-manual-code" placeholder="Código de convite" style="text-transform:uppercase" required></div>
+          <button class="btn-primary auth-submit" type="submit">Associar</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="portal-main" style="display:none">
+      <div class="portal-client-name" id="portal-client-name"></div>
+
+      <div class="client-tabs portal-tabs">
+        <button class="client-tab active" id="pt-plano" onclick="showPortalTab('plano')" type="button">Plano de hoje</button>
+        <button class="client-tab" id="pt-evolucao" onclick="showPortalTab('evolucao')" type="button">Evolução</button>
+      </div>
+
+      <div id="portal-view-plano"></div>
+      <div id="portal-view-evolucao" style="display:none"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-overlay" onclick="if(event.target===this)closeConfirm()" style="display:none">
+  <div class="confirm-box">
+    <button class="modal-close confirm-close" onclick="closeConfirm()">&times;</button>
+    <div class="confirm-icon-wrap">
+      <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </div>
+    <div class="confirm-title" id="confirm-title">Confirmar ação</div>
+    <p class="confirm-message" id="confirm-message"></p>
+    <div class="confirm-actions">
+      <button class="confirm-btn-cancel" onclick="closeConfirm()">Cancelar</button>
+      <button class="confirm-btn-ok" id="confirm-ok-btn" onclick="confirmOk()">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT MODAL -->
+<div id="alertModal" class="modal-overlay" onclick="if(event.target===this)closeAlertModal()" style="display:none">
+  <div class="alert-box">
+    <button class="modal-close alert-close" onclick="closeAlertModal()">&times;</button>
+    <div class="alert-icon-wrap" id="alert-icon-wrap">
+      <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div class="alert-title" id="alert-title">Ocorreu um erro</div>
+    <p class="alert-message" id="alert-message"></p>
+    <button class="alert-btn-ok" onclick="closeAlertModal()">Ok</button>
+  </div>
+</div>
+
+<!-- NOTE MODAL -->
+<div id="noteModal" class="modal-overlay" onclick="if(event.target===this)closeNoteModal()" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Anotação da refeição</div>
+      <button class="modal-close" onclick="closeNoteModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="field-textarea field-textarea-lg" id="note-modal-textarea" placeholder="Ex: faltou comer o ovo, troquei o arroz por batata-doce…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="confirm-btn-cancel" onclick="closeNoteModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveNoteModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script src="js/supabase-client.js"></script>
+<script src="js/shared.js"></script>
+<script src="js/portal.js"></script>
+</body>
+</html>
