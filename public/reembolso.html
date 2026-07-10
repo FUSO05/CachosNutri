@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Reembolso e Cancelamento — CachosNutri</title>
+  <meta name="description" content="Política de Reembolso e Cancelamento do CachosNutri.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="icon" type="image/png" href="img/fav.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="pg-welcome" class="lp">
+  <nav class="lp-nav">
+    <a href="index.html" class="lp-nav-brand">
+      <img src="img/fav.png" alt="CachosNutri" class="lp-nav-logo">
+      <span>CachosNutri</span>
+    </a>
+    <div class="lp-nav-links" id="lp-nav-links">
+      <a href="index.html#funcionalidades" class="lp-nav-link">Funcionalidades</a>
+      <a href="index.html#como-funciona" class="lp-nav-link">Como funciona</a>
+      <a href="portal.html" class="lp-nav-link lp-nav-link--boxed">
+        Área do Paciente
+        <svg class="lp-nav-link-arrow" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">
+      <span class="lp-nav-cta-text">Entrar</span>
+      <svg class="lp-nav-cta-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+    <button class="lp-nav-toggle" type="button" onclick="document.getElementById('lp-nav-links').classList.toggle('lp-nav-links--open')" aria-label="Abrir menu">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </nav>
+
+  <main class="lp-legal">
+    <h1>Política de Reembolso e Cancelamento</h1>
+    <div class="lp-legal-updated">Última atualização: 10 de julho de 2026</div>
+
+    <h2>1. Serviço atualmente gratuito</h2>
+    <p>O CachosNutri é, à data desta política, disponibilizado <strong>gratuitamente</strong>,
+    sem qualquer cobrança a nutricionistas ou pacientes. Não sendo processado nenhum
+    pagamento, não há atualmente lugar a reembolsos.</p>
+
+    <h2>2. Cancelamento a qualquer momento</h2>
+    <p>Pode deixar de utilizar o Serviço e pedir o encerramento da sua conta a qualquer
+    momento, sem qualquer custo ou penalização, através de
+    <a href="mailto:lnluisnunes2005@gmail.com">lnluisnunes2005@gmail.com</a>. Após o
+    encerramento, os seus dados são eliminados nos termos descritos na
+    <a href="privacidade.html">Política de Privacidade</a>.</p>
+
+    <h2>3. Caso venham a existir planos pagos</h2>
+    <p>Se, no futuro, o CachosNutri passar a disponibilizar planos pagos (por exemplo,
+    subscrições mensais ou anuais), esta política será atualizada previamente à sua entrada
+    em vigor e os utilizadores existentes serão avisados com antecedência razoável. Nesse
+    cenário, aplicar-se-ão, no mínimo, as seguintes garantias:</p>
+    <ul>
+      <li>Direito de livre resolução de 14 dias a contar da subscrição, sem necessidade de
+      justificação, nos termos da lei aplicável a contratos celebrados à distância
+      (Decreto-Lei n.º 24/2014), com reembolso integral do valor pago;</li>
+      <li>Possibilidade de cancelar a subscrição a qualquer momento, com efeitos no final do
+      período já pago (sem reembolso proporcional do período em curso, salvo indicação em
+      contrário no momento da subscrição);</li>
+      <li>Reembolso integral em caso de erro de cobrança imputável ao Serviço (por exemplo,
+      cobrança duplicada ou após pedido de cancelamento já processado).</li>
+    </ul>
+
+    <h2>4. Contacto</h2>
+    <p>Para qualquer questão sobre cancelamento ou, no futuro, sobre reembolsos, contacte
+    <a href="mailto:lnluisnunes2005@gmail.com">lnluisnunes2005@gmail.com</a>.</p>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="lp-footer-brand">
+      <div class="lp-footer-brand-name">
+        <img src="img/fav.png" alt="CachosNutri" class="lp-nav-logo">
+        <span>CachosNutri</span>
+      </div>
+      <p>Planeamento alimentar profissional para nutricionistas.</p>
+    </div>
+    <div class="lp-footer-links">
+      <a href="termos.html">Termos de Serviço</a>
+      <a href="privacidade.html">Privacidade</a>
+      <a href="reembolso.html">Reembolso</a>
+    </div>
+    <div class="lp-footer-copy">© 2026 CachosNutri</div>
+  </footer>
+</div>
+
+<button id="scroll-top-btn" class="scroll-top-btn" type="button" onclick="window.scrollTo({top:0, behavior:'smooth'})" aria-label="Voltar ao topo">
+  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
+<script>
+  const scrollTopBtn = document.getElementById('scroll-top-btn');
+  window.addEventListener('scroll', () => {
+    scrollTopBtn.classList.toggle('scroll-top-btn--visible', window.scrollY > 120);
+  }, { passive: true });
+</script>
+</body>
+</html>

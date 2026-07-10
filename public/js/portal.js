@@ -432,6 +432,7 @@ function renderPortalPlano() {
   if (!portalPlan || !portalPlan.days) {
     el.innerHTML = `
       <div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
         <div class="empty-state-title">Sem plano ativo</div>
         <div class="empty-state-sub">O seu nutricionista ainda não criou um plano alimentar.</div>
       </div>`;
@@ -502,6 +503,7 @@ function renderPortalPlano() {
   } else {
     mealsHTML = `
       <div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         <div class="empty-state-title">Sem refeições planeadas</div>
         <div class="empty-state-sub">Não há alimentos registados para ${DAYS[portalDayIdx]}.</div>
       </div>`;
@@ -546,10 +548,22 @@ function renderPortalPlano() {
         Resumo nutricional
       </div>
       <div class="portal-day-totals">
-        <div class="portal-stat"><div class="portal-stat-value">${dayTot.kcal.toFixed(0)}</div><div class="portal-stat-label">kcal</div></div>
-        <div class="portal-stat"><div class="portal-stat-value">${dayTot.prot.toFixed(1)}g</div><div class="portal-stat-label">Proteína</div></div>
-        <div class="portal-stat"><div class="portal-stat-value">${dayTot.hc.toFixed(1)}g</div><div class="portal-stat-label">Hidratos</div></div>
-        <div class="portal-stat"><div class="portal-stat-value">${dayTot.lip.toFixed(1)}g</div><div class="portal-stat-label">Gordura</div></div>
+        <div class="portal-stat">
+          <div class="stat-icon-wrap stat-orange"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C10 6 6 8 6 13a6 6 0 0012 0c0-2-1-3-2-4 .3 2-1 3-2 2 1-3-1-5-2-9z"/></svg></div>
+          <div class="portal-stat-value">${dayTot.kcal.toFixed(0)}</div><div class="portal-stat-label">kcal</div>
+        </div>
+        <div class="portal-stat">
+          <div class="stat-icon-wrap stat-blue"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+          <div class="portal-stat-value">${dayTot.prot.toFixed(1)}g</div><div class="portal-stat-label">Proteína</div>
+        </div>
+        <div class="portal-stat">
+          <div class="stat-icon-wrap stat-cyan"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12h16M4 6h16M4 18h10"/></svg></div>
+          <div class="portal-stat-value">${dayTot.hc.toFixed(1)}g</div><div class="portal-stat-label">Hidratos</div>
+        </div>
+        <div class="portal-stat">
+          <div class="stat-icon-wrap stat-green"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg></div>
+          <div class="portal-stat-value">${dayTot.lip.toFixed(1)}g</div><div class="portal-stat-label">Gordura</div>
+        </div>
       </div>
     </div>
 
@@ -589,9 +603,10 @@ function renderPortalEvolucao() {
             ${note}
           </div>`;
       }).join('')
-    : `<div class="evolution-empty">
-        <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-top:12px">Sem registos de consulta</div>
-        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">O seu nutricionista ainda não registou nenhuma avaliação.</div>
+    : `<div class="empty-state">
+        <svg class="empty-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg>
+        <div class="empty-state-title">Sem registos de consulta</div>
+        <div class="empty-state-sub">O seu nutricionista ainda não registou nenhuma avaliação.</div>
       </div>`;
 
   el.innerHTML = `

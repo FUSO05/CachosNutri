@@ -386,7 +386,42 @@ body {
 .lp-footer-links { display: flex; gap: 22px; }
 .lp-footer-links a { color: var(--gray-500); text-decoration: none; font-weight: 600; transition: color .15s; }
 .lp-footer-links a:hover { color: var(--green-dark); }
-.lp-footer-copy { flex-basis: 100%; text-align: center; padding-top: 16px; border-top: 1px solid var(--gray-100); color: var(--gray-300); }
+.lp-footer-copy { flex-basis: 100%; text-align: center; padding-top: 16px; border-top: 1px solid var(--gray-100); color: var(--gray-800); }
+
+/* ── Páginas legais (Termos / Privacidade / Reembolso) — mesmo shell .lp
+   (nav + footer), conteúdo em prose simples em vez das secções de marketing. ── */
+.lp-legal { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
+.lp-legal h1 { font-size: 30px; font-weight: 800; color: var(--gray-800); letter-spacing: -.5px; margin-bottom: 6px; }
+.lp-legal-updated { font-size: 12.5px; color: var(--gray-400); margin-bottom: 36px; }
+.lp-legal h2 { font-size: 17px; font-weight: 700; color: var(--green-dark); margin: 32px 0 10px; }
+.lp-legal p { font-size: 14px; line-height: 1.7; color: var(--gray-700); margin-bottom: 14px; }
+.lp-legal ul { margin: 0 0 14px 20px; }
+.lp-legal li { font-size: 14px; line-height: 1.7; color: var(--gray-700); margin-bottom: 6px; }
+.lp-legal a { color: var(--green-dark); font-weight: 600; }
+.lp-legal strong { color: var(--gray-800); }
+
+@media (max-width: 1024px) {
+  .lp-legal { padding: 40px 20px 56px; }
+  .lp-legal h1 { font-size: 24px; }
+}
+
+/* ── Botão "voltar ao topo" — aparece ao fazer scroll nas páginas públicas
+   (landing + legais). Fica escondido (opacity/translateY) até .scroll-top-btn--visible
+   ser adicionada via JS (scroll do window). ── */
+.scroll-top-btn {
+  position: fixed; right: 24px; bottom: 24px; z-index: 500;
+  width: 44px; height: 44px; border-radius: 50%; border: none;
+  background: var(--green-dark); color: white;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow-md);
+  opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease, background .15s ease;
+}
+.scroll-top-btn:hover { background: var(--green); }
+.scroll-top-btn--visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+@media (max-width: 480px) {
+  .scroll-top-btn { right: 16px; bottom: 16px; width: 40px; height: 40px; }
+}
 
 /* ── APP SHELL ── */
 .app-shell {
@@ -2972,10 +3007,10 @@ body {
   .lp-steps-grid { grid-template-columns: 1fr; gap: 32px; }
   .lp-gallery { grid-template-columns: repeat(2, 1fr); padding: 0 20px 32px; }
   .lp-gallery img { height: 150px; }
-  .lp-footer { padding: 28px 20px 20px; flex-direction: column; text-align: center; }
-  .lp-footer-brand { max-width: 100%; }
-  .lp-footer-brand-name { justify-content: center; }
-  .lp-footer-links { justify-content: center; width: 100%; }
+  /* Entre 735px e 1024px o footer mantém o layout em linha (marca à esquerda,
+     links à direita) — só desce para coluna centrada abaixo de 734px, ver
+     @media (max-width: 734px) mais abaixo. */
+  .lp-footer { padding: 28px 24px 20px; }
 
   /* ── Auth screen ──
      Abaixo de 1024px não há espaço para o painel de marca lateral — esconde-se
@@ -3069,7 +3104,18 @@ body {
   .btn-icon { width: 24px; height: 24px; }
 }
 
-@media (max-width: 734px) {
+@media (max-width: 620px) {
+  /* Footer da landing/legais: abaixo de 620px já não há espaço para a linha
+     marca-esquerda/links-direita — empilha em coluna, tudo centrado (marca no
+     topo, links a seguir); o copyright mantém-se onde já estava (flex-basis:100%,
+     centrado, no fim). A regra base do .lp-footer tem align-items:flex-start
+     (para o layout em linha) — sem o override abaixo, cada bloco encolhe ao
+     tamanho do conteúdo e fica encostado à esquerda em vez de centrado. */
+  .lp-footer { padding: 28px 20px 20px; flex-direction: column; align-items: center; text-align: center; }
+  .lp-footer-brand { max-width: 100%; }
+  .lp-footer-brand-name { justify-content: center; }
+  .lp-footer-links { justify-content: center; width: 100%; }
+
   /* 7 separadores de dia já não cabem numa linha, mesmo com fonte reduzida —
      trocam por um dropdown. Os ícones de ação (template/copiar/exportar)
      mantêm-se sempre visíveis. */
@@ -3196,6 +3242,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   border: 1px solid rgba(39,134,90,.12);
   border-radius: 999px;
   padding: 3px;
+  box-shadow: var(--shadow-sm);
 }
 .portal-day-nav-btn {
   width: 26px;
@@ -3225,7 +3272,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   border: 1px solid rgba(39,134,90,.12);
   border-radius: 999px;
   padding: 3px 4px 3px 16px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   box-shadow: var(--shadow-sm);
 }
 .portal-meal-nav-label {
@@ -3245,8 +3292,8 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   border: 1px solid rgba(39,134,90,.10);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 16px 18px;
-  margin-bottom: 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
 }
 .portal-section-title {
   font-size: 11px;
@@ -3281,11 +3328,15 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   gap: 10px;
 }
 .portal-stat {
-  text-align: center;
-  padding: 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
   border-radius: 10px;
   background: var(--gray-50);
 }
+.portal-stat .stat-icon-wrap { width: 22px; height: 22px; border-radius: 7px; margin-bottom: 5px; }
+.portal-stat .stat-icon-wrap svg { width: 12px; height: 12px; }
 .portal-stat-value { font-size: 15px; font-weight: 700; color: var(--gray-800); }
 .portal-stat-label { font-size: 10.5px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: .3px; margin-top: 2px; }
 
@@ -3324,21 +3375,27 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   flex: 0 0 70px;
 }
 
-.portal-meals { display: flex; flex-direction: column; gap: 12px; }
+.portal-meals { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow: hidden; }
 .portal-meal-card {
   background: white;
   border: 1px solid rgba(39,134,90,.10);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
-  box-shadow: var(--shadow-sm);
-  transition: background .2s, border-color .2s;
+  padding: 12px 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: background .2s, border-color .2s, transform .15s, box-shadow .15s;
+}
+@media (hover: hover) and (pointer: fine) {
+  .portal-meal-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
 }
 .portal-meal-card--done { background: var(--green-light); border-color: rgba(39,134,90,.25); }
 .portal-meal-card--skipped { background: #fef2f2; border-color: #fecaca; }
-.portal-meal-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.portal-meal-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; flex: 0 0 auto; }
 .portal-meal-name { font-size: 13.5px; font-weight: 700; color: var(--gray-800); }
 .portal-meal-time { font-size: 11.5px; color: var(--gray-400); }
-.portal-food-rows { display: flex; flex-direction: column; gap: 6px; }
+.portal-food-rows { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
 .portal-food-row {
   display: flex;
   align-items: center;
@@ -3353,7 +3410,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
 .portal-food-qty { color: var(--gray-400); }
 .portal-food-kcal { font-weight: 600; color: var(--green-dark); white-space: nowrap; }
 
-.portal-meal-status { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100); }
+.portal-meal-status { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100); flex: 0 0 auto; }
 .portal-meal-btn {
   flex: 1;
   padding: 6px 0;
@@ -3367,24 +3424,46 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   font-family: inherit;
   transition: all .15s;
 }
+.portal-meal-btn:active { transform: scale(.97); }
 .portal-meal-btn--done:hover { border-color: var(--green); color: var(--green-dark); }
-.portal-meal-btn--done.active { background: var(--green); border-color: var(--green); color: white; }
+.portal-meal-btn--done.active {
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  border-color: var(--green);
+  color: white;
+  box-shadow: 0 2px 8px rgba(39,134,90,.35);
+}
 .portal-meal-btn--skip:hover { border-color: #dc2626; color: #b91c1c; }
-.portal-meal-btn--skip.active { background: #dc2626; border-color: #dc2626; color: white; }
+.portal-meal-btn--skip.active {
+  background: linear-gradient(135deg, #b91c1c, #ef4444);
+  border-color: #dc2626;
+  color: white;
+  box-shadow: 0 2px 8px rgba(220,38,38,.3);
+}
 .portal-meal-btn--note:hover { border-color: #d97706; color: #b45309; }
-.portal-meal-btn--note.active { background: #fef3c7; border-color: #d97706; color: #b45309; }
+.portal-meal-btn--note.active {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #b45309;
+  box-shadow: 0 1px 4px rgba(217,119,6,.2);
+}
 
 @media (max-width: 480px) {
   .portal-container { padding: 8px 10px; }
   .portal-topbar { padding: 8px 12px; }
   .portal-day-totals { gap: 6px; }
   .portal-stat { padding: 5px 2px; }
+  .portal-stat .stat-icon-wrap { width: 18px; height: 18px; margin-bottom: 3px; }
+  .portal-stat .stat-icon-wrap svg { width: 10px; height: 10px; }
   .portal-stat-value { font-size: 12.5px; }
   .portal-stat-label { font-size: 9px; }
   .portal-page-header { justify-content: center; text-align: center; }
   .portal-water-actions { justify-content: center; }
   .portal-water-custom-input { width: 60px; flex: 0 0 60px; }
 }
+@media (max-height: 680px) {
+  .portal-stat .stat-icon-wrap { display: none; }
+}
+#portal-view-plano .empty-state, #portal-view-fotos .empty-state { padding: 32px 20px; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    FOTOS DE REFEIÇÕES (tab "Fotos" do portal do paciente)
@@ -3432,12 +3511,12 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, box-shadow .15s;
 }
-.fotos-cal-cell:hover { background: var(--green-light); }
+.fotos-cal-cell:hover { background: var(--green-light); box-shadow: var(--shadow-sm); }
 .fotos-cal-cell--empty { background: none; cursor: default; pointer-events: none; }
-.fotos-cal-cell--today { color: var(--green-dark); font-weight: 800; }
-.fotos-cal-cell--selected { background: var(--green); color: white; }
+.fotos-cal-cell--today { background: var(--green-light); color: var(--green-dark); font-weight: 800; border: 1.5px solid rgba(39,134,90,.35); }
+.fotos-cal-cell--selected { background: var(--green); color: white; border-color: transparent; box-shadow: var(--shadow-sm); }
 .fotos-cal-cell--selected:hover { background: var(--green); }
 .fotos-cal-cell-dot {
   position: absolute;
