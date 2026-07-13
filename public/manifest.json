@@ -3,7 +3,7 @@
   "short_name": "CachosNutri",
   "description": "Portal do Paciente CachosNutri — plano alimentar, água, refeições e fotos.",
   "start_url": "/portal.html",
-  "scope": "/",
+  "scope": "/portal.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f2f8f4",

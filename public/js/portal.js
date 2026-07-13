@@ -858,9 +858,12 @@ async function openStoryForDay(date, startMealIndex) {
 }
 
 // ── PWA: torna o portal instalável no ecrã principal ──────────────────────────
+// scope explícito — sem isto, um sw.js na raiz controlaria o site inteiro
+// (app.html incluído), quando só queremos afetar o portal do paciente.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.error('Erro ao registar service worker:', err));
+    navigator.serviceWorker.register('/sw.js', { scope: '/portal.html' })
+      .catch((err) => console.error('Erro ao registar service worker:', err));
   });
 }
 
