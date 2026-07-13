@@ -122,4 +122,3 @@ Prompt: Cria uma CI/CD pipeline para testar as várias fases de desenvolvimento
 
 
 Prompt: **Fase 4 (prioridade do utilizador)**: Engagement — registo diário de água (`daily_water_logs`), refeições feitas vs. planeadas (`meal_logs`), fotos de progresso (Supabase Storage), lembretes (Notification API local primeiro; push via Edge Function depois). Indicadores de adesão visíveis ao nutricionista na tab "Evolução".
-
