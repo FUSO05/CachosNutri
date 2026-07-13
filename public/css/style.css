@@ -3153,11 +3153,11 @@ body {
 /* ══════════════════════════════════════════════════════════════════════════
    PORTAL DO PACIENTE (portal.html)
    ══════════════════════════════════════════════════════════════════════════ */
-/* Todo o portal vive dentro de 100dvh sem scroll de página — só a lista de
-   alimentos da refeição atual (portal-food-rows) tem overflow próprio, caso
-   uma refeição tenha alimentos a mais para caber no ecrã. A tab Evolução é
-   a exceção: histórico de consultas cresce sem limite, por isso mantém o
-   seu próprio scroll interno. */
+/* O portal vive dentro de 100dvh sem scroll de página, exceto as tabs cujo
+   conteúdo pode exceder o ecrã: Evolução (histórico de consultas cresce sem
+   limite) e Plano de hoje (uma refeição pode ter mais alimentos do que cabem
+   no ecrã de um telemóvel) — ambas mantêm o seu próprio scroll interno em
+   vez de espremer o conteúdo numa caixa fixa. */
 body.portal-page-body { height: 100%; overflow: hidden; }
 .portal-shell {
   height: 100vh;
@@ -3219,7 +3219,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
 }
 .portal-tabs .client-tab.active { background: var(--green-light); }
 
-#portal-view-plano { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#portal-view-plano { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
 #portal-view-evolucao { flex: 1; min-height: 0; overflow-y: auto; }
 #portal-view-fotos { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 
@@ -3375,7 +3375,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   flex: 0 0 70px;
 }
 
-.portal-meals { display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow: hidden; }
+.portal-meals { display: flex; flex-direction: column; gap: 12px; flex: 0 0 auto; }
 .portal-meal-card {
   background: white;
   border: 1px solid rgba(39,134,90,.10);
@@ -3384,7 +3384,6 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
-  min-height: 0;
   transition: background .2s, border-color .2s, transform .15s, box-shadow .15s;
 }
 @media (hover: hover) and (pointer: fine) {
@@ -3395,7 +3394,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
 .portal-meal-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; flex: 0 0 auto; }
 .portal-meal-name { font-size: 13.5px; font-weight: 700; color: var(--gray-800); }
 .portal-meal-time { font-size: 11.5px; color: var(--gray-400); }
-.portal-food-rows { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; overflow-y: auto; }
+.portal-food-rows { display: flex; flex-direction: column; gap: 6px; }
 .portal-food-row {
   display: flex;
   align-items: center;
