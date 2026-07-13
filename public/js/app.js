@@ -109,7 +109,7 @@ const PLAN_TEMPLATES = {
 };
 
 let appData    = { version: 1, clients: [] };
-let appProfile = { name: '', age: '', sex: '', email: '', photo: '', cedula: '' };
+let appProfile = { name: '', nascimento: '', sex: '', email: '', photo: '', cedula: '' };
 let nav        = { view: 'welcome', clientId: null, planId: null };
 let state      = { activeDay: 0, days: [] };
 let draftClient = null;
@@ -132,15 +132,50 @@ function loadProfile() {
 }
 
 function saveProfile() {
-  appProfile.name   = document.getElementById('profName').value.trim();
-  appProfile.age    = document.getElementById('profAge').value;
-  appProfile.sex    = document.getElementById('profSex').value;
-  appProfile.email  = document.getElementById('profEmail').value.trim();
-  appProfile.cedula = document.getElementById('profCedula').value.trim();
+  appProfile.name       = document.getElementById('profName').value.trim();
+  appProfile.nascimento = document.getElementById('profNascimento').value;
+  appProfile.sex        = document.getElementById('profSex').value;
+  appProfile.email      = document.getElementById('profEmail').value.trim();
+  appProfile.cedula     = document.getElementById('profCedula').value.trim();
   try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
   updateSidebarUser();
   closeProfileModal();
   if (nav.view === 'clients') renderDashboard();
+  syncProfileToSupabase();
+}
+
+// Calcula e mostra a idade a partir da data de nascimento (não se guarda a
+// idade em si — muda com o tempo — só a data, tal como já é feito para os
+// pacientes em updateAge()).
+function updateProfileAge() {
+  const val = document.getElementById('profNascimento').value;
+  if (!val) { document.getElementById('profIdade').value = ''; return; }
+  const birth = new Date(val);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  document.getElementById('profIdade').value = age > 0 ? age + ' anos' : '';
+}
+
+// Envia nome/email/cédula/foto/sexo/data de nascimento para a tabela profiles,
+// para ficarem disponíveis em qualquer dispositivo (localStorage é só cache
+// local, por browser).
+async function syncProfileToSupabase() {
+  if (!currentUser) return;
+  try {
+    const { error } = await sb.from('profiles').update({
+      nome: appProfile.name,
+      email: appProfile.email,
+      cedula: appProfile.cedula,
+      photo_url: appProfile.photo || null,
+      sexo: appProfile.sex || null,
+      data_nascimento: appProfile.nascimento || null
+    }).eq('id', currentUser.id);
+    if (error) throw error;
+  } catch (e) {
+    console.error('Erro ao sincronizar perfil:', e);
+  }
 }
 
 // ── Auth (Supabase) ───────────────────────────────────────────────────────────
@@ -148,12 +183,19 @@ function saveProfile() {
 // si). Aqui só é preciso: confirmar a sessão ao iniciar (initApp), saber quem é
 // o utilizador atual, e terminar sessão.
 
-async function fetchProfileName() {
+// Fonte de verdade é o Supabase (mesmo perfil em qualquer dispositivo); o
+// localStorage (ver loadProfile) serve só de cache para pintar mais depressa.
+async function fetchProfileFromSupabase() {
   try {
-    const { data: prof } = await sb.from('profiles').select('nome, email').eq('id', currentUser.id).single();
+    const { data: prof } = await sb.from('profiles').select('nome, email, cedula, photo_url, sexo, data_nascimento').eq('id', currentUser.id).single();
     if (prof) {
-      if (prof.nome && !appProfile.name) appProfile.name = prof.nome;
+      if (prof.nome) appProfile.name = prof.nome;
       if (prof.email) appProfile.email = prof.email;
+      if (prof.cedula) appProfile.cedula = prof.cedula;
+      if (prof.photo_url) appProfile.photo = prof.photo_url;
+      if (prof.sexo) appProfile.sex = prof.sexo;
+      if (prof.data_nascimento) appProfile.nascimento = prof.data_nascimento;
+      try { localStorage.setItem('cachos_profile', JSON.stringify(appProfile)); } catch(e) {}
     }
   } catch (e) {}
 }
@@ -212,7 +254,8 @@ async function initApp() {
     window.location.href = 'login.html?erro=role_paciente';
     return;
   }
-  await fetchProfileName();
+  loadProfile();
+  updateSidebarUser();
 
   const pendingImport = sessionStorage.getItem('cachos_pending_import');
   if (pendingImport) {
@@ -224,17 +267,18 @@ async function initApp() {
   }
 
   await loadAppData();
-  loadProfile();
-  updateSidebarUser();
   goToClients();
+  await fetchProfileFromSupabase();
+  updateSidebarUser();
 }
 
 function openProfileModal() {
-  document.getElementById('profName').value   = appProfile.name;
-  document.getElementById('profAge').value    = appProfile.age;
-  document.getElementById('profSex').value    = appProfile.sex;
-  document.getElementById('profEmail').value  = appProfile.email;
-  document.getElementById('profCedula').value = appProfile.cedula || '';
+  document.getElementById('profName').value       = appProfile.name;
+  document.getElementById('profNascimento').value = appProfile.nascimento || '';
+  document.getElementById('profSex').value        = appProfile.sex;
+  document.getElementById('profEmail').value      = appProfile.email;
+  document.getElementById('profCedula').value     = appProfile.cedula || '';
+  updateProfileAge();
   updateProfilePhotoUI();
   document.getElementById('profileModal').style.display = '';
 }
@@ -248,9 +292,20 @@ function handlePhotoUpload(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    appProfile.photo = ev.target.result;
-    updateProfilePhotoUI();
-    updateSidebarUser();
+    const img = new Image();
+    img.onload = () => {
+      // Reduz para no máx. 300px de lado antes de guardar em base64 — uma foto
+      // de câmara facilmente teria vários MB, demasiado para a coluna photo_url.
+      const scale = Math.min(1, 300 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      appProfile.photo = canvas.toDataURL('image/jpeg', 0.85);
+      updateProfilePhotoUI();
+      updateSidebarUser();
+    };
+    img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
   input.value = '';

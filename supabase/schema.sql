@@ -383,3 +383,14 @@ create policy "nutricionista vê fotos de refeições dos seus clientes"
       where c.id::text = (storage.foldername(name))[1] and c.nutricionista_id = auth.uid()
     )
   );
+
+-- ============================================================
+-- 6. profiles — cédula profissional, data de nascimento e sexo (perfil do
+--    nutricionista sincronizado entre dispositivos; foto guardada em
+--    photo_url, já existente). Guarda-se a data de nascimento, não a idade
+--    (que muda com o tempo) — a idade é sempre calculada a partir dela,
+--    tal como já é feito para os pacientes.
+-- ============================================================
+alter table profiles add column if not exists cedula text;
+alter table profiles add column if not exists data_nascimento date;
+alter table profiles add column if not exists sexo text;

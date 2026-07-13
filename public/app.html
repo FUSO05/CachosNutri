@@ -499,15 +499,16 @@
       <div class="profile-fields">
         <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" id="profName" placeholder="O seu nome"></div>
         <div class="form-row">
-          <div class="form-field"><label class="field-label">Idade</label><input class="field-input" type="number" id="profAge" min="18" max="99" placeholder="—"></div>
-          <div class="form-field">
-            <label class="field-label">Sexo</label>
-            <select class="field-select" id="profSex">
-              <option value="">Selecionar…</option>
-              <option value="M">Masculino</option>
-              <option value="F">Feminino</option>
-            </select>
-          </div>
+          <div class="form-field"><label class="field-label">Data de nascimento</label><input class="field-input" type="date" id="profNascimento" oninput="updateProfileAge()"></div>
+          <div class="form-field"><label class="field-label">Idade</label><input class="field-input field-calc" type="text" id="profIdade" readonly placeholder="—"></div>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Sexo</label>
+          <select class="field-select" id="profSex">
+            <option value="">Selecionar…</option>
+            <option value="M">Masculino</option>
+            <option value="F">Feminino</option>
+          </select>
         </div>
         <div class="form-field"><label class="field-label">E-mail profissional</label><input class="field-input" type="email" id="profEmail" placeholder="email@exemplo.com"></div>
         <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="profCedula" placeholder="Ex: 1234N (Ordem dos Nutricionistas)"></div>
