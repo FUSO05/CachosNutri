@@ -13,6 +13,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e6644">
   <link rel="apple-touch-icon" href="img/icon-pwa-192.jpeg">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CachosNutri">
@@ -67,6 +68,14 @@
     <div class="portal-topbar-user">
       <span id="portal-user-name"></span>
       <button class="btn-back" onclick="confirmPortalLogout()" type="button">Sair</button>
+    </div>
+  </div>
+
+  <div id="portal-install-banner" class="portal-install-banner" style="display:none">
+    <span class="portal-install-banner-text" id="portal-install-banner-text"></span>
+    <div class="portal-install-banner-actions">
+      <button class="btn-primary" id="portal-install-btn" onclick="triggerPortalInstall()" type="button">Instalar</button>
+      <button class="portal-install-banner-close" onclick="dismissPortalInstallBanner()" type="button" aria-label="Fechar">&times;</button>
     </div>
   </div>
 

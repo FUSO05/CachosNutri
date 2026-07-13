@@ -311,6 +311,7 @@ async function continuePortalDataLoad() {
   await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
 
   showPortalTab('plano');
+  maybeShowPortalInstallBanner();
 }
 
 // ── Consentimento RGPD (dado pelo próprio paciente, não pelo nutricionista) ───
@@ -402,7 +403,7 @@ async function loadMealStatusByDay() {
   });
 }
 
-async function logMealStatus(mealIndex, status, note) {
+async function logMealStatus(mealIndex, status, note, isNoteSave) {
   if (!portalClient || !portalPlan) return;
   const { error } = await sb.from('meal_logs').insert({
     client_id: portalClient.id,
@@ -419,7 +420,11 @@ async function logMealStatus(mealIndex, status, note) {
   }
   portalMealStatusByDay[portalTodayIdx] = portalMealStatusByDay[portalTodayIdx] || {};
   portalMealStatusByDay[portalTodayIdx][mealIndex] = { status, note: note || null };
-  showToast(status === 'done' ? '✓ Refeição marcada como feita' : status === 'skipped' ? 'Refeição marcada como saltada' : 'Anotação guardada');
+  // isNoteSave força a mensagem a falar da nota (não do status done/skipped, que
+  // vem só preservado do que já estava antes — saveNoteModal() reenvia esse
+  // status para não o perder, não para o anunciar de novo). Dentro disso, a
+  // mensagem ainda depende de ter sido escrito texto ou deixado em branco.
+  showToast(isNoteSave ? (note ? 'Anotação guardada' : 'Anotação removida') : status === 'done' ? '✓ Refeição marcada como feita' : 'Refeição marcada como saltada');
   if (document.getElementById('pt-plano').classList.contains('active')) renderPortalPlano();
 }
 
@@ -441,7 +446,7 @@ async function saveNoteModal() {
   const note = document.getElementById('note-modal-textarea').value.trim();
   const currentStatus = portalMealStatusByDay[portalTodayIdx]?.[mealIndex]?.status || 'modified';
   closeNoteModal();
-  await logMealStatus(mealIndex, currentStatus, note);
+  await logMealStatus(mealIndex, currentStatus, note, true);
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
@@ -865,6 +870,73 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js', { scope: '/portal.html' })
       .catch((err) => console.error('Erro ao registar service worker:', err));
   });
+}
+
+// ── PWA: banner de instalação próprio (em vez de depender do menu do browser) ─
+// O Chrome/Android disparam "beforeinstallprompt" — guardamos o evento e só o
+// disparamos quando o próprio paciente clica no nosso botão. No iOS (Safari) esse
+// evento não existe (a Apple não permite disparar o ecrã nativo por script), por
+// isso mostramos só instruções manuais em vez de um botão.
+let _deferredInstallPrompt = null;
+const PORTAL_PWA_DISMISSED_KEY = 'cachos_portal_pwa_dismissed';
+
+function isPortalStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  hidePortalInstallBanner();
+  try { localStorage.setItem(PORTAL_PWA_DISMISSED_KEY, '1'); } catch (e) {}
+});
+
+// Chamado depois do portal (autenticado, sem o gate de consentimento por cima)
+// estar mesmo visível — nunca no ecrã de login.
+function maybeShowPortalInstallBanner() {
+  const banner = document.getElementById('portal-install-banner');
+  if (!banner || isPortalStandalone()) return;
+  try { if (localStorage.getItem(PORTAL_PWA_DISMISSED_KEY)) return; } catch (e) {}
+
+  const isIos = isIosDevice();
+  if (!_deferredInstallPrompt && !isIos) return; // browser sem suporte (ex.: Firefox) — não incomoda
+
+  const text = document.getElementById('portal-install-banner-text');
+  const btn  = document.getElementById('portal-install-btn');
+  if (isIos && !_deferredInstallPrompt) {
+    text.textContent = 'Instala o CachosNutri: toca em Partilhar e depois em "Adicionar ao Ecrã Principal".';
+    btn.style.display = 'none';
+  } else {
+    text.textContent = 'Instala o CachosNutri no teu telemóvel para acesso mais rápido.';
+    btn.style.display = '';
+  }
+  banner.style.display = '';
+}
+
+async function triggerPortalInstall() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  await _deferredInstallPrompt.userChoice;
+  _deferredInstallPrompt = null;
+  hidePortalInstallBanner();
+}
+
+function dismissPortalInstallBanner() {
+  hidePortalInstallBanner();
+  try { localStorage.setItem(PORTAL_PWA_DISMISSED_KEY, '1'); } catch (e) {}
+}
+
+function hidePortalInstallBanner() {
+  const banner = document.getElementById('portal-install-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
