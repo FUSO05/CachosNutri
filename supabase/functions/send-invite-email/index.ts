@@ -12,10 +12,10 @@
 // SUPABASE_URL e SUPABASE_ANON_KEY são injetados automaticamente pelo Supabase
 // em runtime — não é preciso configurá-los.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.110.3';
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://cachosnutri.vercel.app',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 

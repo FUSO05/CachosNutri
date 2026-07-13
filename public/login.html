@@ -9,7 +9,7 @@
   <link rel="icon" type="image/png" href="img/fav.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.3" integrity="sha384-uVefCux0Kf6w34gQVv8+jUPUwvwFUdnrcwI1kOJHs7sfPPXdDDucwcrPrppD6oUe" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -96,7 +96,7 @@
     <form class="auth-form" id="auth-form-signup" onsubmit="event.preventDefault(); handleSignup();" style="display:none">
       <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="auth-signup-nome" placeholder="O seu nome" autocomplete="name" required></div>
       <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="auth-signup-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
-      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-signup-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required></div>
+      <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="auth-signup-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" required></div>
       <div class="auth-error" id="auth-signup-error"></div>
       <button class="btn-primary auth-submit" type="submit" id="auth-signup-btn">Criar conta</button>
     </form>

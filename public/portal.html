@@ -19,8 +19,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CachosNutri">
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.3" integrity="sha384-uVefCux0Kf6w34gQVv8+jUPUwvwFUdnrcwI1kOJHs7sfPPXdDDucwcrPrppD6oUe" crossorigin="anonymous"></script>
 </head>
 <body class="portal-page-body">
 
@@ -50,7 +50,7 @@
         <p class="modal-hint">A sua conta é criada a partir do convite enviado pelo seu nutricionista.</p>
         <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="portal-signup-nome" placeholder="O seu nome" autocomplete="name" required></div>
         <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="portal-signup-email" placeholder="email@exemplo.com" autocomplete="username" required></div>
-        <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="portal-signup-password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" minlength="6" required></div>
+        <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="portal-signup-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" required></div>
         <div class="form-field"><label class="field-label">Código de convite</label><input class="field-input" type="text" id="portal-signup-code" style="text-transform:uppercase" required></div>
         <div class="auth-error" id="portal-signup-error"></div>
         <button class="btn-primary auth-submit" type="submit" id="portal-signup-btn">Criar conta</button>
