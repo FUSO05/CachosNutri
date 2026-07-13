@@ -8,6 +8,15 @@
   <link rel="icon" type="image/png" href="img/fav.ico">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- PWA: instalável no ecrã principal (prioridade do portal do paciente) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e6644">
+  <link rel="apple-touch-icon" href="img/icon-pwa-192.jpeg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="CachosNutri">
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -101,6 +110,33 @@
       <div id="portal-view-fotos" style="display:none"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- CONSENTIMENTO RGPD — dado pelo próprio paciente, sem fechar por fora nem X
+     (só avança depois de aceitar; "Sair" é a única saída). -->
+<div id="portal-consent-modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Consentimento para tratamento de dados</div>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Antes de continuar, precisamos do seu consentimento para tratar os seus dados de saúde
+      (plano alimentar, registos de água e refeições, fotos) no âmbito do acompanhamento nutricional prestado pelo
+      seu nutricionista. Pode consultar todos os detalhes na
+      <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
+      <div class="consent-field">
+        <label class="consent-check-label">
+          <input type="checkbox" id="portal-consent-checkbox" onchange="togglePortalConsentBtn()">
+          <span>Li e aceito a Política de Privacidade e autorizo o tratamento dos meus dados pessoais e de saúde
+          para este acompanhamento nutricional.</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-back" onclick="confirmPortalLogout()">Sair</button>
+      <button class="btn-primary" id="portal-consent-btn" disabled onclick="acceptPortalConsent()">Continuar</button>
+    </div>
   </div>
 </div>
 

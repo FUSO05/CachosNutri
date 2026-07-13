@@ -286,6 +286,14 @@ async function loadPortalData() {
     ? `· ${portalPlan.nome || 'Sem nome'}`
     : '';
 
+  if (!(await hasPatientConsent(portalClient.id))) {
+    showPortalConsentGate();
+    return;
+  }
+  await continuePortalDataLoad();
+}
+
+async function continuePortalDataLoad() {
   const jsDay = new Date().getDay();
   portalDayIdx = (jsDay + 6) % 7; // JS: 0=Domingo..6=Sábado → DAYS: 0=Segunda..6=Domingo
   portalTodayIdx = portalDayIdx;
@@ -303,6 +311,40 @@ async function loadPortalData() {
   await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
 
   showPortalTab('plano');
+}
+
+// ── Consentimento RGPD (dado pelo próprio paciente, não pelo nutricionista) ───
+async function hasPatientConsent(clientId) {
+  const { data, error } = await sb.from('patient_consents').select('id').eq('client_id', clientId).maybeSingle();
+  if (error) { console.error('Erro ao verificar consentimento:', error); return true; } // erro transitório não bloqueia quem já tinha acesso
+  return !!data;
+}
+
+function showPortalConsentGate() {
+  document.getElementById('portal-consent-checkbox').checked = false;
+  togglePortalConsentBtn();
+  document.getElementById('portal-main').style.display = 'none';
+  document.getElementById('portal-consent-modal').style.display = 'flex';
+}
+
+function togglePortalConsentBtn() {
+  document.getElementById('portal-consent-btn').disabled = !document.getElementById('portal-consent-checkbox').checked;
+}
+
+async function acceptPortalConsent() {
+  if (!document.getElementById('portal-consent-checkbox').checked) return;
+  const btn = document.getElementById('portal-consent-btn');
+  btn.disabled = true;
+  const { error } = await sb.from('patient_consents').upsert({ client_id: portalClient.id }, { onConflict: 'client_id' });
+  if (error) {
+    console.error('Erro ao registar consentimento:', error);
+    showAlertModal('Não foi possível registar o consentimento. Tente novamente.');
+    btn.disabled = false;
+    return;
+  }
+  document.getElementById('portal-consent-modal').style.display = 'none';
+  document.getElementById('portal-main').style.display = '';
+  await continuePortalDataLoad();
 }
 
 // ── Água diária ──────────────────────────────────────────────────────────────
@@ -812,6 +854,13 @@ async function openStoryForDay(date, startMealIndex) {
     canManage: isToday,
     onReplace: isToday ? (categoryStr) => openMealPhotoPicker(Number(categoryStr)) : undefined,
     onDelete: isToday ? (categoryStr) => deleteMealPhoto(Number(categoryStr)) : undefined,
+  });
+}
+
+// ── PWA: torna o portal instalável no ecrã principal ──────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.error('Erro ao registar service worker:', err));
   });
 }
 

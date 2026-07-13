@@ -792,6 +792,21 @@ function renderClientPage(client) {
   loadInfoForm(client.info || {});
   renderPlansList(client);
   renderInviteSection(client);
+  renderPatientConsentStatus(client);
+}
+
+// Mostra se o próprio paciente já deu consentimento no portal (tabela
+// patient_consents) — distinto da checkbox acima, que é só o nutricionista a
+// registar um consentimento presencial/manual.
+async function renderPatientConsentStatus(client) {
+  const el = document.getElementById('portal-consent-status-label');
+  if (!el) return;
+  el.textContent = '';
+  if (!appData.clients.find(c => c.id === client.id)) return; // ainda por guardar
+  const { data, error } = await sb.from('patient_consents').select('consented_at').eq('client_id', client.id).maybeSingle();
+  if (nav.clientId !== client.id) return; // navegou para outro paciente durante o await
+  if (error || !data) return;
+  el.textContent = `✓ O paciente confirmou o consentimento no portal em ${formatDate(data.consented_at)}`;
 }
 
 function showClientTab(tab) {
@@ -889,6 +904,53 @@ function exportClientDataJson() {
   const safeName = (client.nome || 'paciente').trim().replace(/[^\w\- ]/g, '').replace(/\s+/g, '_');
   a.href = url;
   a.download = `cachosnutri_${safeName || 'paciente'}_dados.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Ponto e vírgula como separador (não vírgula) — no Excel em português a vírgula
+// é o separador decimal, por isso é o delimitador de CSV que abre bem "de origem".
+function exportConsultationsCsv() {
+  if (!nav.clientId) return;
+  let client = appData.clients.find(c => c.id === nav.clientId);
+  if (!client && draftClient && draftClient.id === nav.clientId) client = draftClient;
+  if (!client) return;
+
+  const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
+  if (!consultations.length) {
+    showAlertModal('Este paciente ainda não tem consultas registadas.', { title: 'Sem dados' });
+    return;
+  }
+
+  const headers = [
+    'Data', 'Peso (kg)', 'Altura (cm)', 'IMC', 'Massa Gorda (%)', 'MIG (kg)',
+    'Somatório Pregas (mm)', 'Perímetro Cintura ISAK (cm)', 'Perímetro Anca (cm)',
+    'Perímetro Braço (cm)', 'Notas'
+  ];
+  const rows = consultations.map(c => [
+    // Fica como data real (não texto) de propósito — para gráficos no Excel
+    // funcionarem com eixo temporal corretamente escalado, e para agrupar por
+    // mês/ano. Se aparecer "#######", é só a coluna estar estreita: duplo-clique
+    // no limite do cabeçalho da coluna resolve, sem perder a funcionalidade de data.
+    new Date(c.date).toLocaleDateString('pt-PT'),
+    c.peso, c.altura, c.imc, c.massaGorda, c.mig,
+    c.somatorioPregas, c.perCinturaISAK, c.perAnca, c.perBraco, c.notes
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const safeName = (client.nome || 'paciente').trim().replace(/[^\w\- ]/g, '').replace(/\s+/g, '_');
+  a.href = url;
+  a.download = `cachosnutri_${safeName || 'paciente'}_evolucao.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -2511,10 +2573,16 @@ async function renderEvolutionTab() {
     ${mealPhotosHTML}
     <div class="evolution-header">
       <div class="evolution-title">Histórico de Evolução</div>
-      <button class="btn-primary" onclick="registerConsultation()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        Registar consulta
-      </button>
+      <div class="evolution-header-actions">
+        <button class="btn-back" onclick="exportConsultationsCsv()" title="Exportar histórico de consultas em CSV (Excel)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+        <button class="btn-primary" onclick="registerConsultation()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Registar consulta
+        </button>
+      </div>
     </div>
     ${hasCharts ? `<div class="evolution-charts">
       <div class="evol-chart-card"><div class="evol-chart-title">Peso (kg)</div><div class="evol-chart-canvas-wrap"><canvas id="chartPeso"></canvas></div></div>

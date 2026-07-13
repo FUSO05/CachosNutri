@@ -1193,6 +1193,7 @@ body {
   justify-content: space-between;
   margin-bottom: 24px;
 }
+.evolution-header-actions { display: flex; align-items: center; gap: 8px; }
 .evolution-title {
   font-size: 15px;
   font-weight: 700;

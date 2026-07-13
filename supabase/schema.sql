@@ -385,7 +385,7 @@ create policy "nutricionista vê fotos de refeições dos seus clientes"
   );
 
 -- ============================================================
--- 6. profiles — cédula profissional, data de nascimento e sexo (perfil do
+-- 8. profiles — cédula profissional, data de nascimento e sexo (perfil do
 --    nutricionista sincronizado entre dispositivos; foto guardada em
 --    photo_url, já existente). Guarda-se a data de nascimento, não a idade
 --    (que muda com o tempo) — a idade é sempre calculada a partir dela,
@@ -394,3 +394,35 @@ create policy "nutricionista vê fotos de refeições dos seus clientes"
 alter table profiles add column if not exists cedula text;
 alter table profiles add column if not exists data_nascimento date;
 alter table profiles add column if not exists sexo text;
+
+-- ============================================================
+-- 9. patient_consents — consentimento RGPD dado pelo próprio paciente no
+--    portal (não pelo nutricionista em seu nome). O campo pConsentimento em
+--    clients.info continua a existir para registo manual/presencial de
+--    pacientes que nunca usam o portal; esta tabela é a prova de que o
+--    próprio titular dos dados consentiu diretamente.
+-- ============================================================
+create table if not exists patient_consents (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null unique references clients(id) on delete cascade,
+  consented_at timestamptz not null default now()
+);
+
+alter table patient_consents enable row level security;
+
+drop policy if exists "paciente regista o seu próprio consentimento" on patient_consents;
+create policy "paciente regista o seu próprio consentimento"
+  on patient_consents for all
+  using (exists (
+    select 1 from clients c where c.id = patient_consents.client_id and c.paciente_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from clients c where c.id = patient_consents.client_id and c.paciente_id = auth.uid()
+  ));
+
+drop policy if exists "nutricionista vê o consentimento dos seus pacientes" on patient_consents;
+create policy "nutricionista vê o consentimento dos seus pacientes"
+  on patient_consents for select
+  using (exists (
+    select 1 from clients c where c.id = patient_consents.client_id and c.nutricionista_id = auth.uid()
+  ));
