@@ -426,3 +426,45 @@ create policy "nutricionista vê o consentimento dos seus pacientes"
   using (exists (
     select 1 from clients c where c.id = patient_consents.client_id and c.nutricionista_id = auth.uid()
   ));
+
+-- ============================================================
+-- 10. hora real da refeição (registada pelo paciente, distinta da hora
+--     prevista em plans.days[].meals[].hora) + meal_comments — comentário do
+--     nutricionista a uma refeição real do paciente (dia real + meal_index,
+--     a mesma identidade já usada por progress_photos.photo_date). Nem
+--     meal_logs (log append-only) nem progress_photos (só existe quando há
+--     foto) servem de dono natural de um comentário que deve valer tanto
+--     para a nota como para a foto — por isso uma tabela isolada, com
+--     unique(client_id, log_date, meal_index) para permitir upsert (um
+--     comentário único e editável por refeição, não um histórico).
+-- ============================================================
+alter table meal_logs add column if not exists hora_real text;
+
+create table if not exists meal_comments (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references clients(id) on delete cascade,
+  log_date date not null,
+  meal_index int not null,
+  comment text not null,
+  commented_at timestamptz not null default now(),
+  unique (client_id, log_date, meal_index)
+);
+
+alter table meal_comments enable row level security;
+
+drop policy if exists "nutricionista gere comentários dos seus clientes" on meal_comments;
+create policy "nutricionista gere comentários dos seus clientes"
+  on meal_comments for all
+  using (exists (
+    select 1 from clients c where c.id = meal_comments.client_id and c.nutricionista_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from clients c where c.id = meal_comments.client_id and c.nutricionista_id = auth.uid()
+  ));
+
+drop policy if exists "paciente vê os comentários das suas refeições" on meal_comments;
+create policy "paciente vê os comentários das suas refeições"
+  on meal_comments for select
+  using (exists (
+    select 1 from clients c where c.id = meal_comments.client_id and c.paciente_id = auth.uid()
+  ));

@@ -17,6 +17,12 @@ let portalTodayIdx = 0;          // dia real de hoje — não muda ao navegar co
 let portalMealStatusByDay = {};
 let _noteModalMealIndex = null;
 
+// { [meal_index]: comment } — comentários do nutricionista, só para o dia real de hoje
+// (mesma restrição de portalFotosByDate/isToday: portalDayIdx não distingue semanas
+// diferentes, por isso um comentário "de terça" não tem uma data real única fora de
+// hoje neste ecrã). Ver também no story-viewer de fotos, que já navega por datas reais.
+let portalMealCommentsByDate = {};
+
 // ── Fotos de refeições ─────────────────────────────────────────────────────
 // Cada foto liga-se à refeição real do plano (meal_index, tal como meal_logs) — não há
 // categorias fixas, já que o nutricionista pode ter qualquer número de refeições por dia.
@@ -308,6 +314,7 @@ async function continuePortalDataLoad() {
 
   await loadWaterToday();
   await loadMealStatusByDay();
+  await loadMealCommentsForToday();
   await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
 
   showPortalTab('plano');
@@ -388,7 +395,7 @@ async function loadMealStatusByDay() {
   if (!portalPlan) return;
   const { data, error } = await sb
     .from('meal_logs')
-    .select('day_index, meal_index, status, note, logged_at')
+    .select('day_index, meal_index, status, note, hora_real, logged_at')
     .eq('client_id', portalClient.id)
     .eq('plan_id', portalPlan.id)
     .order('logged_at', { ascending: false });
@@ -398,12 +405,30 @@ async function loadMealStatusByDay() {
   (data || []).forEach(r => {
     portalMealStatusByDay[r.day_index] = portalMealStatusByDay[r.day_index] || {};
     if (!(r.meal_index in portalMealStatusByDay[r.day_index])) {
-      portalMealStatusByDay[r.day_index][r.meal_index] = { status: r.status, note: r.note };
+      portalMealStatusByDay[r.day_index][r.meal_index] = { status: r.status, note: r.note, horaReal: r.hora_real };
     }
   });
 }
 
-async function logMealStatus(mealIndex, status, note, isNoteSave) {
+async function loadMealCommentsForToday() {
+  portalMealCommentsByDate = {};
+  if (!portalClient || !portalFotosTodayDate) return;
+  const { data, error } = await sb
+    .from('meal_comments')
+    .select('meal_index, comment')
+    .eq('client_id', portalClient.id)
+    .eq('log_date', portalFotosTodayDate);
+  if (error) { console.error('Erro ao carregar comentários do nutricionista:', error); return; }
+  (data || []).forEach(r => { portalMealCommentsByDate[r.meal_index] = r.comment; });
+}
+
+function showMealComment(mealIndex) {
+  const comment = portalMealCommentsByDate[mealIndex];
+  if (!comment) return;
+  showAlertModal(comment, { type: 'info', title: 'Comentário do nutricionista' });
+}
+
+async function logMealStatus(mealIndex, status, note, isNoteSave, horaReal) {
   if (!portalClient || !portalPlan) return;
   const { error } = await sb.from('meal_logs').insert({
     client_id: portalClient.id,
@@ -411,7 +436,8 @@ async function logMealStatus(mealIndex, status, note, isNoteSave) {
     day_index: portalTodayIdx,
     meal_index: mealIndex,
     status,
-    note: note || null
+    note: note || null,
+    hora_real: horaReal || null
   });
   if (error) {
     console.error('Erro ao registar refeição:', error);
@@ -419,7 +445,7 @@ async function logMealStatus(mealIndex, status, note, isNoteSave) {
     return;
   }
   portalMealStatusByDay[portalTodayIdx] = portalMealStatusByDay[portalTodayIdx] || {};
-  portalMealStatusByDay[portalTodayIdx][mealIndex] = { status, note: note || null };
+  portalMealStatusByDay[portalTodayIdx][mealIndex] = { status, note: note || null, horaReal: horaReal || null };
   // isNoteSave força a mensagem a falar da nota (não do status done/skipped, que
   // vem só preservado do que já estava antes — saveNoteModal() reenvia esse
   // status para não o perder, não para o anunciar de novo). Dentro disso, a
@@ -431,7 +457,9 @@ async function logMealStatus(mealIndex, status, note, isNoteSave) {
 function openNoteModal(mealIndex) {
   _noteModalMealIndex = mealIndex;
   const existing = portalMealStatusByDay[portalTodayIdx]?.[mealIndex];
+  const meal = portalPlan?.days?.[portalTodayIdx]?.meals?.[mealIndex];
   document.getElementById('note-modal-textarea').value = existing?.note || '';
+  document.getElementById('note-modal-hora').value = existing?.horaReal || meal?.hora || '';
   document.getElementById('noteModal').style.display = '';
 }
 
@@ -444,9 +472,10 @@ async function saveNoteModal() {
   const mealIndex = _noteModalMealIndex;
   if (mealIndex == null) return;
   const note = document.getElementById('note-modal-textarea').value.trim();
+  const horaReal = document.getElementById('note-modal-hora').value.trim();
   const currentStatus = portalMealStatusByDay[portalTodayIdx]?.[mealIndex]?.status || 'modified';
   closeNoteModal();
-  await logMealStatus(mealIndex, currentStatus, note, true);
+  await logMealStatus(mealIndex, currentStatus, note, true, horaReal);
 }
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
@@ -521,6 +550,10 @@ function renderPortalPlano() {
     const entry = portalMealStatusByDay[portalDayIdx]?.[idx];
     const status = entry?.status;
     const photoEntry = isToday ? portalFotosByDate[portalFotosTodayDate]?.[idx] : null;
+    const comment = isToday ? portalMealCommentsByDate[idx] : null;
+    const commentBtnHTML = comment
+      ? `<button class="portal-meal-btn-icon portal-meal-btn-icon--comment active" onclick="showMealComment(${idx})" type="button" title="O nutricionista comentou">💬</button>`
+      : '';
     const statusHTML = isToday ? `
       <div class="portal-meal-status">
         <button class="portal-meal-btn portal-meal-btn--done${status === 'done' ? ' active' : ''}" onclick="logMealStatus(${idx}, 'done')" type="button">Feita</button>
@@ -529,6 +562,7 @@ function renderPortalPlano() {
         <button class="portal-meal-btn-icon portal-meal-btn-icon--photo${photoEntry ? ' active' : ''}" onclick="handleMealPhotoTap(${idx})" type="button" title="${photoEntry ? 'Ver/substituir foto' : 'Adicionar foto'}">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </button>
+        ${commentBtnHTML}
       </div>` : '';
     const cardClass = status === 'done' ? ' portal-meal-card--done' : status === 'skipped' ? ' portal-meal-card--skipped' : '';
     mealsHTML = `
@@ -851,7 +885,17 @@ async function openStoryForDay(date, startMealIndex) {
   if (!indices.length) return;
   const paths = indices.map(i => dayEntry[i].storage_path);
   const urls = await getSignedPhotoUrls(paths);
-  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: urls[dayEntry[i].storage_path] }));
+  // Comentários do nutricionista para este dia real — ao contrário do indicador do cartão
+  // do plano (só "hoje"), aqui a data é sempre real (vem do calendário de fotos), por isso
+  // conseguimos mostrar comentários de qualquer dia passado sem ambiguidade de semana.
+  const { data: commentRows } = await sb
+    .from('meal_comments')
+    .select('meal_index, comment')
+    .eq('client_id', portalClient.id)
+    .eq('log_date', date);
+  const commentByIdx = {};
+  (commentRows || []).forEach(r => { commentByIdx[r.meal_index] = r.comment; });
+  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: urls[dayEntry[i].storage_path], comment: commentByIdx[i] }));
   const startIndex = Math.max(0, indices.indexOf(startMealIndex));
   const isToday = date === portalFotosTodayDate;
   showStoryViewer(slots, {

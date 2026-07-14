@@ -160,7 +160,15 @@ Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos satu
 
 ## TO DO'S
 
-Prompt: Cria uma CI/CD pipeline para testar as várias fases de desenvolvimento
+Skeleton loader.
+
+Integrar passos diários com Google Health etc.
+
+Adicionar área de atividade, em que posso adicionar atividade físicas que realizei no dia, em que posso colocar a duração e kcal que queimei. Tudo isto ficaria disponível para o Nutricionista também.
 
 
-Prompt: **Fase 4 (prioridade do utilizador)**: Engagement — registo diário de água (`daily_water_logs`), refeições feitas vs. planeadas (`meal_logs`), fotos de progresso (Supabase Storage), lembretes (Notification API local primeiro; push via Edge Function depois). Indicadores de adesão visíveis ao nutricionista na tab "Evolução".
+
+Colocar Tema Escuro.
+
+
+Paleta de Cores para o Dark ThemeFundo Geral da App (Main Background): #0F1210 (Um preto profundo com um leve toque verde)Fundo dos Cards e Contentores (Surface): #181C19 (Cinza-escuro para destacar os blocos de dados)Barra Lateral Esquerda (Sidebar): #121513 ou #000000 (Mais escura que os cards para manter o foco no centro)Texto Principal: #FFFFFF (Títulos e nomes dos pacientes)Texto Secundário / Legendas: #94A3B8 ou #A0AEC0 (Cinza claro para as datas e contadores secundários)Verde de Destaque (Accent Green): #10B981 ou #00CC66 (Um verde mais luminoso que o atual, para botões e links brilharem no escuro)🗺️ Mapeamento de Componentes (O que muda de cor)1. Barra Lateral (Menu Esquerdo)Fundo: Passa de verde escuro para preto absoluto (#121513).Itens do Menu Inativos: Texto e ícones em cinza médio (#64748B).Item Ativo (Dashboard): Fundo do botão em verde neon suave com opacidade baixa ou apenas o texto em verde brilhante (#10B981).2. Barra Superior e SaudaçãoTexto "Olá, Luís...": Branco puro (#FFFFFF).Data (Canto Superior Direito): Card com fundo #181C19 e texto em cinza claro.3. Cards de Métricas Superiores (Pacientes, Planos, etc.)Fundo do Card: Substitua o branco por #181C19.Números Grandes (2, 1, 4, 1.376): Branco puro.Ícones pequenos: Use o verde de destaque para dar vida aos pequenos gráficos e símbolos.4. Bloco Central ("Nutrição que transforma vidas")Fundo: Transforma-se num card escuro (#181C19).Botão "+ Adicionar paciente": Mantém o fundo verde, mas use o tom mais luminoso (#10B981) com texto em branco puro para garantir o contraste.5. Lista de Pacientes (Fundo da Página)Linhas dos Pacientes (Sofia, Luís): Cards escuros com fundo #181C19 sobre o fundo geral #0F1210.Badges de Planos (1 plano / 0 planos): Fundo verde escuro opaco com texto verde claro, ou apenas uma borda fina.

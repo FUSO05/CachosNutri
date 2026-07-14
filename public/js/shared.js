@@ -189,8 +189,12 @@ function invalidateSignedPhotoUrl(path) {
 // markup estático em app.html/portal.html, que já carregam este ficheiro.
 let _storyState = null;
 
-// slots: array ordenado de {category, label, url} só das categorias preenchidas do dia.
-// opts: { startIndex=0, canManage=false, onReplace(category), onDelete(category) }.
+// slots: array ordenado de {category, label, url, comment?} só das categorias preenchidas
+// do dia — "comment" (se vier preenchido) é o comentário do nutricionista para essa
+// refeição, mostrado independentemente de canManage.
+// opts: { startIndex=0, canManage=false, onReplace(category), onDelete(category),
+//         onComment(slot) } — onComment é opcional e independente de canManage (o
+// nutricionista pode comentar sem poder substituir/apagar a foto do paciente).
 function showStoryViewer(slots, opts) {
   opts = opts || {};
   if (!slots || !slots.length) return;
@@ -203,6 +207,10 @@ function showStoryViewer(slots, opts) {
     <button class="story-close-btn" type="button" aria-label="Fechar">&times;</button>
     <div class="story-media-wrap"><img class="story-media-img" alt=""></div>
     <div class="story-meta"><span class="story-meta-label"></span></div>
+    <div class="story-comment-row" style="display:none">
+      <span class="story-comment-text"></span>
+      <button class="story-comment-btn" type="button" style="display:none">Comentar</button>
+    </div>
     <div class="story-manage-actions" style="display:none">
       <button class="story-manage-btn story-manage-btn--replace" type="button" title="Substituir foto">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
@@ -227,6 +235,7 @@ function showStoryViewer(slots, opts) {
     canManage: !!opts.canManage,
     onReplace: opts.onReplace,
     onDelete: opts.onDelete,
+    onComment: opts.onComment,
   };
 
   overlay.querySelector('.story-close-btn').onclick = closeStoryViewer;
@@ -251,6 +260,15 @@ function showStoryViewer(slots, opts) {
     };
   }
 
+  if (_storyState.onComment) {
+    overlay.querySelector('.story-comment-btn').onclick = () => {
+      const slot = _storyState.slots[_storyState.index];
+      const cb = _storyState.onComment;
+      closeStoryViewer();
+      if (cb) cb(slot);
+    };
+  }
+
   document.addEventListener('keydown', _storyKeydown);
   _storyRenderSlot();
   _storyStartTimer();
@@ -272,6 +290,15 @@ function _storyRenderSlot() {
   st.overlay.querySelectorAll('.story-progress-seg-fill').forEach((el, i) => {
     el.style.width = i < st.index ? '100%' : '0%';
   });
+
+  const commentRow = st.overlay.querySelector('.story-comment-row');
+  const commentText = commentRow.querySelector('.story-comment-text');
+  const commentBtn = commentRow.querySelector('.story-comment-btn');
+  commentText.textContent = slot.comment || '';
+  commentText.style.display = slot.comment ? '' : 'none';
+  commentBtn.style.display = st.onComment ? '' : 'none';
+  if (commentBtn.style.display !== 'none') commentBtn.textContent = slot.comment ? 'Editar comentário' : 'Comentar';
+  commentRow.style.display = (slot.comment || st.onComment) ? '' : 'none';
 }
 
 function _storyStartTimer() {

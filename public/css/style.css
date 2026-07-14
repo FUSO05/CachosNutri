@@ -1188,6 +1188,22 @@ body {
   cursor: pointer;
   font-family: inherit;
 }
+.daily-comment-tag { text-decoration: none; }
+
+/* ── Modal "Detalhes da refeição" (nota do paciente + comentário do nutricionista) ── */
+.mc-meta-row { font-size: 12.5px; color: var(--gray-500); margin-bottom: 14px; }
+.mc-hora-tag { color: var(--gray-400); font-weight: 500; }
+.mc-photo-tag { margin-left: 10px; }
+.mc-block-label { font-size: 11.5px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .02em; margin-bottom: 6px; }
+.mc-note-block { margin-bottom: 16px; }
+.mc-note-text {
+  font-size: 13px;
+  color: var(--gray-700);
+  background: var(--gray-50);
+  border-radius: 8px;
+  padding: 10px 12px;
+  white-space: pre-line;
+}
 
 .evolution-header {
   display: flex;
@@ -3664,6 +3680,7 @@ body.portal-page-body { height: 100%; overflow: hidden; }
 }
 .portal-meal-btn-icon--photo:hover { border-color: #7c3aed; color: #7c3aed; }
 .portal-meal-btn-icon--photo.active { background: #ede9fe; border-color: #7c3aed; color: #7c3aed; }
+.portal-meal-btn-icon--comment.active { background: var(--green-light); border-color: var(--green); }
 
 /* ── Reel só-leitura do lado do nutricionista (tab Evolução) ── */
 .fotos-reel-days { display: flex; flex-direction: column; gap: 10px; }
@@ -3759,6 +3776,34 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   justify-content: center;
 }
 .story-manage-btn:hover { background: rgba(0,0,0,.55); }
+
+.story-comment-row {
+  position: absolute;
+  left: 16px; right: 16px; bottom: 56px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.story-comment-text {
+  font-size: 12.5px;
+  color: white;
+  background: rgba(0,0,0,.45);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.story-comment-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  background: white;
+  color: var(--gray-800);
+}
 
 @media (max-width: 480px) {
   .fotos-reel-thumb { width: 52px; height: 52px; }

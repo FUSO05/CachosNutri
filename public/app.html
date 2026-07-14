@@ -624,6 +624,29 @@
   </div>
 </div>
 
+<!-- MEAL COMMENT MODAL -->
+<div id="mealCommentModal" class="modal-overlay" onclick="if(event.target===this)closeMealCommentModal()" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="mc-modal-title">Detalhes da refeição</div>
+      <button class="modal-close" onclick="closeMealCommentModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="mc-meta-row" id="mc-meta-row"></div>
+      <div class="mc-note-block">
+        <div class="mc-block-label">Nota do paciente</div>
+        <div class="mc-note-text" id="mc-note-text"></div>
+      </div>
+      <div class="mc-block-label">O seu comentário (visível para o paciente)</div>
+      <textarea class="field-textarea field-textarea-lg" id="mc-comment-textarea" placeholder="Ex: bom trabalho, para a próxima experimenta..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-back" onclick="closeMealCommentModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveMealComment()">Guardar comentário</button>
+    </div>
+  </div>
+</div>
+
 <!-- NUTRI PHOTOS CALENDAR MODAL -->
 <div id="nutriPhotosCalendarModal" class="modal-overlay" onclick="if(event.target===this)closeNutriPhotosCalendarModal()" style="display:none">
   <div class="modal-box" style="width:360px">

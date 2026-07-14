@@ -2432,13 +2432,27 @@ function deleteConsultation(consultationId) {
 // específico de forma obrigatória — plan_id em meal_logs é só informativo).
 async function buildAdherenceCardsHTML(client) {
   const [start7, end7] = [localDayRangeISO(-6)[0], localDayRangeISO(0)[1]];
+  // progress_photos/meal_comments são indexadas por data (não por timestamp) — mesma
+  // janela de 7 dias que start7/end7, mas em formato yyyy-mm-dd para comparar com colunas
+  // "date".
+  const dateStart = localDateStr(-6);
+  const dateEndExclusive = localDateStr(1);
 
-  const [{ data: waterRows, error: waterErr }, { data: mealRows, error: mealErr }] = await Promise.all([
+  const [
+    { data: waterRows, error: waterErr },
+    { data: mealRows, error: mealErr },
+    { data: photoRows, error: photoErr },
+    { data: commentRows, error: commentErr },
+  ] = await Promise.all([
     sb.from('daily_water_logs').select('amount_ml, logged_at').eq('client_id', client.id).gte('logged_at', start7).lt('logged_at', end7),
-    sb.from('meal_logs').select('meal_index, status, note, logged_at').eq('client_id', client.id).gte('logged_at', start7).lt('logged_at', end7)
+    sb.from('meal_logs').select('meal_index, status, note, hora_real, logged_at').eq('client_id', client.id).gte('logged_at', start7).lt('logged_at', end7).order('logged_at', { ascending: false }),
+    sb.from('progress_photos').select('meal_index, photo_date').eq('client_id', client.id).gte('photo_date', dateStart).lt('photo_date', dateEndExclusive),
+    sb.from('meal_comments').select('meal_index, log_date, comment').eq('client_id', client.id).gte('log_date', dateStart).lt('log_date', dateEndExclusive),
   ]);
   if (waterErr) console.error('Erro ao carregar adesão de água:', waterErr);
   if (mealErr) console.error('Erro ao carregar adesão de refeições:', mealErr);
+  if (photoErr) console.error('Erro ao carregar fotos de refeições:', photoErr);
+  if (commentErr) console.error('Erro ao carregar comentários de refeições:', commentErr);
 
   const activePlan = client.plans && client.plans.length
     ? client.plans.reduce((a, b) => (a.createdAt > b.createdAt ? a : b))
@@ -2481,37 +2495,105 @@ async function buildAdherenceCardsHTML(client) {
         : `<div class="adherence-card-empty">Sem plano com refeições definidas</div>`}
     </div>`;
 
-  const dailyHTML = buildDailyAdherenceHTML(activePlan, waterRows || [], mealRows || []);
+  const dailyHTML = buildDailyAdherenceHTML(activePlan, waterRows || [], mealRows || [], photoRows || [], commentRows || []);
 
   return `<div class="adherence-cards">${waterCard}${mealCard}</div>${dailyHTML}`;
 }
 
-// Notas de refeições mostradas via "Ver detalhes" (showMealNoteByIndex) — guardadas num
-// array em vez de embutidas no onclick, para nunca ter de escapar texto livre do paciente
-// dentro de um atributo HTML.
+// Detalhes de refeições mostrados via "Ver detalhes" (openMealCommentModal) — guardados
+// num array em vez de embutidos no onclick, para nunca ter de escapar texto livre do
+// paciente dentro de um atributo HTML.
 let _dailyMealNotes = [];
+let _mealCommentIdx = null;
 
-function showMealNoteByIndex(i) {
+function openMealCommentModal(i) {
   const entry = _dailyMealNotes[i];
   if (!entry) return;
-  showAlertModal(entry.note, { type: 'info', title: `Nota — ${entry.mealName}` });
+  _mealCommentIdx = i;
+  document.getElementById('mc-modal-title').textContent = `Detalhes — ${entry.mealName}`;
+  const hora = entry.horaReal || entry.mealHora;
+  const horaTag = entry.horaReal && entry.horaReal !== entry.mealHora ? ' <span class="mc-hora-tag">(alterada pelo paciente)</span>' : '';
+  const photoTag = entry.hasPhoto ? ' <span class="mc-photo-tag">📷 Com foto</span>' : '';
+  document.getElementById('mc-meta-row').innerHTML = (hora ? `Hora: ${escHtml(hora)}${horaTag}` : 'Sem hora registada') + photoTag;
+  document.getElementById('mc-note-text').textContent = entry.note || 'Sem nota do paciente.';
+  document.getElementById('mc-comment-textarea').value = entry.comment || '';
+  document.getElementById('mealCommentModal').style.display = '';
+}
+
+function closeMealCommentModal() {
+  document.getElementById('mealCommentModal').style.display = 'none';
+  _mealCommentIdx = null;
+}
+
+// Escreve diretamente em meal_comments (não passa por saveAppData()/
+// syncAppDataToSupabase() — essas tabelas nunca fizeram parte da árvore local-first,
+// mesmo padrão já usado por uploadMealPhoto() no portal do paciente). Comentário vazio
+// remove o comentário existente (se houver) em vez de gravar uma linha vazia.
+async function saveMealComment() {
+  const entry = _dailyMealNotes[_mealCommentIdx];
+  if (!entry) return;
+  const comment = document.getElementById('mc-comment-textarea').value.trim();
+  if (!comment) {
+    if (entry.comment) {
+      const { error } = await sb.from('meal_comments').delete()
+        .match({ client_id: nav.clientId, log_date: entry.logDate, meal_index: entry.mealIndex });
+      if (error) {
+        console.error('Erro ao remover comentário:', error);
+        showToast('Não foi possível remover o comentário. Tente novamente.', 'error');
+        return;
+      }
+      entry.comment = '';
+      showToast('Comentário removido');
+    }
+    closeMealCommentModal();
+    return;
+  }
+  const { error } = await sb.from('meal_comments').upsert({
+    client_id: nav.clientId,
+    log_date: entry.logDate,
+    meal_index: entry.mealIndex,
+    comment,
+    commented_at: new Date().toISOString(),
+  }, { onConflict: 'client_id,log_date,meal_index' });
+  if (error) {
+    console.error('Erro ao guardar comentário:', error);
+    showToast('Não foi possível guardar o comentário. Tente novamente.', 'error');
+    return;
+  }
+  entry.comment = comment;
+  closeMealCommentModal();
+  showToast('Comentário guardado');
 }
 
 // Quebra a adesão dos últimos 7 dias dia a dia (água + refeições + notas), ao contrário
 // dos cards acima que só mostram agregados da semana. Usa sempre a estrutura de
 // refeições do plano atual para cada dia da semana (mesma imprecisão aceite para o
 // card semanal, caso o plano tenha mudado a meio da janela).
-function buildDailyAdherenceHTML(activePlan, waterRows, mealRows) {
+function buildDailyAdherenceHTML(activePlan, waterRows, mealRows, photoRows, commentRows) {
   _dailyMealNotes = [];
   if (!activePlan || !activePlan.days) {
     return `<div class="daily-adherence"><div class="daily-adherence-title">Adesão diária</div><div class="adherence-card-empty">Sem plano definido</div></div>`;
   }
+
+  // photo_date/log_date são datas reais (não timestamps) — agrupadas à parte dos logs de
+  // água/refeições, que continuam filtrados por intervalo de logged_at dentro do loop.
+  const photosByDate = {};
+  (photoRows || []).forEach(r => {
+    photosByDate[r.photo_date] = photosByDate[r.photo_date] || new Set();
+    photosByDate[r.photo_date].add(r.meal_index);
+  });
+  const commentsByDate = {};
+  (commentRows || []).forEach(r => {
+    commentsByDate[r.log_date] = commentsByDate[r.log_date] || {};
+    commentsByDate[r.log_date][r.meal_index] = r.comment;
+  });
 
   const rowsHTML = [];
   for (let offset = 0; offset < 7; offset++) {
     const [start, end] = localDayRangeISO(-offset);
     const dateObj = new Date(start);
     const dayIndex = (dateObj.getDay() + 6) % 7;
+    const dateStr = dateToYmd(dateObj);
 
     const waterTotal = waterRows
       .filter(r => r.logged_at >= start && r.logged_at < end)
@@ -2521,22 +2603,43 @@ function buildDailyAdherenceHTML(activePlan, waterRows, mealRows) {
       .map((m, idx) => ({ meal: m, idx }))
       .filter(x => x.meal.foods && x.meal.foods.length);
 
+    // mealRows já vem ordenado por logged_at desc (ver buildAdherenceCardsHTML) — mantém
+    // só a primeira ocorrência (mais recente) por meal_index, mesma lógica de
+    // loadMealStatusByDay() no portal do paciente.
     const logsForDay = mealRows.filter(r => r.logged_at >= start && r.logged_at < end);
     const logByIdx = {};
-    logsForDay.forEach(r => { logByIdx[r.meal_index] = r; });
+    logsForDay.forEach(r => { if (!(r.meal_index in logByIdx)) logByIdx[r.meal_index] = r; });
+
+    const dayPhotos = photosByDate[dateStr];
+    const dayComments = commentsByDate[dateStr] || {};
 
     const mealChips = dayMealsInPlan.map(({ meal, idx }) => {
       const log = logByIdx[idx];
+      const hasPhoto = !!dayPhotos?.has(idx);
+      const comment = dayComments[idx];
       const statusClass = !log ? 'daily-meal-chip--none'
         : log.status === 'done' ? 'daily-meal-chip--done'
         : log.status === 'skipped' ? 'daily-meal-chip--skipped'
         : 'daily-meal-chip--modified';
-      let noteBtn = '';
-      if (log?.note) {
-        const noteIdx = _dailyMealNotes.push({ mealName: meal.nome, note: log.note }) - 1;
-        noteBtn = `<button class="daily-note-btn" onclick="showMealNoteByIndex(${noteIdx})" type="button">Ver detalhes</button>`;
+      let detailBtn = '';
+      // Mostra "Ver detalhes" sempre que há algo a mostrar/comentar (registo, foto ou já
+      // um comentário) — não só quando há nota — para o nutricionista poder comentar
+      // proativamente mesmo sem nota prévia do paciente.
+      if (log || hasPhoto || comment) {
+        const detailIdx = _dailyMealNotes.push({
+          mealName: meal.nome,
+          note: log?.note || '',
+          logDate: dateStr,
+          mealIndex: idx,
+          mealHora: meal.hora || '',
+          horaReal: log?.hora_real || '',
+          hasPhoto,
+          comment: comment || '',
+        }) - 1;
+        const commentTag = comment ? ' <span class="daily-comment-tag" title="Já comentado">💬</span>' : '';
+        detailBtn = `<button class="daily-note-btn" onclick="openMealCommentModal(${detailIdx})" type="button">Ver detalhes${commentTag}</button>`;
       }
-      return `<span class="daily-meal-chip ${statusClass}">${escHtml(meal.nome)}${noteBtn}</span>`;
+      return `<span class="daily-meal-chip ${statusClass}">${escHtml(meal.nome)}${detailBtn}</span>`;
     }).join('');
 
     const dateLabel = dateObj.toLocaleDateString('pt-PT', { weekday: 'short', day: '2-digit', month: 'short' });
@@ -2608,12 +2711,43 @@ async function buildMealPhotosTimelineHTML(client) {
     </div>`;
 }
 
-function openNutriStoryForDay(date) {
+async function openNutriStoryForDay(date) {
   const dayEntry = _nutriMealPhotosByDate[date] || {};
   const indices = Object.keys(dayEntry).map(Number).sort((a, b) => a - b);
   if (!indices.length) return;
-  const slots = indices.map(i => ({ category: String(i), label: dayEntry[i].meal_name, url: _nutriMealPhotoUrls[dayEntry[i].storage_path] }));
-  showStoryViewer(slots, { canManage: false });
+  // Segunda via de comentário (ver plano): o calendário de fotos navega datas fora da
+  // janela de 7 dias da aba "Adesão diária", por isso não dá para reaproveitar
+  // _dailyMealNotes diretamente aqui — cria-se uma entrada nova ao comentar.
+  const { data: commentRows, error: commentErr } = await sb
+    .from('meal_comments')
+    .select('meal_index, comment')
+    .eq('client_id', nav.clientId)
+    .eq('log_date', date);
+  if (commentErr) console.error('Erro ao carregar comentários de refeições:', commentErr);
+  const commentByIdx = {};
+  (commentRows || []).forEach(r => { commentByIdx[r.meal_index] = r.comment; });
+  const slots = indices.map(i => ({
+    category: String(i),
+    label: dayEntry[i].meal_name,
+    url: _nutriMealPhotoUrls[dayEntry[i].storage_path],
+    comment: commentByIdx[i],
+  }));
+  showStoryViewer(slots, {
+    canManage: false,
+    onComment: (slot) => {
+      const idx = _dailyMealNotes.push({
+        mealName: slot.label,
+        note: '',
+        logDate: date,
+        mealIndex: Number(slot.category),
+        mealHora: '',
+        horaReal: '',
+        hasPhoto: true,
+        comment: slot.comment || '',
+      }) - 1;
+      openMealCommentModal(idx);
+    },
+  });
 }
 
 // ── Calendário de fotos (modal, abre a partir do ícone junto ao reel acima) ───
