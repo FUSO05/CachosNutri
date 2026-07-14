@@ -1,0 +1,2729 @@
+{
+  "versao": "6.0",
+  "idioma": "pt-PT",
+  "nota_geral": "Estas recomendações constituem orientações gerais para apoio à elaboração de planos alimentares. Devem ser adaptadas ao estado clínico, medicação, exames laboratoriais, preferências alimentares, alergias e tolerância individual. Na ausência de contraindicação clínica, evitar exclusões alimentares desnecessárias. Não substituem a avaliação de um médico ou nutricionista.",
+  "escala_prioridade": {
+    "critica": "A violação implica risco imediato de dano grave (anafilaxia, asfixia, infeção, descompensação). NUNCA pode ser violada, mesmo que colida com outra patologia.",
+    "alta": "A violação compromete o controlo da doença a curto/médio prazo.",
+    "moderada": "Recomendação relevante, mas flexível conforme tolerância.",
+    "baixa": "Recomendação de otimização; nunca deve sobrepor-se a prioridades superiores."
+  },
+  "escala_evidencia": {
+    "forte": "Aplicar sempre; não flexibilizar por preferência.",
+    "moderada": "Aplicar, mas admitir individualização.",
+    "baixa": "Apresentar como sugestão, nunca como imposição."
+  },
+  "regras_motor": [
+    "Nunca excluir um alimento que não conste em alimentos_contraindicados da patologia aplicável.",
+    "Em doentes com múltiplas patologias, a união dos alimentos_contraindicados é sempre respeitada. Em caso de conflito, prevalece a patologia de prioridade mais elevada.",
+    "Se um alimento_preferir de uma patologia colidir com um alimento_contraindicado de outra, o alimento é excluído e substituído por alternativa equivalente.",
+    "Em doentes com perturbação do comportamento alimentar, não apresentar listas de alimentos proibidos.",
+    "As listas alimentos_limitar não são proibições: geram moderação e substituição, não exclusão total.",
+    "REGRA DE SEGURANÇA SUPREMA: se 'perturbacao_comportamento_alimentar' estiver ativa, sobrepõe-se a TODAS as outras patologias no que respeita a restrição calórica, contagem de calorias e listas de proibidos, mesmo que o utilizador insista.",
+    "Se o conflito envolver proteína, potássio, fósforo, cálcio, ferro ou fibra, recomendar validação por nutricionista.",
+    "Verificar sempre a idade: em menores de 18 anos, nunca aplicar as regras de 'obesidade' (adulto); usar 'obesidade_pediatrica'."
+  ],
+  "pares_mutuamente_exclusivos": [
+    [
+      "anemia_ferropenica",
+      "hemocromatose_ferro"
+    ],
+    [
+      "hipotiroidismo",
+      "hipertiroidismo"
+    ],
+    [
+      "insuficiencia_renal_3",
+      "dialise_renal"
+    ],
+    [
+      "dii_surto",
+      "dii_remissao"
+    ],
+    [
+      "sii_diarreia",
+      "sii_obstipacao"
+    ],
+    [
+      "obesidade",
+      "obesidade_pediatrica"
+    ]
+  ],
+  "patologias": [
+    {
+      "id": 1,
+      "nome": "Diabetes Mellitus Tipo 2",
+      "patologia_tag": "diabetes_tipo_2",
+      "aliases": [
+        "diabetes",
+        "dm2",
+        "diabetes tipo 2",
+        "diabetes mellitus tipo 2",
+        "diabético"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "epilepsia_cetogenica",
+        "hipoglicemia_reativa",
+        "insuficiencia_renal_3",
+        "perturbacao_comportamento_alimentar",
+        "insuficiencia_pancreatica",
+        "sindrome_dumping",
+        "dialise_renal",
+        "obesidade_pediatrica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Controlar a carga glicémica diária e adaptar a quantidade total de hidratos de carbono às necessidades individuais, distribuindo-os ao longo do dia. Preferir alimentos de baixo índice glicémico e elevado teor de fibra. Incluir uma fonte de proteína e/ou gordura saudável nas refeições com hidratos de carbono para abrandar a absorção da glicose. A fruta inteira não deve ser excluída: deve ser doseada e distribuída.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "açúcar adicionado",
+        "refrigerante com açúcar",
+        "sumo de fruta",
+        "mel",
+        "compota",
+        "doçaria",
+        "pastelaria",
+        "farinha refinada",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "hortícolas",
+        "leguminosas",
+        "cereais integrais",
+        "fruta inteira",
+        "azeite",
+        "peixe",
+        "frutos oleaginosos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 2,
+      "nome": "Hipertensão Arterial",
+      "patologia_tag": "hipertensao",
+      "aliases": [
+        "hta",
+        "hipertensão",
+        "hipertensão arterial",
+        "pressão alta",
+        "tensão alta"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "insuficiencia_renal_3",
+        "insuficiencia_cardiaca",
+        "dialise_renal"
+      ],
+      "regras_prompt": "Objetivo nutricional: Reduzir a ingestão de sódio para menos de 2 g/dia (aproximadamente 5 g de sal), privilegiando alimentos frescos e minimamente processados. Substituir o sal por ervas aromáticas e especiarias. Aumentar o aporte de potássio e magnésio (hortícolas, fruta, leguminosas, frutos oleaginosos) e adotar um padrão tipo DASH ou mediterrânico. Moderar o álcool e associar atividade física e controlo do peso.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "sal de adição",
+        "caldo industrial",
+        "chouriço",
+        "fiambre",
+        "salsicha",
+        "presunto",
+        "bacon",
+        "conserva salgada",
+        "aperitivo salgado",
+        "ultraprocessados",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "hortícolas",
+        "fruta fresca",
+        "leguminosas",
+        "cereais integrais",
+        "laticínios magros",
+        "ervas aromáticas",
+        "azeite"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 3,
+      "nome": "Hipercolesterolemia",
+      "patologia_tag": "hipercolesterolemia",
+      "aliases": [
+        "colesterol alto",
+        "colesterol elevado",
+        "dislipidemia",
+        "ldl alto"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "epilepsia_cetogenica",
+        "alergia_peixe"
+      ],
+      "regras_prompt": "Objetivo nutricional: Reduzir gorduras saturadas (<10% do valor energético) e eliminar gorduras trans. Priorizar gorduras monoinsaturadas (azeite) e aumentar o peixe gordo (2 a 3 vezes por semana). Incrementar a fibra solúvel (aveia, cevada, leguminosas, fruta). O ovo não necessita de exclusão sistemática.",
+      "alimentos_contraindicados": [
+        "gordura trans",
+        "gordura hidrogenada"
+      ],
+      "alimentos_limitar": [
+        "manteiga",
+        "natas",
+        "banha",
+        "toucinho",
+        "entrecosto",
+        "pele de aves",
+        "óleo de palma",
+        "óleo de coco",
+        "enchidos",
+        "queijo gordo"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "aveia",
+        "leguminosas",
+        "peixe gordo",
+        "frutos oleaginosos",
+        "hortícolas",
+        "fruta"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 4,
+      "nome": "Hipertrigliceridemia",
+      "patologia_tag": "hipertrigliceridemia",
+      "aliases": [
+        "triglicéridos altos",
+        "triglicerídeos altos",
+        "tg elevados"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "alergia_peixe",
+        "epilepsia_cetogenica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Eliminar o álcool (efeito direto e marcado sobre os triglicéridos). Reduzir açúcares simples e frutose concentrada, controlando a quantidade total de hidratos de carbono por refeição. Priorizar ómega-3 (peixe gordo) e promover a perda ponderal quando há excesso de peso. A fruta inteira é permitida em doses controladas.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "vinho",
+        "cerveja",
+        "licor"
+      ],
+      "alimentos_limitar": [
+        "sumo de fruta",
+        "refrigerante",
+        "açúcar adicionado",
+        "mel",
+        "xarope de frutose",
+        "pastelaria",
+        "farinha refinada"
+      ],
+      "alimentos_preferir": [
+        "peixe gordo",
+        "azeite",
+        "hortícolas",
+        "leguminosas",
+        "cereais integrais"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 5,
+      "nome": "Hipotiroidismo (em uso de Levotiroxina)",
+      "patologia_tag": "hipotiroidismo",
+      "aliases": [
+        "tiroide lenta",
+        "hashimoto",
+        "levotiroxina",
+        "eutirox",
+        "hipotiroidismo"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "anemia_ferropenica",
+        "osteoporose_calcio",
+        "alergia_soja"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir a correta absorção da Levotiroxina. Tomar em jejum, apenas com água, aguardando 30 a 60 minutos antes do pequeno-almoço (o café também interfere). Afastar suplementos de cálcio, ferro e alimentos à base de soja pelo menos 4 horas da toma. Os vegetais crucíferos podem ser consumidos normalmente, sobretudo cozinhados. Garantir aporte adequado de iodo, selénio e zinco.",
+      "alimentos_contraindicados": [
+        "soja nas 4 horas após Levotiroxina",
+        "suplemento de ferro nas 4 horas após Levotiroxina",
+        "suplemento de cálcio nas 4 horas após Levotiroxina"
+      ],
+      "alimentos_limitar": [
+        "café na hora seguinte à Levotiroxina",
+        "suplementos de fibra junto à medicação"
+      ],
+      "alimentos_preferir": [
+        "peixe",
+        "ovos",
+        "castanha-do-brasil",
+        "marisco",
+        "crucíferos cozinhados",
+        "laticínios"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 6,
+      "nome": "Hipertiroidismo",
+      "patologia_tag": "hipertiroidismo",
+      "aliases": [
+        "tiroide acelerada",
+        "graves",
+        "doença de graves",
+        "hipertiroidismo"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "alergia_marisco"
+      ],
+      "regras_prompt": "Objetivo nutricional: Estado hipermetabólico. Aumentar o aporte calórico e proteico para prevenir a perda de massa magra e garantir cálcio e vitamina D (risco de perda óssea). Evitar excesso de iodo (suplementos, algas). O marisco pode ser consumido com moderação, salvo em preparação para iodo radioativo, situação em que se aplica uma dieta pobre em iodo temporária e específica. Moderar estimulantes.",
+      "alimentos_contraindicados": [
+        "suplemento de iodo"
+      ],
+      "alimentos_limitar": [
+        "alga",
+        "excesso de café",
+        "bebida energética",
+        "excesso de sal iodado"
+      ],
+      "alimentos_preferir": [
+        "proteína de alto valor biológico",
+        "laticínios",
+        "ovos",
+        "cereais integrais",
+        "fruta",
+        "hortícolas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 7,
+      "nome": "Síndrome do Ovário Poliquístico (SOP)",
+      "patologia_tag": "sop",
+      "aliases": [
+        "sop",
+        "ovário poliquístico",
+        "síndrome do ovário poliquístico",
+        "pcos"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Reduzir a resistência à insulina e a inflamação crónica. Priorizar um padrão mediterrânico de baixo índice glicémico, rico em fibra, gorduras insaturadas e antioxidantes. A perda ponderal modesta (5-10%), quando existe excesso de peso, melhora significativamente o quadro hormonal. Associar atividade física regular.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "açúcar adicionado",
+        "refrigerante",
+        "pastelaria",
+        "farinha refinada",
+        "fast food",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "leguminosas",
+        "hortícolas",
+        "cereais integrais",
+        "azeite",
+        "frutos oleaginosos",
+        "peixe gordo",
+        "fruta inteira"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 8,
+      "nome": "Obesidade",
+      "patologia_tag": "obesidade",
+      "aliases": [
+        "obesidade",
+        "excesso de peso",
+        "imc elevado",
+        "perda de peso"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "sarcopenia_senior",
+        "gota",
+        "quimioterapia_ativa",
+        "dpoc_respiratorio",
+        "lactacao_amamentacao",
+        "cirurgia_bariatrica",
+        "obesidade_pediatrica",
+        "perturbacao_comportamento_alimentar",
+        "gravidez_saudavel"
+      ],
+      "regras_prompt": "Objetivo nutricional: Défice calórico controlado e sustentável (300 a 500 kcal abaixo do GET). Priorizar alimentos de alto volume e baixa densidade energética e garantir proteína adequada (1,2-1,6 g/kg de peso ajustado) para preservar massa magra. Associar atividade física e estratégias comportamentais. Evitar discursos de proibição rígida, que aumentam o risco de compulsão.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "fast food",
+        "frito",
+        "refrigerante com açúcar",
+        "snack salgado",
+        "doçaria",
+        "pastelaria",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "hortícolas",
+        "sopa",
+        "leguminosas",
+        "fruta inteira",
+        "proteína magra",
+        "cereais integrais"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 9,
+      "nome": "Anemia Ferropénica",
+      "patologia_tag": "anemia_ferropenica",
+      "aliases": [
+        "anemia",
+        "anemia ferropénica",
+        "ferro baixo",
+        "ferritina baixa"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "hemocromatose_ferro",
+        "hipotiroidismo",
+        "osteoporose_calcio",
+        "alergia_marisco",
+        "gastrite_ativa",
+        "vegetariano_vegano",
+        "cirurgia_bariatrica",
+        "dii_surto",
+        "dii_remissao"
+      ],
+      "regras_prompt": "Objetivo nutricional: Maximizar a biodisponibilidade do ferro. Combinar ferro heme (carnes vermelhas magras, fígado, ameijoa) e não-heme (leguminosas, hortícolas de folha escura, cereais fortificados) com vitamina C na mesma refeição. Afastar café, chá, laticínios e suplementos de cálcio das refeições principais (intervalo de 1 a 2 horas). Trata-se de uma regra de timing, não de exclusão do alimento.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "café junto às refeições",
+        "chá junto às refeições",
+        "laticínios junto às refeições",
+        "suplemento de cálcio junto às refeições"
+      ],
+      "alimentos_preferir": [
+        "carne vermelha magra",
+        "fígado",
+        "ameijoa",
+        "leguminosas",
+        "hortícolas de folha escura",
+        "citrinos",
+        "pimento",
+        "cereais fortificados"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 10,
+      "nome": "Hiperuricemia e Gota",
+      "patologia_tag": "gota",
+      "aliases": [
+        "gota",
+        "ácido úrico alto",
+        "hiperuricemia",
+        "úrico elevado"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "sarcopenia_senior",
+        "obesidade",
+        "insuficiencia_renal_3",
+        "epilepsia_cetogenica",
+        "dialise_renal"
+      ],
+      "regras_prompt": "Objetivo nutricional: Eliminar bebidas alcoólicas (sobretudo cerveja) e bebidas açucaradas ricas em frutose. Reduzir alimentos muito ricos em purinas: miudezas, extratos de carne e grandes quantidades de carne vermelha. Hidratação abundante (2 a 3 litros/dia), controlo do peso e consumo de laticínios magros (fator protetor). O peixe pode manter-se em consumo moderado. As purinas vegetais (leguminosas, espinafres, cogumelos) não aumentam o risco de crise e não devem ser excluídas.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "cerveja"
+      ],
+      "alimentos_limitar": [
+        "fígado",
+        "rins",
+        "miudezas",
+        "extrato de carne",
+        "refrigerante com açúcar",
+        "xarope de frutose",
+        "excesso de carne vermelha",
+        "marisco em excesso"
+      ],
+      "alimentos_preferir": [
+        "água",
+        "laticínios magros",
+        "leguminosas",
+        "hortícolas",
+        "cereais integrais",
+        "fruta (exceto excesso de sumos)"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 11,
+      "nome": "Gastrite e Úlcera Péptica",
+      "patologia_tag": "gastrite_ativa",
+      "aliases": [
+        "gastrite",
+        "úlcera",
+        "úlcera péptica",
+        "helicobacter",
+        "h. pylori"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "anemia_ferropenica"
+      ],
+      "regras_prompt": "Objetivo nutricional: A causa mais frequente é Helicobacter pylori ou o uso de AINEs — a abordagem médica é prioritária face à dietética. Fracionar refeições, privilegiar confeções simples e evitar os alimentos que o próprio doente identifique como desencadeantes. Reduzir álcool, tabaco, café, fritos, refeições muito gordurosas, bebidas gaseificadas e picantes. A exclusão de tomate ou citrinos depende da tolerância individual.",
+      "alimentos_contraindicados": [
+        "álcool"
+      ],
+      "alimentos_limitar": [
+        "café",
+        "frito",
+        "refeição muito gordurosa",
+        "picante",
+        "piripíri",
+        "bebida gaseificada"
+      ],
+      "alimentos_preferir": [
+        "refeições fracionadas",
+        "cozidos e grelhados simples",
+        "hortícolas cozinhados",
+        "cereais",
+        "proteína magra"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 12,
+      "nome": "Doença Celíaca",
+      "patologia_tag": "doenca_celiaca",
+      "aliases": [
+        "celíaca",
+        "doença celíaca",
+        "celiaquia",
+        "intolerância ao glúten",
+        "sem glúten"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obstipacao_cronica",
+        "sii_diarreia",
+        "vegetariano_vegano",
+        "dii_remissao"
+      ],
+      "regras_prompt": "Objetivo nutricional: Exclusão absoluta, permanente e vitalícia de glúten, incluindo contaminação cruzada. Excluir trigo (e variedades: espelta, kamut, triticale), centeio, cevada, malte e aveia não certificada. A aveia certificada sem glúten é permitida na maioria dos doentes. Verificar rótulos, espessantes e produtos processados. Vigiar défices associados (ferro, folato, B12, vitamina D, cálcio).",
+      "alimentos_contraindicados": [
+        "trigo",
+        "espelta",
+        "kamut",
+        "triticale",
+        "centeio",
+        "cevada",
+        "malte",
+        "farinha de trigo",
+        "pão com glúten",
+        "massa com glúten",
+        "cerveja",
+        "seitan",
+        "aveia não certificada sem glúten"
+      ],
+      "alimentos_limitar": [
+        "produtos processados sem rotulagem clara",
+        "alimentos de fritadeira partilhada"
+      ],
+      "alimentos_preferir": [
+        "arroz",
+        "batata",
+        "milho",
+        "quinoa",
+        "trigo-sarraceno",
+        "leguminosas",
+        "produtos certificados sem glúten",
+        "aveia certificada sem glúten"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 13,
+      "nome": "Intolerância à Lactose",
+      "patologia_tag": "lactose",
+      "aliases": [
+        "intolerância à lactose",
+        "lactose",
+        "intolerante a lactose"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "osteoporose_calcio",
+        "sarcopenia_senior",
+        "aplv"
+      ],
+      "regras_prompt": "Objetivo nutricional: Ajustar ao limiar individual de tolerância (a maioria tolera até cerca de 12 g de lactose por toma, sobretudo acompanhada de outros alimentos). Não é uma alergia e não exige exclusão total dos laticínios. Preferir laticínios sem lactose, queijos curados (lactose praticamente ausente) e iogurtes com culturas vivas. A manteiga tem lactose residual e é habitualmente tolerada. Garantir o aporte de cálcio.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "leite com lactose",
+        "natas com lactose",
+        "queijo fresco",
+        "requeijão",
+        "leite condensado",
+        "gelado"
+      ],
+      "alimentos_preferir": [
+        "laticínios sem lactose",
+        "queijo curado",
+        "iogurte",
+        "bebidas vegetais enriquecidas em cálcio",
+        "sardinha com espinha",
+        "hortícolas de folha escura",
+        "sésamo"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 14,
+      "nome": "Síndrome do Intestino Irritável - Diarreia (SII-D)",
+      "patologia_tag": "sii_diarreia",
+      "aliases": [
+        "sii",
+        "sii-d",
+        "colon irritável",
+        "cólon irritável",
+        "intestino irritável",
+        "fodmap"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "obstipacao_cronica",
+        "diverticulose_manutencao",
+        "doenca_celiaca",
+        "sii_obstipacao",
+        "dii_surto",
+        "dii_remissao"
+      ],
+      "regras_prompt": "Objetivo nutricional: Estratégia de redução de FODMAPs sob orientação clínica, com fase de eliminação limitada (2 a 6 semanas), seguida de reintrodução gradual e personalização. A dieta baixa em FODMAP não se destina a manutenção prolongada. Refeições regulares, mastigação lenta, hidratação. Reduzir fritos, álcool, cafeína e adoçantes polióis em períodos sintomáticos.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "álcool",
+        "frito",
+        "excesso de cafeína",
+        "sorbitol",
+        "manitol",
+        "xilitol",
+        "alimentos ricos em FODMAP na fase de eliminação"
+      ],
+      "alimentos_preferir": [
+        "arroz",
+        "batata",
+        "aveia",
+        "proteína magra",
+        "hortícolas de baixo FODMAP",
+        "fibra solúvel"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 15,
+      "nome": "Obstipação Crónica",
+      "patologia_tag": "obstipacao_cronica",
+      "aliases": [
+        "obstipação",
+        "prisão de ventre",
+        "intestino preso",
+        "constipação intestinal"
+      ],
+      "evidencia": "forte",
+      "prioridade": "baixa",
+      "conflitos": [
+        "sii_diarreia",
+        "disfagia_idoso",
+        "insuficiencia_renal_3",
+        "epilepsia_cetogenica",
+        "sii_obstipacao",
+        "parkinson_levodopa",
+        "dii_surto",
+        "varfarina_vitk"
+      ],
+      "regras_prompt": "Objetivo nutricional: Aumentar progressivamente a fibra (25-30 g/dia) para evitar distensão e flatulência. Garantir ingestão hídrica adequada, indispensável para a eficácia da fibra. Incentivar atividade física e rotina de dejeção regular.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "alimentação pobre em fibra",
+        "excesso de refinados",
+        "excesso de ultraprocessados"
+      ],
+      "alimentos_preferir": [
+        "fruta com pele",
+        "kiwi",
+        "ameixa seca",
+        "hortícolas",
+        "leguminosas",
+        "cereais integrais",
+        "sementes de linhaça e chia",
+        "água"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 16,
+      "nome": "Insuficiência Renal Crónica (Estádio 3)",
+      "patologia_tag": "insuficiencia_renal_3",
+      "aliases": [
+        "irc",
+        "insuficiência renal",
+        "doença renal crónica",
+        "drc",
+        "rim"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "sarcopenia_senior",
+        "hipertensao",
+        "osteoporose_calcio",
+        "obstipacao_cronica",
+        "gota",
+        "cirrose_hepatica",
+        "lupus_sistemico",
+        "dialise_renal",
+        "insuficiencia_cardiaca"
+      ],
+      "regras_prompt": "Objetivo nutricional: Adaptar proteína (habitualmente 0,6-0,8 g/kg/dia no doente não dialisado), sódio, potássio e fósforo à função renal e aos resultados laboratoriais. Não excluir alimentos ricos em potássio ou fósforo de forma sistemática; restringir apenas quando clinicamente indicado. Reduzir primeiro o fósforo de origem aditiva (ultraprocessados), mais biodisponível que o fósforo natural. Usar demolha e dupla cozedura quando for necessário reduzir potássio.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "excesso de sal",
+        "ultraprocessados ricos em sódio",
+        "aditivos com fosfatos",
+        "refrigerante de cola",
+        "excesso de proteína"
+      ],
+      "alimentos_preferir": [
+        "hortícolas com demolha quando indicado",
+        "azeite",
+        "cereais",
+        "proteína de alto valor biológico em quantidade controlada"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 17,
+      "nome": "Litíase Renal por Oxalato de Cálcio",
+      "patologia_tag": "litiase_oxalato",
+      "aliases": [
+        "pedra no rim",
+        "cálculo renal",
+        "litíase renal",
+        "oxalato de cálcio"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "osteoporose_calcio",
+        "obstipacao_cronica",
+        "epilepsia_cetogenica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Hidratação superior a 2,5-3 litros/dia é a medida principal. Manter ingestão adequada de cálcio (1000-1200 mg/dia) às refeições, pois reduz a absorção intestinal de oxalato — restringir cálcio é contraproducente. Reduzir sódio e excesso de proteína animal. Moderar os alimentos muito ricos em oxalato apenas quando consumidos em grandes quantidades.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "excesso de sal",
+        "excesso de proteína animal",
+        "suplemento de vitamina C em dose elevada",
+        "espinafres em grande quantidade",
+        "beterraba em grande quantidade",
+        "chá preto em excesso"
+      ],
+      "alimentos_preferir": [
+        "água",
+        "laticínios às refeições",
+        "citrinos (citrato)",
+        "hortícolas variados",
+        "fruta"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 18,
+      "nome": "Esteatose Hepática Não Alcoólica",
+      "patologia_tag": "esteatose_hepatica",
+      "aliases": [
+        "fígado gordo",
+        "esteatose",
+        "nafld",
+        "masld",
+        "esteatose hepática"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "epilepsia_cetogenica",
+        "insuficiencia_pancreatica"
+      ],
+      "regras_prompt": "Objetivo nutricional: A perda de 7-10% do peso corporal é o principal fator de reversão. Reduzir açúcares simples, farinhas refinadas e sobretudo frutose concentrada (sumos, mel, xaropes, refrigerantes). Minimizar o álcool. Priorizar padrão mediterrânico, com azeite como gordura principal, proteínas magras e fruta inteira (não excluída). Associar exercício físico regular.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "álcool",
+        "sumo de fruta",
+        "mel",
+        "xarope de frutose",
+        "refrigerante",
+        "açúcar adicionado",
+        "enchidos",
+        "frito",
+        "pastelaria",
+        "carne gorda"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "peixe gordo",
+        "hortícolas",
+        "leguminosas",
+        "fruta inteira",
+        "cereais integrais",
+        "café sem açúcar"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 19,
+      "nome": "Cirrose Hepática (Compensada)",
+      "patologia_tag": "cirrose_hepatica",
+      "aliases": [
+        "cirrose",
+        "cirrose hepática",
+        "doença hepática crónica"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "insuficiencia_renal_3",
+        "insuficiencia_pancreatica",
+        "varfarina_vitk"
+      ],
+      "regras_prompt": "Objetivo nutricional: A desnutrição proteico-calórica é a principal complicação nutricional. NÃO restringir proteína — garantir 1,2 a 1,5 g/kg/dia. Refeições frequentes e pequenas, evitando jejum prolongado, incluindo uma ceia tardia com hidratos de carbono complexos e proteína. Abstinência absoluta de álcool. Restrição de sódio moderada (cerca de 2 g/dia), sobretudo se houver ascite. Evitar alimentos crus de origem animal pelo risco infecioso.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "vinho",
+        "cerveja",
+        "licor",
+        "sushi",
+        "marisco cru",
+        "ostra crua",
+        "carne tártaro",
+        "carpaccio"
+      ],
+      "alimentos_limitar": [
+        "excesso de sal",
+        "enchidos",
+        "conservas salgadas",
+        "ultraprocessados"
+      ],
+      "alimentos_preferir": [
+        "proteína magra",
+        "ceia tardia com hidratos complexos",
+        "laticínios",
+        "leguminosas",
+        "ovos",
+        "hortícolas",
+        "azeite"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 20,
+      "nome": "Doente Oncológico em Quimioterapia (Fase Ativa)",
+      "patologia_tag": "quimioterapia_ativa",
+      "aliases": [
+        "quimioterapia",
+        "oncológico",
+        "cancro",
+        "qt",
+        "tratamento oncológico"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obesidade",
+        "diverticulose_manutencao",
+        "diabetes_tipo_2",
+        "perturbacao_comportamento_alimentar",
+        "sindrome_dumping"
+      ],
+      "regras_prompt": "Objetivo nutricional: Prioridade absoluta ao aporte energético e proteico (prevenção de desnutrição e sarcopenia) e à segurança alimentar em doente imunocomprometido. Adaptar aos sintomas (náuseas, mucosite, disgeusia, xerostomia): pratos frios ou à temperatura ambiente, cheiros suaves, textura adaptada. Não impor restrições calóricas nem excluir grupos alimentares sem indicação clínica.",
+      "alimentos_contraindicados": [
+        "sushi",
+        "peixe cru",
+        "ovo cru",
+        "maionese caseira",
+        "queijo não pasteurizado",
+        "carne mal passada",
+        "marisco cru",
+        "leite não pasteurizado"
+      ],
+      "alimentos_limitar": [
+        "alimentos com cheiro intenso",
+        "frito",
+        "refeição muito gordurosa",
+        "picante em caso de mucosite"
+      ],
+      "alimentos_preferir": [
+        "proteína de alto valor biológico",
+        "ovos cozinhados",
+        "laticínios pasteurizados",
+        "sopas enriquecidas",
+        "fruta lavada e descascada",
+        "pratos frios ou à temperatura ambiente"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 21,
+      "nome": "Epilepsia Refratária (Dieta Cetogénica)",
+      "patologia_tag": "epilepsia_cetogenica",
+      "aliases": [
+        "epilepsia",
+        "dieta cetogénica",
+        "cetogénica",
+        "keto terapêutica"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "diabetes_tipo_2",
+        "hipercolesterolemia",
+        "obstipacao_cronica",
+        "litiase_oxalato",
+        "gota",
+        "insuficiencia_renal_3"
+      ],
+      "regras_prompt": "Objetivo nutricional: Dieta terapêutica de prescrição médica obrigatória, com rácio definido pela equipa clínica (habitualmente 3:1 ou 4:1) e suplementação de vitaminas e minerais. NUNCA deve ser iniciada, calculada ou ajustada sem acompanhamento médico e nutricional especializado. O motor não deve gerar planos cetogénicos terapêuticos de forma autónoma; deve remeter para a equipa clínica.",
+      "alimentos_contraindicados": [
+        "açúcar",
+        "pão",
+        "massa",
+        "arroz",
+        "batata",
+        "leguminosas",
+        "cereais",
+        "fruta rica em hidratos"
+      ],
+      "alimentos_limitar": [
+        "frutos vermelhos (em quantidade calculada)",
+        "abacate (em quantidade calculada)",
+        "hortícolas com hidratos"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "manteiga",
+        "natas",
+        "ovos",
+        "carne",
+        "peixe",
+        "abacate",
+        "frutos oleaginosos",
+        "hortícolas de folha"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 22,
+      "nome": "Perturbação de Ansiedade Generalizada / Ataques de Pânico",
+      "patologia_tag": "ansiedade_estimulantes",
+      "aliases": [
+        "ansiedade",
+        "pag",
+        "ataques de pânico",
+        "pânico",
+        "ansiedade generalizada"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Reduzir ou eliminar estimulantes conforme a sensibilidade individual — nem todos os doentes precisam de excluir totalmente a cafeína. Evitar jejuns prolongados e oscilações glicémicas acentuadas. Refeições regulares, com aporte adequado de magnésio, ómega-3 e vitaminas do complexo B. Limitar o álcool, que agrava a ansiedade de rebound.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "café",
+        "chá verde",
+        "chá preto",
+        "bebida energética",
+        "pré-treino com cafeína",
+        "refrigerante de cola",
+        "álcool",
+        "jejum prolongado"
+      ],
+      "alimentos_preferir": [
+        "refeições regulares",
+        "peixe gordo",
+        "frutos oleaginosos",
+        "cereais integrais",
+        "leguminosas",
+        "hortícolas",
+        "chá de ervas sem cafeína"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 23,
+      "nome": "Refluxo Gastroesofágico Noturno",
+      "patologia_tag": "refluxo_noturno",
+      "aliases": [
+        "refluxo",
+        "drge",
+        "refluxo gastroesofágico",
+        "azia",
+        "pirose"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: As medidas com maior evidência são a perda de peso (se excesso), evitar refeições nas 2 a 3 horas antes de deitar, jantar leve e elevar a cabeceira da cama. Evitar ao jantar os alimentos que o próprio doente identifique como desencadeantes, sendo os mais frequentes refeições muito gordurosas ou volumosas, álcool, chocolate, cafeína, hortelã, tomate e citrinos. Não excluir por rotina alimentos que o doente tolera.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "refeição muito gordurosa",
+        "refeição muito volumosa",
+        "frito",
+        "álcool",
+        "chocolate",
+        "hortelã",
+        "cafeína",
+        "bebida gaseificada",
+        "tomate (se identificado como gatilho)",
+        "citrinos (se identificados como gatilho)"
+      ],
+      "alimentos_preferir": [
+        "proteína magra",
+        "jantar leve e precoce",
+        "hortícolas cozinhados",
+        "arroz",
+        "batata",
+        "peixe branco ou grelhado"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica.",
+      "aplicabilidade": "jantar"
+    },
+    {
+      "id": 24,
+      "nome": "Enxaqueca Crónica",
+      "patologia_tag": "enxaqueca_gatilhos",
+      "aliases": [
+        "enxaqueca",
+        "migraine",
+        "dores de cabeça",
+        "cefaleia"
+      ],
+      "evidencia": "baixa",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Os gatilhos alimentares são individuais e a evidência para listas universais é limitada. A estratégia recomendada é o diário alimentar e de crises para identificar gatilhos pessoais, evitando exclusões alargadas e desnecessárias. Fatores com maior peso: jejum prolongado, desidratação, álcool (sobretudo vinho tinto), privação ou excesso de cafeína e sono irregular. Gatilhos possíveis a testar individualmente: queijos curados, carnes processadas com nitritos, chocolate e glutamato monossódico. Os citrinos não devem ser excluídos por rotina.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "álcool",
+        "vinho tinto",
+        "jejum prolongado",
+        "queijo curado (se gatilho)",
+        "carne processada com nitritos (se gatilho)",
+        "glutamato monossódico (se gatilho)",
+        "chocolate (se gatilho)",
+        "variações bruscas de cafeína"
+      ],
+      "alimentos_preferir": [
+        "refeições regulares",
+        "água",
+        "magnésio (frutos oleaginosos, leguminosas, hortícolas escuros)",
+        "padrão mediterrânico"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 25,
+      "nome": "Insónia Crónica",
+      "patologia_tag": "insonia_sono",
+      "aliases": [
+        "insónia",
+        "insônia",
+        "não durmo",
+        "perturbação do sono"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "baixa",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Evitar cafeína e estimulantes nas 6 a 8 horas antes de deitar. Evitar jantares muito pesados, gordurosos ou volumosos e o álcool ao final do dia (fragmenta o sono). Incluir hidratos de carbono complexos ao jantar para facilitar a disponibilidade de triptofano. Horários regulares de refeições; não deitar com fome nem demasiado cheio.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "café",
+        "chá verde",
+        "chá preto",
+        "refrigerante de cola",
+        "bebida energética",
+        "chocolate negro",
+        "álcool",
+        "jantar muito pesado"
+      ],
+      "alimentos_preferir": [
+        "hidratos de carbono complexos",
+        "laticínios",
+        "ovos",
+        "peixe",
+        "aveia",
+        "chá de ervas sem cafeína"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica.",
+      "aplicabilidade": "tarde"
+    },
+    {
+      "id": 26,
+      "nome": "Alergia ao Amendoim",
+      "patologia_tag": "alergia_amendoim",
+      "aliases": [
+        "alergia ao amendoim",
+        "amendoim",
+        "alérgico a amendoim"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Exclusão absoluta e vitalícia, incluindo vestígios e contaminação cruzada. O amendoim é uma leguminosa, não um fruto de casca rija, embora a coexistência de alergia a frutos de casca rija seja frequente. Vigiar barras proteicas, snacks, molhos asiáticos e pastelaria. O doente deve ter adrenalina auto-injetável prescrita e disponível.",
+      "alimentos_contraindicados": [
+        "amendoim",
+        "manteiga de amendoim",
+        "óleo de amendoim",
+        "molho satay",
+        "produtos com vestígios de amendoim"
+      ],
+      "alimentos_limitar": [
+        "produtos sem rotulagem de alergénios clara",
+        "alimentos de fritadeira partilhada"
+      ],
+      "alimentos_preferir": [
+        "fontes proteicas alternativas",
+        "sementes (se toleradas)",
+        "produtos com rotulagem verificada"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 27,
+      "nome": "Alergia ao Ovo",
+      "patologia_tag": "alergia_ovo",
+      "aliases": [
+        "alergia ao ovo",
+        "alérgico a ovo"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "sarcopenia_senior",
+        "disfagia_idoso"
+      ],
+      "regras_prompt": "Objetivo nutricional: Exclusão total de ovo e de qualquer prato que o use como ingrediente, ligante ou emulsificante. Verificar rótulos (albumina, ovalbumina, lisozima, lecitina de ovo). Em contexto pediátrico, a tolerância a ovo cozinhado em matriz de forno pode existir, mas só deve ser testada sob orientação de imunoalergologia.",
+      "alimentos_contraindicados": [
+        "ovo",
+        "clara de ovo",
+        "gema de ovo",
+        "omelete",
+        "maionese",
+        "quiche",
+        "pudim",
+        "pastel de nata",
+        "albumina de ovo",
+        "merengue"
+      ],
+      "alimentos_limitar": [
+        "pastelaria industrial sem rotulagem clara",
+        "massas frescas com ovo"
+      ],
+      "alimentos_preferir": [
+        "carne",
+        "peixe",
+        "leguminosas",
+        "tofu",
+        "laticínios",
+        "substitutos de ovo em pastelaria (linhaça, chia, banana)"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 28,
+      "nome": "Alergia a Crustáceos e Moluscos",
+      "patologia_tag": "alergia_marisco",
+      "aliases": [
+        "alergia ao marisco",
+        "alergia a crustáceos",
+        "alérgico a marisco"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "anemia_ferropenica",
+        "hipertiroidismo"
+      ],
+      "regras_prompt": "Objetivo nutricional: Excluir crustáceos e, por precaução, moluscos, pelo risco de anafilaxia e reatividade cruzada por tropomiosina. Nem todos os alérgicos a crustáceos reagem a moluscos — a extensão da exclusão deve ser definida por imunoalergologia. Evitar contaminação cruzada em cozinhas e fritadeiras partilhadas. O peixe é habitualmente permitido, salvo alergia concomitante.",
+      "alimentos_contraindicados": [
+        "camarão",
+        "gamba",
+        "lagosta",
+        "sapateira",
+        "caranguejo",
+        "ameijoa",
+        "mexilhão",
+        "ostra",
+        "polvo",
+        "lula",
+        "choco",
+        "marisco",
+        "caldo de marisco"
+      ],
+      "alimentos_limitar": [
+        "produtos com aroma de marisco",
+        "surimi",
+        "alimentos de fritadeira partilhada"
+      ],
+      "alimentos_preferir": [
+        "peixe (se tolerado)",
+        "carne",
+        "ovos",
+        "leguminosas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 29,
+      "nome": "Alergia / Intolerância à Soja",
+      "patologia_tag": "alergia_soja",
+      "aliases": [
+        "alergia à soja",
+        "intolerância à soja",
+        "alérgico a soja"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "osteoporose_calcio",
+        "menopausa_climaterio",
+        "vegetariano_vegano"
+      ],
+      "regras_prompt": "Objetivo nutricional: Eliminar fontes diretas e ocultas de soja. O óleo de soja altamente refinado e a lecitina de soja são geralmente tolerados na alergia à soja, mas a decisão deve ser individualizada pelo imunoalergologista. Atenção a suplementos e barras proteicas.",
+      "alimentos_contraindicados": [
+        "soja",
+        "tofu",
+        "tempeh",
+        "miso",
+        "molho de soja",
+        "shoyu",
+        "bebida de soja",
+        "edamame",
+        "proteína de soja texturizada"
+      ],
+      "alimentos_limitar": [
+        "óleo de soja refinado (decisão individual)",
+        "lecitina de soja (decisão individual)",
+        "produtos processados sem rotulagem clara"
+      ],
+      "alimentos_preferir": [
+        "outras leguminosas (grão, feijão, lentilhas)",
+        "carne",
+        "peixe",
+        "ovos",
+        "laticínios",
+        "frutos oleaginosos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 30,
+      "nome": "Alergia ao Peixe",
+      "patologia_tag": "alergia_peixe",
+      "aliases": [
+        "alergia ao peixe",
+        "alérgico a peixe"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "hipercolesterolemia",
+        "hipertrigliceridemia",
+        "artrite_reumatoide",
+        "lactacao_amamentacao",
+        "vegetariano_vegano",
+        "gravidez_saudavel"
+      ],
+      "regras_prompt": "Objetivo nutricional: Excluir todas as espécies de peixe (fresco, congelado ou em conserva) e derivados (surimi, molho de peixe, molho worcestershire, caldos, óleo de fígado de bacalhau). A alergia pode ser espécie-específica, mas a exclusão total é a abordagem segura por defeito até avaliação por imunoalergologia. Evitar contaminação cruzada e vapores de cozedura. Substituir o aporte de ómega-3 por fontes vegetais.",
+      "alimentos_contraindicados": [
+        "peixe",
+        "pescada",
+        "bacalhau",
+        "salmão",
+        "atum",
+        "sardinha",
+        "sarda",
+        "cavala",
+        "dourada",
+        "robalo",
+        "conservas de peixe",
+        "surimi",
+        "molho de peixe",
+        "óleo de fígado de bacalhau"
+      ],
+      "alimentos_limitar": [
+        "molho worcestershire",
+        "caldos industriais",
+        "alimentos de fritadeira partilhada",
+        "marisco (avaliar reatividade)"
+      ],
+      "alimentos_preferir": [
+        "carne magra",
+        "ovos (se tolerados)",
+        "leguminosas",
+        "linhaça",
+        "chia",
+        "nozes",
+        "ómega-3 de algas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 31,
+      "nome": "Osteoporose",
+      "patologia_tag": "osteoporose_calcio",
+      "aliases": [
+        "osteoporose",
+        "osteopenia",
+        "ossos fracos",
+        "densidade óssea baixa"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "insuficiencia_renal_3",
+        "lactose",
+        "alergia_soja",
+        "anemia_ferropenica",
+        "litiase_oxalato",
+        "aplv",
+        "vegetariano_vegano",
+        "cirurgia_bariatrica",
+        "dii_remissao",
+        "dialise_renal",
+        "insuficiencia_pancreatica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir cálcio (1000-1200 mg/dia), vitamina D (suplementação frequentemente necessária), proteína suficiente e exercício com carga e impacto. Privilegiar laticínios como fonte principal de cálcio quando tolerados. Se houver intolerância ou exclusão de laticínios, privilegiar outras fontes de cálcio ou alimentos fortificados, ajustando às restrições do doente (se houver alergia à soja, não recorrer a tofu ou bebida de soja). Moderar refrigerantes de cola, excesso de café, sódio e álcool.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "refrigerante de cola",
+        "excesso de café",
+        "excesso de álcool",
+        "excesso de sal"
+      ],
+      "alimentos_preferir": [
+        "laticínios",
+        "bebidas vegetais enriquecidas em cálcio",
+        "sardinha com espinha",
+        "sésamo",
+        "amêndoa",
+        "hortícolas de folha escura",
+        "leguminosas",
+        "peixe gordo",
+        "água mineral rica em cálcio"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 32,
+      "nome": "Psoríase",
+      "patologia_tag": "psoriase_inflamacao",
+      "aliases": [
+        "psoríase",
+        "psoriase"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Privilegiar um padrão mediterrânico. A perda de peso, quando existe excesso, melhora a resposta ao tratamento. Reduzir ultraprocessados, açúcares adicionados, álcool e gorduras trans. A exclusão de tomate, pimento ou beringela só deve ocorrer se o doente identificar agravamento consistente. Considerar rastreio de doença celíaca em doentes com sintomas sugestivos.",
+      "alimentos_contraindicados": [
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "álcool",
+        "ultraprocessados",
+        "açúcar adicionado",
+        "carne vermelha em excesso"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "peixe gordo",
+        "hortícolas",
+        "fruta",
+        "leguminosas",
+        "frutos oleaginosos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 33,
+      "nome": "Fibromialgia e Dor Crónica",
+      "patologia_tag": "fibromialgia_dor",
+      "aliases": [
+        "fibromialgia",
+        "dor crónica"
+      ],
+      "evidencia": "baixa",
+      "prioridade": "baixa",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: A evidência de intervenções dietéticas específicas é limitada. Privilegiar um padrão mediterrânico, adequado em magnésio, vitamina D e ómega-3, com controlo do peso e refeições regulares. Reduzir ultraprocessados, açúcares refinados, fritos e álcool. A eliminação de glutamato monossódico ou adoçantes artificiais pode ser testada individualmente, mas não constitui uma regra obrigatória.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "ultraprocessados",
+        "açúcar refinado",
+        "frito",
+        "álcool",
+        "excesso de cafeína"
+      ],
+      "alimentos_preferir": [
+        "peixe gordo",
+        "azeite",
+        "frutos oleaginosos",
+        "sementes",
+        "frutos vermelhos",
+        "hortícolas",
+        "leguminosas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 34,
+      "nome": "Artrose / Osteoartrite",
+      "patologia_tag": "osteoartrite_articulacoes",
+      "aliases": [
+        "artrose",
+        "osteoartrite",
+        "osteoartrose",
+        "desgaste articular"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "baixa",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: O controlo do peso é o principal fator modificável (sobretudo na artrose do joelho e da anca). Padrão mediterrânico, proteína adequada, vitamina D e exercício de fortalecimento muscular. Reduzir ultraprocessados, fritos e gorduras trans. Não há evidência que justifique proibir óleos vegetais comuns.",
+      "alimentos_contraindicados": [
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "ultraprocessados",
+        "frito",
+        "açúcar adicionado",
+        "excesso de álcool"
+      ],
+      "alimentos_preferir": [
+        "peixe gordo",
+        "azeite",
+        "frutos oleaginosos",
+        "hortícolas",
+        "fruta",
+        "leguminosas",
+        "proteína magra"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 35,
+      "nome": "Sarcopenia no Idoso",
+      "patologia_tag": "sarcopenia_senior",
+      "aliases": [
+        "sarcopenia",
+        "perda de massa muscular",
+        "fragilidade",
+        "idoso frágil"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "insuficiencia_renal_3",
+        "gota",
+        "disfagia_idoso",
+        "obesidade",
+        "alergia_ovo",
+        "dialise_renal",
+        "parkinson_levodopa",
+        "insuficiencia_cardiaca",
+        "cirurgia_bariatrica",
+        "insuficiencia_pancreatica",
+        "sindrome_dumping"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir aporte proteico elevado (1,2 a 1,5 g/kg/dia), fracionado em doses de 25-30 g de proteína de alto valor biológico por refeição principal, incluindo o jantar. Evitar refeições sem qualquer fonte proteica. Garantir vitamina D, energia suficiente e texturas adaptadas em caso de dificuldade de mastigação. Associar sempre treino de resistência — a dieta isolada é insuficiente.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "refeição sem fonte proteica",
+        "jantar só com sopa simples",
+        "jantar só com chá e torrada",
+        "jejum prolongado"
+      ],
+      "alimentos_preferir": [
+        "ovos",
+        "peixe",
+        "carne magra",
+        "laticínios",
+        "leguminosas",
+        "suplementos proteicos se indicado",
+        "texturas macias quando necessário"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 36,
+      "nome": "Doença Pulmonar Obstrutiva Crónica (DPOC)",
+      "patologia_tag": "dpoc_respiratorio",
+      "aliases": [
+        "dpoc",
+        "bronquite crónica",
+        "enfisema",
+        "doença pulmonar obstrutiva crónica"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "obesidade",
+        "obstipacao_cronica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir aporte energético e proteico adequado — a desnutrição é frequente e agrava o prognóstico. Refeições pequenas e frequentes para reduzir o desconforto respiratório. Reduzir alimentos que provoquem distensão abdominal apenas se agravarem a dispneia no doente em causa (não excluir leguminosas ou crucíferos por rotina). Não restringir hidratos de carbono em doentes estáveis (mito da produção de CO2). Vigiar hidratação e vitamina D.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "refeição muito volumosa",
+        "bebida gaseificada",
+        "alimentos flatulentos se agravarem a dispneia"
+      ],
+      "alimentos_preferir": [
+        "refeições pequenas e frequentes",
+        "proteína de alto valor biológico",
+        "alimentos hipercalóricos de pequeno volume",
+        "azeite",
+        "ovos",
+        "laticínios",
+        "fruta e hortícolas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 37,
+      "nome": "Asma com Sensibilidade a Sulfitos",
+      "patologia_tag": "asma_sulfitos",
+      "aliases": [
+        "asma",
+        "asma brônquica",
+        "sulfitos"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Apenas uma minoria de asmáticos (sobretudo com asma grave ou corticodependente) é sensível a sulfitos — a restrição só se justifica se houver sensibilidade confirmada. Nesses casos, reduzir alimentos ricos em sulfitos. Controlar o peso, privilegiar fruta e hortícolas e garantir vitamina D. Excluir alergénios alimentares apenas se confirmados por imunoalergologia.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "fruta desidratada com sulfitos",
+        "vinho",
+        "vinagre de vinho",
+        "conserva industrial com sulfitos",
+        "camarão processado"
+      ],
+      "alimentos_preferir": [
+        "fruta fresca",
+        "hortícolas",
+        "peixe gordo",
+        "azeite",
+        "alimentos frescos e pouco processados"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 38,
+      "nome": "Artrite Reumatóide",
+      "patologia_tag": "artrite_reumatoide",
+      "aliases": [
+        "artrite reumatoide",
+        "artrite reumatóide",
+        "ar",
+        "artrite"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "alergia_peixe"
+      ],
+      "regras_prompt": "Objetivo nutricional: A intervenção com maior evidência é o padrão mediterrânico associado ao aumento de ómega-3 (peixe gordo, 2-3 vezes por semana; a suplementação pode ser considerada). Reduzir gorduras trans, ultraprocessados e açúcares adicionados. Não há evidência sólida para banir óleos vegetais comuns nem para dietas de exclusão alargada. Vigiar o risco cardiovascular, a densidade óssea e a vitamina D (sobretudo sob corticoterapia).",
+      "alimentos_contraindicados": [
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "ultraprocessados",
+        "açúcar adicionado",
+        "excesso de carne vermelha gorda",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "peixe gordo",
+        "azeite",
+        "hortícolas",
+        "fruta",
+        "leguminosas",
+        "frutos oleaginosos",
+        "cereais integrais"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 39,
+      "nome": "Lúpus Eritematoso Sistémico (LES)",
+      "patologia_tag": "lupus_sistemico",
+      "aliases": [
+        "lúpus",
+        "lupus",
+        "les",
+        "lúpus eritematoso sistémico"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "alta",
+      "conflitos": [
+        "insuficiencia_renal_3"
+      ],
+      "regras_prompt": "Objetivo nutricional: Evitar rebentos de alfalfa (contêm L-canavanina, associada a reativação da doença). Padrão mediterrânico, dado o risco cardiovascular aumentado. Sob corticoterapia, reduzir o sódio (retenção hídrica e hipertensão) e garantir cálcio, vitamina D e proteína adequados. Em caso de nefrite lúpica, aplicar as regras de doença renal.",
+      "alimentos_contraindicados": [
+        "rebentos de alfalfa",
+        "alfalfa",
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "excesso de sal",
+        "enchidos",
+        "gordura saturada",
+        "ultraprocessados",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "peixe gordo",
+        "hortícolas",
+        "fruta",
+        "leguminosas",
+        "laticínios",
+        "fontes de vitamina D"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 40,
+      "nome": "Hemocromatose",
+      "patologia_tag": "hemocromatose_ferro",
+      "aliases": [
+        "hemocromatose",
+        "excesso de ferro",
+        "ferritina alta",
+        "sobrecarga de ferro"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "critica",
+      "conflitos": [
+        "anemia_ferropenica"
+      ],
+      "regras_prompt": "Objetivo nutricional: O tratamento principal é a flebotomia — a dieta é coadjuvante e não a substitui. Evitar suplementos de ferro e de vitamina C em dose elevada, sobretudo às refeições. Banir o álcool (aumenta a absorção de ferro e acelera o dano hepático). PROIBIR marisco e bivalves crus pelo risco grave e potencialmente fatal de infeção por Vibrio vulnificus. Moderar (não banir) o ferro heme muito biodisponível. O chá e o café às refeições reduzem a absorção de ferro.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "suplemento de ferro",
+        "suplemento de vitamina C em dose elevada",
+        "marisco cru",
+        "ostra crua",
+        "bivalve cru"
+      ],
+      "alimentos_limitar": [
+        "fígado",
+        "iscas",
+        "miudezas",
+        "carne vermelha em excesso",
+        "cereais fortificados com ferro"
+      ],
+      "alimentos_preferir": [
+        "chá preto ou verde às refeições",
+        "café às refeições",
+        "laticínios",
+        "ovos",
+        "leguminosas",
+        "hortícolas",
+        "cereais integrais"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 41,
+      "nome": "Diabetes Gestacional",
+      "patologia_tag": "diabetes_gestacional",
+      "aliases": [
+        "diabetes gestacional",
+        "dg",
+        "diabetes na gravidez"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "gravida_nauseas",
+        "gravidez_saudavel"
+      ],
+      "regras_prompt": "Objetivo nutricional: Controlar a glicémia materna sem comprometer o crescimento fetal. Fracionar os hidratos de carbono em 5 a 6 refeições, garantindo um mínimo diário (cerca de 175 g/dia) para evitar cetose. Não aplicar restrições calóricas agressivas. Cumprir rigorosamente as regras de segurança alimentar da gravidez (listeriose e toxoplasmose).",
+      "alimentos_contraindicados": [
+        "sushi",
+        "peixe cru",
+        "carne mal passada",
+        "ovo cru",
+        "queijo não pasteurizado",
+        "leite não pasteurizado",
+        "enchido cru",
+        "álcool",
+        "espadarte",
+        "tubarão",
+        "peixe-espada preto"
+      ],
+      "alimentos_limitar": [
+        "açúcar adicionado",
+        "sumo de fruta",
+        "mel",
+        "refrigerante",
+        "farinha refinada",
+        "cafeína (máx. 200 mg/dia)"
+      ],
+      "alimentos_preferir": [
+        "hortícolas",
+        "leguminosas",
+        "cereais integrais",
+        "proteína magra",
+        "laticínios pasteurizados",
+        "fruta inteira distribuída",
+        "azeite"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 42,
+      "nome": "Gravidez com Náuseas e Vómitos",
+      "patologia_tag": "gravida_nauseas",
+      "aliases": [
+        "náuseas na gravidez",
+        "enjoos matinais",
+        "enjoos da gravidez",
+        "hiperémese"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "alta",
+      "conflitos": [
+        "diabetes_gestacional",
+        "gravidez_saudavel"
+      ],
+      "regras_prompt": "Objetivo nutricional: Refeições pequenas, frequentes, secas, frias ou à temperatura ambiente, evitando cheiros intensos. O gengibre tem evidência de benefício. Separar os líquidos das refeições sólidas. Manter as regras de segurança alimentar da gravidez. Vigiar sinais de hiperémese gravídica (perda de peso, desidratação, incapacidade de reter líquidos) — exige avaliação médica urgente.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "peixe cru",
+        "carne mal passada",
+        "queijo não pasteurizado"
+      ],
+      "alimentos_limitar": [
+        "frito",
+        "refeição muito gordurosa",
+        "refeição muito volumosa",
+        "sopa muito quente",
+        "picante",
+        "cheiros intensos"
+      ],
+      "alimentos_preferir": [
+        "bolachas simples ao acordar",
+        "tostas",
+        "arroz",
+        "batata",
+        "gengibre",
+        "fruta fresca",
+        "alimentos frios ou à temperatura ambiente"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 43,
+      "nome": "Lactação / Amamentação",
+      "patologia_tag": "lactacao_amamentacao",
+      "aliases": [
+        "amamentação",
+        "lactação",
+        "a amamentar",
+        "aleitamento materno"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "alta",
+      "conflitos": [
+        "obesidade",
+        "alergia_peixe",
+        "gravidez_saudavel",
+        "vegetariano_vegano"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir aporte energético adicional (cerca de 400-500 kcal/dia) e hidratação abundante. Evitar o álcool (se consumido, apenas ocasional e afastado da mamada) e limitar a cafeína a 200-300 mg/dia. Evitar peixes de topo de cadeia alimentar pelo risco de metilmercúrio, mantendo peixe gordo de menor risco 2-3 vezes por semana. NÃO restringir alimentos preventivamente sem sintomas objetivos no bebé. Manter a suplementação de vitamina D no lactente conforme indicação pediátrica.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "espadarte",
+        "tubarão",
+        "peixe-espada preto",
+        "atum-patudo"
+      ],
+      "alimentos_limitar": [
+        "cafeína acima de 200-300 mg/dia",
+        "ultraprocessados"
+      ],
+      "alimentos_preferir": [
+        "água",
+        "peixe gordo de baixo mercúrio (sardinha, cavala, salmão)",
+        "leguminosas",
+        "hortícolas",
+        "cereais integrais",
+        "laticínios",
+        "frutos oleaginosos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 44,
+      "nome": "Menopausa e Climatério",
+      "patologia_tag": "menopausa_climaterio",
+      "aliases": [
+        "menopausa",
+        "climatério",
+        "pós-menopausa",
+        "afrontamentos"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "alergia_soja"
+      ],
+      "regras_prompt": "Objetivo nutricional: Proteção cardiovascular e óssea. Garantir fontes alimentares de cálcio (1000-1200 mg/dia) e de vitamina D, com proteína adequada e exercício de força e impacto. Padrão mediterrânico, com ómega-3 e fibra. Reduzir gorduras trans, fritos, açúcares adicionados, álcool e excesso de sal. Os fitoestrogénios (linhaça, soja) podem ter benefício modesto nos afrontamentos. Reduzir cafeína e álcool ao final do dia se agravarem afrontamentos ou o sono.",
+      "alimentos_contraindicados": [
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "açúcar adicionado",
+        "frito",
+        "álcool",
+        "excesso de sal",
+        "cafeína ao final do dia"
+      ],
+      "alimentos_preferir": [
+        "laticínios",
+        "fontes alimentares de cálcio e vitamina D",
+        "peixe gordo",
+        "linhaça",
+        "soja (se tolerada)",
+        "azeite",
+        "hortícolas",
+        "leguminosas"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 45,
+      "nome": "Disfagia no Idoso",
+      "patologia_tag": "disfagia_idoso",
+      "aliases": [
+        "disfagia",
+        "engasgamento",
+        "dificuldade em engolir",
+        "deglutição"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obstipacao_cronica",
+        "sarcopenia_senior",
+        "diverticulose_manutencao",
+        "parkinson_levodopa"
+      ],
+      "regras_prompt": "Objetivo nutricional: Modificar a textura dos alimentos e a consistência dos líquidos para garantir a segurança da deglutição, idealmente segundo a classificação IDDSI e após avaliação por terapeuta da fala. Evitar texturas mistas ou duplas, alimentos secos e farelentos, filamentosos, pegajosos e de risco de asfixia. Espessar líquidos se indicado. Garantir aporte energético e proteico adequado — a disfagia é um fator major de desnutrição.",
+      "alimentos_contraindicados": [
+        "bolacha seca",
+        "pão seco",
+        "cereal solto no leite",
+        "canja com massa e caldo",
+        "frutos secos inteiros",
+        "pipocas",
+        "alimentos filamentosos",
+        "uvas inteiras"
+      ],
+      "alimentos_limitar": [
+        "líquidos finos sem espessante quando indicado",
+        "alimentos pegajosos"
+      ],
+      "alimentos_preferir": [
+        "purés homogéneos",
+        "cremes",
+        "papas",
+        "iogurte",
+        "gelatina (se indicada)",
+        "preparados enriquecidos em proteína e energia"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 46,
+      "nome": "Pré-Diabetes",
+      "patologia_tag": "pre_diabetes",
+      "aliases": [
+        "pré-diabetes",
+        "pre diabetes",
+        "glicémia em jejum alterada",
+        "resistência à insulina"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "hipoglicemia_reativa"
+      ],
+      "regras_prompt": "Objetivo nutricional: A perda de 5-7% do peso corporal e 150 minutos semanais de atividade física são as intervenções com maior evidência. Preferir alimentos de baixo índice glicémico e ricos em fibra. Evitar hidratos de carbono consumidos isolados (associar sempre proteína e/ou gordura). Reduzir doçaria, sumos e refinados.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "refrigerante com açúcar",
+        "sumo de fruta",
+        "açúcar adicionado",
+        "doçaria",
+        "pastelaria",
+        "pão branco",
+        "arroz branco isolado",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "leguminosas",
+        "hortícolas",
+        "aveia",
+        "cereais integrais",
+        "fruta inteira",
+        "azeite",
+        "frutos oleaginosos",
+        "proteína magra"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 47,
+      "nome": "Hipoglicemia Reativa",
+      "patologia_tag": "hipoglicemia_reativa",
+      "aliases": [
+        "hipoglicemia reativa",
+        "hipoglicémia",
+        "quebras de açúcar",
+        "quebras de glicemia"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "diabetes_tipo_2",
+        "pre_diabetes",
+        "sindrome_dumping",
+        "cirurgia_bariatrica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Confirmar o diagnóstico clinicamente antes de aplicar restrições prolongadas. Evitar alimentos de alto índice glicémico consumidos isolados ou em jejum. Fracionar a alimentação a cada 2,5 a 3 horas. Todas as refeições devem combinar hidratos de carbono de absorção lenta com proteína e/ou gordura para estabilizar a curva glicémica. Evitar álcool em jejum.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "açúcar isolado",
+        "sumo de fruta",
+        "refrigerante",
+        "hidratos de carbono refinados isolados",
+        "álcool em jejum",
+        "fruta isolada em jejum"
+      ],
+      "alimentos_preferir": [
+        "aveia",
+        "centeio integral",
+        "leguminosas",
+        "ovos",
+        "queijo",
+        "frutos oleaginosos",
+        "iogurte natural",
+        "proteína a cada refeição"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 48,
+      "nome": "Síndrome Metabólica",
+      "patologia_tag": "sindrome_metabolica",
+      "aliases": [
+        "síndrome metabólica",
+        "sindrome metabolico"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "perturbacao_comportamento_alimentar"
+      ],
+      "regras_prompt": "Objetivo nutricional: Abordagem integrada de estilo de vida com base mediterrânica, restrição calórica moderada e perda ponderal de 5-10%. Reduzir açúcares simples, ultraprocessados ricos em sódio, fritos e gorduras trans. Azeite como gordura principal. Associar atividade física regular e reduzir o álcool.",
+      "alimentos_contraindicados": [
+        "gordura trans"
+      ],
+      "alimentos_limitar": [
+        "açúcar adicionado",
+        "refrigerante",
+        "enchidos",
+        "frito",
+        "pastelaria",
+        "excesso de sal",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "azeite",
+        "hortícolas",
+        "leguminosas",
+        "peixe",
+        "cereais integrais",
+        "fruta inteira",
+        "frutos oleaginosos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 49,
+      "nome": "Doença Diverticular do Cólon (Remissão)",
+      "patologia_tag": "diverticulose_manutencao",
+      "aliases": [
+        "diverticulose",
+        "divertículos",
+        "doença diverticular",
+        "diverticulite (remissão)"
+      ],
+      "evidencia": "forte",
+      "prioridade": "baixa",
+      "conflitos": [
+        "sii_diarreia",
+        "disfagia_idoso",
+        "quimioterapia_ativa",
+        "dii_surto",
+        "sii_obstipacao"
+      ],
+      "regras_prompt": "Objetivo nutricional: Alimentação rica em fibra, hidratação adequada e atividade física regular para prevenir episódios de diverticulite. NÃO é necessário excluir sementes, frutos secos, milho ou frutas com pequenas sementes — este mito foi refutado pela evidência atual. Restringir apenas em caso de intolerância individual. ATENÇÃO: numa diverticulite AGUDA aplica-se o oposto (dieta pobre em fibra ou líquida, sob indicação médica) — não confundir os dois estados.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "carne vermelha em excesso",
+        "ultraprocessados",
+        "alimentação pobre em fibra"
+      ],
+      "alimentos_preferir": [
+        "fruta",
+        "hortícolas",
+        "leguminosas",
+        "cereais integrais",
+        "sementes",
+        "frutos secos",
+        "água"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 50,
+      "nome": "Burnout Clínico / Stress Crónico",
+      "patologia_tag": "burnout_fadiga",
+      "aliases": [
+        "burnout",
+        "stress crónico",
+        "esgotamento",
+        "fadiga crónica"
+      ],
+      "evidencia": "baixa",
+      "prioridade": "baixa",
+      "conflitos": [],
+      "regras_prompt": "Objetivo nutricional: Não é uma patologia nutricional; a alimentação é coadjuvante e não substitui o acompanhamento clínico e psicológico. Excluir causas orgânicas de fadiga (anemia, hipotiroidismo, défice de B12 ou vitamina D) antes de atribuir a fadiga ao stress. Promover alimentação regular, evitando jejuns prolongados e excesso de cafeína (sobretudo em jejum e ao final do dia). Incentivar horários regulares, hidratação, sono e atividade física.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "bebida energética",
+        "pré-treino com cafeína",
+        "café em jejum",
+        "excesso de cafeína",
+        "álcool",
+        "jejum prolongado",
+        "ultraprocessados"
+      ],
+      "alimentos_preferir": [
+        "refeições regulares",
+        "proteína de alto valor biológico",
+        "cereais integrais",
+        "leguminosas",
+        "hortícolas",
+        "fruta",
+        "peixe gordo",
+        "frutos oleaginosos",
+        "água"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 51,
+      "nome": "Cirurgia Bariátrica (Pré e Pós-Operatório)",
+      "patologia_tag": "cirurgia_bariatrica",
+      "aliases": [
+        "bariátrica",
+        "bypass gástrico",
+        "sleeve",
+        "manga gástrica",
+        "cirurgia da obesidade",
+        "operei ao estômago"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obesidade",
+        "sarcopenia_senior",
+        "anemia_ferropenica",
+        "osteoporose_calcio",
+        "sindrome_dumping",
+        "perturbacao_comportamento_alimentar"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir a segurança pós-operatória, o aporte proteico e a prevenção de défices. Respeitar a progressão de texturas definida pela equipa cirúrgica (líquidos claros, líquidos completos, puré, mole, sólido), habitualmente ao longo de 4 a 8 semanas. Priorizar 60 a 80 g de proteína por dia. Refeições muito pequenas e frequentes, mastigadas lentamente. NÃO ingerir líquidos 30 minutos antes, durante ou depois das refeições (risco de dumping e de restrição do aporte sólido). A suplementação vitamínica e mineral é OBRIGATÓRIA E VITALÍCIA. Vigiar défices de B12, ferro, cálcio, vitamina D, tiamina, zinco e folato.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "açúcar simples concentrado",
+        "refrigerante gaseificado",
+        "líquidos durante as refeições"
+      ],
+      "alimentos_limitar": [
+        "frito",
+        "carne seca e fibrosa",
+        "pão fresco",
+        "arroz seco",
+        "cafeína",
+        "refeições volumosas"
+      ],
+      "alimentos_preferir": [
+        "proteína de alto valor biológico em primeiro lugar",
+        "suplemento proteico se indicado",
+        "multivitamínico",
+        "vitamina B12",
+        "ferro",
+        "citrato de cálcio",
+        "vitamina D",
+        "texturas adaptadas à fase pós-operatória"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 52,
+      "nome": "Doença Inflamatória Intestinal - Surto Ativo (Crohn / Colite Ulcerosa)",
+      "patologia_tag": "dii_surto",
+      "aliases": [
+        "crohn",
+        "doença de crohn",
+        "colite ulcerosa",
+        "dii",
+        "surto inflamatório intestinal",
+        "retocolite"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "alta",
+      "conflitos": [
+        "obstipacao_cronica",
+        "diverticulose_manutencao",
+        "dii_remissao",
+        "anemia_ferropenica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Reduzir o estímulo mecânico intestinal sem comprometer o estado nutricional. Durante o surto, reduzir temporariamente fibra insolúvel e resíduos, lactose se sintomática, fritos e gorduras em excesso. Refeições pequenas e frequentes. Garantir energia e proteína — o risco de desnutrição é elevado e agrava o prognóstico. Assegurar hidratação e reposição de eletrólitos em caso de diarreia. A nutrição entérica exclusiva tem evidência forte na indução de remissão na doença de Crohn, sobretudo pediátrica. NÃO manter dieta restritiva prolongada após a resolução do surto.",
+      "alimentos_contraindicados": [
+        "álcool"
+      ],
+      "alimentos_limitar": [
+        "fibra insolúvel",
+        "cereais integrais",
+        "leguminosas com casca",
+        "frutos secos",
+        "fruta com casca",
+        "frito",
+        "picante",
+        "cafeína",
+        "lactose se sintomática",
+        "adoçantes polióis"
+      ],
+      "alimentos_preferir": [
+        "proteína magra",
+        "peixe",
+        "ovos",
+        "arroz",
+        "batata",
+        "massa refinada temporariamente",
+        "sopas passadas",
+        "suplementos nutricionais orais se indicado",
+        "nutrição entérica se prescrita"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 53,
+      "nome": "Doença Inflamatória Intestinal - Remissão",
+      "patologia_tag": "dii_remissao",
+      "aliases": [
+        "crohn em remissão",
+        "colite ulcerosa estável",
+        "dii remissão"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "moderada",
+      "conflitos": [
+        "dii_surto",
+        "sii_diarreia",
+        "anemia_ferropenica",
+        "osteoporose_calcio"
+      ],
+      "regras_prompt": "Objetivo nutricional: Manter a remissão e corrigir défices, com a alimentação mais variada possível. Reintroduzir progressivamente fibra e diversidade alimentar — NÃO manter as restrições do surto de forma indefinida. Privilegiar um padrão mediterrânico. Reduzir ultraprocessados e emulsionantes, associados a maior risco de recidiva. Vigiar ferro, vitamina B12 (sobretudo em ileíte ou resseção ileal), vitamina D, cálcio, zinco e folato (metotrexato). O álcool e o tabaco (na doença de Crohn) são desfavoráveis.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "ultraprocessados",
+        "emulsionantes e aditivos",
+        "álcool",
+        "carne processada"
+      ],
+      "alimentos_preferir": [
+        "fruta",
+        "hortícolas",
+        "azeite",
+        "peixe gordo",
+        "leguminosas conforme tolerância",
+        "cereais integrais conforme tolerância",
+        "iogurte",
+        "fontes de vitamina D e cálcio"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 54,
+      "nome": "Alergia à Proteína do Leite de Vaca (APLV)",
+      "patologia_tag": "aplv",
+      "aliases": [
+        "aplv",
+        "alergia ao leite",
+        "alergia à proteína do leite de vaca",
+        "alergia a lacticínios",
+        "alérgico a leite"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "lactose",
+        "osteoporose_calcio",
+        "sarcopenia_senior",
+        "obesidade_pediatrica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Exclusão imunológica total da proteína do leite. ATENÇÃO: a APLV é DIFERENTE da intolerância à lactose — não confundir. Excluir leite e derivados de todos os mamíferos (vaca, cabra, ovelha, búfala), pela elevada reatividade cruzada. Os produtos rotulados \"sem lactose\" NÃO são seguros: contêm proteína do leite. Verificar rótulos quanto a caseína, caseinato, soro de leite, lactosoro, lactoalbumina e lactoglobulina. Garantir cálcio, vitamina D, proteína e energia por fontes alternativas. Em lactentes, usar fórmulas extensamente hidrolisadas ou de aminoácidos, sob indicação médica; as bebidas vegetais NÃO substituem o leite antes dos 2 anos.",
+      "alimentos_contraindicados": [
+        "leite",
+        "leite sem lactose",
+        "queijo",
+        "iogurte",
+        "manteiga",
+        "natas",
+        "requeijão",
+        "leite de cabra",
+        "leite de ovelha",
+        "caseína",
+        "caseinato",
+        "soro de leite",
+        "lactosoro",
+        "proteína de soro",
+        "manteiga clarificada"
+      ],
+      "alimentos_limitar": [
+        "produtos sem rotulagem de alergénios clara",
+        "alimentos com \"pode conter vestígios de leite\""
+      ],
+      "alimentos_preferir": [
+        "fórmula hidrolisada ou de aminoácidos se indicado",
+        "bebidas vegetais enriquecidas em cálcio (acima dos 2 anos)",
+        "leguminosas",
+        "sardinha com espinha",
+        "sésamo",
+        "hortícolas de folha escura",
+        "carne",
+        "peixe",
+        "ovos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 55,
+      "nome": "Perturbações do Comportamento Alimentar",
+      "patologia_tag": "perturbacao_comportamento_alimentar",
+      "aliases": [
+        "anorexia",
+        "anorexia nervosa",
+        "bulimia",
+        "ingestão compulsiva",
+        "compulsão alimentar",
+        "arfid",
+        "pca",
+        "transtorno alimentar"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obesidade",
+        "obesidade_pediatrica",
+        "diabetes_tipo_2",
+        "cirurgia_bariatrica",
+        "sindrome_metabolica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Reabilitação nutricional e restabelecimento de uma relação segura com a comida. REGRA ABSOLUTA: nunca gerar listas de alimentos proibidos, contagem de calorias, planos restritivos, jejum intermitente ou objetivos de perda de peso, ainda que solicitados pelo utilizador. Não usar linguagem de alimentos \"bons\" ou \"maus\". Privilegiar regularidade das refeições, variedade e ausência de julgamento. Vigiar o risco de síndrome de renutrição (refeeding) na fase inicial: monitorizar fósforo, potássio, magnésio e tiamina. Esta patologia SOBREPÕE-SE a qualquer outra que motive restrição calórica. Encaminhar sempre para equipa multidisciplinar (médico, nutricionista, psicólogo ou psiquiatra).",
+      "alimentos_contraindicados": [
+        "dietas restritivas",
+        "contagem de calorias",
+        "jejum intermitente",
+        "listas de alimentos proibidos",
+        "objetivos de perda de peso",
+        "produtos de emagrecimento"
+      ],
+      "alimentos_limitar": [
+        "pesagens frequentes",
+        "linguagem de alimentos \"bons\" e \"maus\"",
+        "discurso sobre índice glicémico ou macros"
+      ],
+      "alimentos_preferir": [
+        "refeições regulares e estruturadas",
+        "variedade alimentar",
+        "alimentos de conforto reintroduzidos progressivamente",
+        "acompanhamento multidisciplinar"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 56,
+      "nome": "Terapêutica com Varfarina (Interação com Vitamina K)",
+      "patologia_tag": "varfarina_vitk",
+      "aliases": [
+        "varfarina",
+        "varfine",
+        "anticoagulante oral",
+        "inr",
+        "vitamina k"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "obstipacao_cronica",
+        "insuficiencia_cardiaca",
+        "vegetariano_vegano"
+      ],
+      "regras_prompt": "Objetivo nutricional: Manter a estabilidade do INR. O objetivo NÃO é evitar a vitamina K, mas manter uma ingestão CONSTANTE e previsível dia após dia. São as variações bruscas — tanto o aumento como a redução súbita de hortícolas de folha verde escura — que desestabilizam a anticoagulação. NÃO excluir couves, brócolos ou espinafres: manter porções regulares e semelhantes. Evitar suplementos de vitamina K, toranja, excesso de sumo de arando, chá verde em grandes quantidades e álcool em excesso. Qualquer suplemento ou produto de ervas deve ser validado pelo médico. Nota: esta regra NÃO se aplica aos anticoagulantes orais diretos (apixabano, rivaroxabano, edoxabano, dabigatrano).",
+      "alimentos_contraindicados": [
+        "suplemento de vitamina K",
+        "toranja",
+        "sumo de arando em excesso",
+        "álcool em excesso",
+        "suplementos de ervas não validados"
+      ],
+      "alimentos_limitar": [
+        "variações bruscas no consumo de hortícolas de folha verde escura",
+        "chá verde em grande quantidade",
+        "suplementos de óleo de peixe sem validação médica"
+      ],
+      "alimentos_preferir": [
+        "ingestão constante e regular de hortícolas de folha verde",
+        "padrão alimentar estável e previsível",
+        "registo alimentar em caso de alteração de hábitos"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 57,
+      "nome": "Gravidez sem Patologia Associada",
+      "patologia_tag": "gravidez_saudavel",
+      "aliases": [
+        "grávida",
+        "gravidez",
+        "estou grávida",
+        "gestação"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "obesidade",
+        "perturbacao_comportamento_alimentar",
+        "alergia_peixe",
+        "vegetariano_vegano"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir o desenvolvimento fetal e a segurança alimentar. Prevenção de listeriose, toxoplasmose e salmonelose: evitar carne e peixe crus ou mal passados, ovos com gema mole, laticínios e queijos não pasteurizados, enchidos crus e pré-preparados prontos a comer; lavar cuidadosamente fruta e hortícolas. Ácido fólico 400 µg/dia (idealmente pré-concecional até às 12 semanas); iodo e ferro conforme indicação clínica. Limitar a cafeína a 200 mg/dia. Álcool: zero, em qualquer fase. Evitar peixes de topo de cadeia alimentar pelo metilmercúrio, mantendo peixe 2 a 3 vezes por semana. O aumento das necessidades energéticas só ocorre a partir do 2.º trimestre (cerca de 340-450 kcal/dia) — não é \"comer por dois\". Não fazer restrição calórica.",
+      "alimentos_contraindicados": [
+        "álcool",
+        "peixe cru",
+        "sushi",
+        "carne mal passada",
+        "ovo cru",
+        "queijo não pasteurizado",
+        "leite não pasteurizado",
+        "enchido cru",
+        "espadarte",
+        "tubarão",
+        "peixe-espada preto",
+        "atum-patudo",
+        "excesso de fígado (vitamina A)",
+        "suplemento de vitamina A"
+      ],
+      "alimentos_limitar": [
+        "cafeína acima de 200 mg/dia",
+        "ultraprocessados",
+        "excesso de sal",
+        "açúcar adicionado"
+      ],
+      "alimentos_preferir": [
+        "ácido fólico",
+        "ferro",
+        "iodo",
+        "peixe de baixo mercúrio (sardinha, pescada, salmão)",
+        "hortícolas",
+        "fruta",
+        "leguminosas",
+        "laticínios pasteurizados",
+        "cereais integrais"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 58,
+      "nome": "Síndrome do Intestino Irritável - Obstipação e Misto (SII-C / SII-M)",
+      "patologia_tag": "sii_obstipacao",
+      "aliases": [
+        "sii-c",
+        "sii-m",
+        "intestino irritável com obstipação",
+        "cólon irritável obstipação"
+      ],
+      "evidencia": "forte",
+      "prioridade": "moderada",
+      "conflitos": [
+        "sii_diarreia",
+        "obstipacao_cronica",
+        "diverticulose_manutencao",
+        "dii_surto"
+      ],
+      "regras_prompt": "Objetivo nutricional: Regularizar o trânsito sem agravar a distensão e a dor. Aumentar gradualmente a fibra SOLÚVEL — o psílio é a que reúne melhor evidência. A fibra insolúvel em excesso (farelo de trigo) pode agravar a dor e o inchaço e não deve ser a primeira escolha. Garantir hidratação adequada, refeições regulares e atividade física. A redução de FODMAPs pode ser usada sob orientação, sempre com fase de reintrodução. Evitar o uso crónico de laxantes estimulantes sem indicação médica.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "excesso de fibra insolúvel",
+        "farelo de trigo",
+        "álcool",
+        "cafeína em excesso",
+        "adoçantes polióis",
+        "refeições muito volumosas",
+        "bebidas gaseificadas"
+      ],
+      "alimentos_preferir": [
+        "psílio",
+        "aveia",
+        "kiwi",
+        "fruta cozida",
+        "linhaça",
+        "água",
+        "hortícolas de baixo FODMAP",
+        "azeite"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 59,
+      "nome": "Doença Renal Crónica em Diálise",
+      "patologia_tag": "dialise_renal",
+      "aliases": [
+        "diálise",
+        "hemodiálise",
+        "diálise peritoneal",
+        "doente dialisado",
+        "em diálise"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "insuficiencia_renal_3",
+        "hipertensao",
+        "obstipacao_cronica",
+        "sarcopenia_senior",
+        "osteoporose_calcio",
+        "diabetes_tipo_2"
+      ],
+      "regras_prompt": "Objetivo nutricional: Prevenir a desnutrição e controlar sódio, líquidos, potássio e fósforo. ATENÇÃO: as regras são INVERTIDAS face à IRC pré-diálise. A proteína SOBE para 1,0-1,2 g/kg/dia em hemodiálise e 1,2-1,3 g/kg/dia em diálise peritoneal, devido às perdas dialíticas — aplicar aqui a restrição proteica da IRC estádio 3 é um erro grave. Restringir sódio (<2 g/dia) e líquidos conforme a diurese residual e o ganho de peso interdialítico. Ajustar potássio e fósforo às análises. Reduzir primeiro o fósforo de aditivos (mais biodisponível) e não a proteína. Os quelantes do fósforo devem ser tomados COM as refeições. A desnutrição proteico-energética é frequente e é um preditor major de mortalidade.",
+      "alimentos_contraindicados": [
+        "aditivos com fosfatos",
+        "refrigerante de cola",
+        "excesso de sal",
+        "substitutos de sal com potássio"
+      ],
+      "alimentos_limitar": [
+        "líquidos conforme prescrição",
+        "alimentos ricos em potássio conforme análises",
+        "alimentos ricos em fósforo natural",
+        "ultraprocessados",
+        "álcool"
+      ],
+      "alimentos_preferir": [
+        "proteína de alto valor biológico em todas as refeições",
+        "clara de ovo",
+        "carne",
+        "peixe",
+        "hortícolas com demolha e dupla cozedura",
+        "suplementos nutricionais orais renais se indicado"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 60,
+      "nome": "Obesidade Infantil e do Adolescente",
+      "patologia_tag": "obesidade_pediatrica",
+      "aliases": [
+        "obesidade infantil",
+        "criança com excesso de peso",
+        "adolescente obeso",
+        "obesidade pediátrica"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "obesidade",
+        "perturbacao_comportamento_alimentar",
+        "diabetes_tipo_2"
+      ],
+      "regras_prompt": "Objetivo nutricional: Normalizar o IMC sem comprometer o crescimento nem a relação com a comida. NÃO aplicar défice calórico, dietas restritivas nem jejum intermitente em crianças e adolescentes em crescimento. Na maioria dos casos, o objetivo é a MANUTENÇÃO do peso enquanto a estatura aumenta, permitindo a normalização progressiva do IMC. Focar em comportamento e ambiente: pequeno-almoço, refeições em família e sem ecrãs, redução drástica de bebidas açucaradas, aumento da atividade física e do sono. NUNCA usar linguagem de culpa, de \"alimentos proibidos\" ou de peso — é um fator de risco reconhecido para perturbações do comportamento alimentar. Envolver sempre a família e não apenas a criança.",
+      "alimentos_contraindicados": [
+        "dietas restritivas em idade pediátrica",
+        "défice calórico agressivo",
+        "jejum intermitente",
+        "produtos de emagrecimento",
+        "contagem de calorias pela criança"
+      ],
+      "alimentos_limitar": [
+        "refrigerante com açúcar",
+        "sumo de fruta",
+        "snacks açucarados",
+        "fast food",
+        "ultraprocessados",
+        "comer em frente a ecrãs"
+      ],
+      "alimentos_preferir": [
+        "água",
+        "fruta",
+        "hortícolas",
+        "leguminosas",
+        "laticínios",
+        "cereais integrais",
+        "refeições em família",
+        "atividade física diária",
+        "sono adequado"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 61,
+      "nome": "Alimentação Vegetariana ou Vegana",
+      "patologia_tag": "vegetariano_vegano",
+      "aliases": [
+        "vegetariano",
+        "vegano",
+        "vegetariana",
+        "plant-based",
+        "não como carne",
+        "ovolactovegetariano"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "anemia_ferropenica",
+        "osteoporose_calcio",
+        "alergia_soja",
+        "sarcopenia_senior",
+        "gravidez_saudavel",
+        "varfarina_vitk"
+      ],
+      "regras_prompt": "Objetivo nutricional: Garantir a adequação nutricional de um padrão alimentar (não é uma patologia), que é seguro em todas as fases da vida quando bem planeado. A suplementação de vitamina B12 é OBRIGATÓRIA no vegano e recomendada no ovolactovegetariano — não é negociável nem substituível por alimentos. Vigiar ferro (combinar com vitamina C e afastar chá e café das refeições), cálcio, vitamina D, zinco, iodo, ómega-3 (EPA/DHA de algas) e proteína (1,0-1,2 g/kg/dia, combinando leguminosas e cereais ao longo do dia). Atenção acrescida na gravidez, lactação, infância e no idoso.",
+      "alimentos_contraindicados": [
+        "carne",
+        "peixe",
+        "marisco"
+      ],
+      "alimentos_limitar": [
+        "ultraprocessados vegan",
+        "chá e café junto às refeições (inibem o ferro)",
+        "excesso de refinados"
+      ],
+      "alimentos_preferir": [
+        "suplemento de vitamina B12",
+        "leguminosas",
+        "tofu",
+        "tempeh",
+        "seitan (exceto se celíaco)",
+        "frutos oleaginosos",
+        "sementes",
+        "cereais integrais",
+        "bebidas vegetais enriquecidas em cálcio",
+        "ómega-3 de algas",
+        "vitamina C às refeições"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica. No vegano, excluir também ovos, laticínios e mel."
+    },
+    {
+      "id": 62,
+      "nome": "Doença de Parkinson (em uso de Levodopa)",
+      "patologia_tag": "parkinson_levodopa",
+      "aliases": [
+        "parkinson",
+        "doença de parkinson",
+        "levodopa",
+        "madopar",
+        "sinemet"
+      ],
+      "evidencia": "moderada",
+      "prioridade": "alta",
+      "conflitos": [
+        "obstipacao_cronica",
+        "disfagia_idoso",
+        "sarcopenia_senior"
+      ],
+      "regras_prompt": "Objetivo nutricional: Otimizar a absorção da levodopa sem induzir desnutrição. A proteína alimentar compete com a levodopa no transporte intestinal e na barreira hematoencefálica. Tomar a levodopa 30 minutos antes ou 60 minutos após as refeições proteicas. A redistribuição proteica (concentrando a proteína ao jantar) deve ser considerada APENAS em doentes com flutuações motoras e sob orientação médica — NUNCA reduzir a proteína total, dado o risco elevado de sarcopenia e perda de peso. Prevenir a obstipação (muito frequente): fibra e hidratação. Adaptar a textura se houver disfagia, que é comum na doença avançada.",
+      "alimentos_contraindicados": [],
+      "alimentos_limitar": [
+        "proteína na mesma toma da levodopa",
+        "álcool",
+        "suplementos de ferro junto à levodopa"
+      ],
+      "alimentos_preferir": [
+        "fibra",
+        "água",
+        "proteína adequada, redistribuída conforme indicação médica",
+        "refeições fracionadas",
+        "texturas adaptadas se houver disfagia",
+        "alimentos hipercalóricos se houver perda de peso"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 63,
+      "nome": "Insuficiência Cardíaca Crónica",
+      "patologia_tag": "insuficiencia_cardiaca",
+      "aliases": [
+        "insuficiência cardíaca",
+        "ic",
+        "coração fraco",
+        "edema cardíaco",
+        { "term": "retenção de líquidos", "requiresAlsoOneOf": ["dispneia", "ortopneia", "edema cardíaco", "insuficiência cardíaca", "coração fraco", "cansaço aos esforços"] }
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "hipertensao",
+        "insuficiencia_renal_3",
+        "dialise_renal",
+        "sarcopenia_senior",
+        "varfarina_vitk"
+      ],
+      "regras_prompt": "Objetivo nutricional: Controlar a sobrecarga hídrica sem provocar desnutrição. Restrição moderada de sódio (<2 a 3 g/dia). A restrição hídrica (1,5 a 2 L/dia) aplica-se apenas na IC avançada ou na hiponatremia — NÃO por rotina. Vigiar a caquexia cardíaca: garantir energia e proteína suficientes, pois a desnutrição é um preditor major de mortalidade. Monitorizar o peso diário (um ganho rápido indica retenção de líquidos, não de gordura). Limitar o álcool; é absolutamente contraindicado na miocardiopatia alcoólica. Vigiar défice de ferro (mesmo sem anemia), tiamina (diuréticos de ansa), potássio e magnésio.",
+      "alimentos_contraindicados": [
+        "excesso de sal",
+        "caldo industrial",
+        "enchidos",
+        "conservas salgadas",
+        "álcool na miocardiopatia alcoólica"
+      ],
+      "alimentos_limitar": [
+        "líquidos conforme prescrição",
+        "ultraprocessados",
+        "álcool",
+        "refeições muito volumosas"
+      ],
+      "alimentos_preferir": [
+        "alimentos frescos",
+        "ervas aromáticas e especiarias",
+        "proteína de alto valor biológico",
+        "hortícolas",
+        "fruta",
+        "fontes de ferro",
+        "refeições pequenas e frequentes"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 64,
+      "nome": "Insuficiência Pancreática Exócrina / Pancreatite Crónica",
+      "patologia_tag": "insuficiencia_pancreatica",
+      "aliases": [
+        "pancreatite crónica",
+        "insuficiência pancreática",
+        "esteatorreia",
+        "enzimas pancreáticas",
+        "kreon",
+        "pancreatite"
+      ],
+      "evidencia": "forte",
+      "prioridade": "critica",
+      "conflitos": [
+        "diabetes_tipo_2",
+        "sarcopenia_senior",
+        "osteoporose_calcio",
+        "esteatose_hepatica"
+      ],
+      "regras_prompt": "Objetivo nutricional: Corrigir a má-absorção e prevenir a desnutrição. Abstinência ABSOLUTA de álcool e tabaco. IMPORTANTE: NÃO restringir a gordura de forma agressiva — a abordagem atual é uma dieta normolipídica associada a enzimas pancreáticas de substituição (PERT) em dose adequada, tomadas COM as refeições e com os snacks. Restringir gordura sem enzimas agrava a desnutrição e o défice de vitaminas lipossolúveis. Refeições pequenas e frequentes. Suplementar vitaminas A, D, E e K e vigiar B12, cálcio e densidade óssea (a osteoporose é muito frequente). Rastrear diabetes secundária (tipo 3c).",
+      "alimentos_contraindicados": [
+        "álcool"
+      ],
+      "alimentos_limitar": [
+        "refeições muito volumosas",
+        "frito",
+        "ultraprocessados",
+        "gordura sem toma concomitante de enzimas"
+      ],
+      "alimentos_preferir": [
+        "enzimas pancreáticas com todas as refeições",
+        "refeições pequenas e frequentes",
+        "proteína de alto valor biológico",
+        "azeite",
+        "TCM se indicado",
+        "vitaminas lipossolúveis (A, D, E, K)",
+        "suplementos nutricionais orais se indicado"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    },
+    {
+      "id": 65,
+      "nome": "Síndrome de Dumping",
+      "patologia_tag": "sindrome_dumping",
+      "aliases": [
+        "dumping",
+        "síndrome de dumping",
+        "esvaziamento gástrico rápido",
+        "pós-gastrectomia"
+      ],
+      "evidencia": "forte",
+      "prioridade": "alta",
+      "conflitos": [
+        "cirurgia_bariatrica",
+        "hipoglicemia_reativa",
+        "diabetes_tipo_2",
+        "sarcopenia_senior"
+      ],
+      "regras_prompt": "Objetivo nutricional: Abrandar o esvaziamento gástrico e estabilizar a glicemia. Frequente após cirurgia bariátrica, gastrectomia ou fundoplicatura. Distinguir dumping precoce (15 a 30 minutos após a refeição: náusea, taquicardia, dor abdominal, diarreia, rubor) de dumping tardio (1 a 3 horas: hipoglicemia reativa por pico de insulina). Evitar açúcares simples e líquidos hiperosmolares. Separar os líquidos das refeições (30 minutos antes e depois). Fazer 6 refeições pequenas, ricas em proteína e fibra solúvel, mastigando bem. No dumping precoce, permanecer reclinado 20 a 30 minutos após a refeição pode ajudar.",
+      "alimentos_contraindicados": [
+        "açúcar simples concentrado",
+        "refrigerante",
+        "sumo de fruta",
+        "líquidos durante as refeições",
+        "álcool"
+      ],
+      "alimentos_limitar": [
+        "lactose se sintomática",
+        "refeições volumosas",
+        "alimentos muito quentes ou muito frios",
+        "hidratos de carbono refinados isolados"
+      ],
+      "alimentos_preferir": [
+        "proteína em todas as refeições",
+        "fibra solúvel (psílio, aveia)",
+        "refeições pequenas e frequentes",
+        "hidratos de carbono complexos",
+        "gordura saudável para abrandar o esvaziamento"
+      ],
+      "nota_prompt": "As recomendações devem ser adaptadas à tolerância individual, medicação, estado clínico e orientação do médico ou nutricionista. Não excluir alimentos desnecessariamente quando não existir contraindicação clínica."
+    }
+  ]
+}

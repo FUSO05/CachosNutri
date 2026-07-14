@@ -59,15 +59,53 @@ As fotos de refeições (tab "Fotos" do portal do paciente) usam o Supabase Stor
    isso há uma Edge Function que as apaga automaticamente passados 45 dias:
    ```bash
    supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<a-tua-service-role-key>   # Project Settings → API
+   supabase secrets set CRON_SECRET=<uma-string-aleatoria-a-tua-escolha>
    supabase functions deploy cleanup-meal-photos
    ```
+   O `CRON_SECRET` é exigido pela function (cabeçalho `x-cron-secret`) para que só o cron job
+   consiga invocá-la — sem isto, qualquer pessoa com a anon key pública conseguiria disparar a
+   limpeza fora do horário.
 3. Agenda a function para correr 1×/dia no dashboard do Supabase: **Database → Cron Jobs →
-   Create a new cron job → tipo "Supabase Edge Function"** → escolhe `cleanup-meal-photos`.
+   Create a new cron job → tipo "Supabase Edge Function"** → escolhe `cleanup-meal-photos` →
+   adiciona o cabeçalho HTTP `x-cron-secret` com o mesmo valor do `CRON_SECRET`.
    Isto fica-se pelo dashboard (não em SQL committed) para nunca escrever a service-role key
    em controlo de versão.
 
 Sem o passo 3, a app continua a funcionar normalmente — só o armazenamento deixa de se
 reciclar sozinho, o que só importa a longo prazo (o limite gratuito do Supabase é 1GB).
+
+### Gerar plano com IA
+
+Botão "✨ Gerar com IA" no editor de planos (`public/js/app.js`: `generatePlanWithAI`) — cria
+um rascunho de plano semanal usando o modelo Claude Haiku 4.5 (Anthropic), a partir do
+objetivo/alergias/patologias/medicação/notas já guardados na ficha do paciente. Nunca é
+guardado automaticamente — fica como rascunho editável até o nutricionista clicar em "Guardar
+plano" ou fazer qualquer edição normal.
+
+1. Cria uma chave em [console.anthropic.com](https://console.anthropic.com).
+2. Configura o secret e publica a function:
+   ```bash
+   supabase secrets set ANTHROPIC_API_KEY=sk-ant-xxxxxxxx
+   supabase functions deploy generate-meal-plan --no-verify-jwt
+   ```
+   O `--no-verify-jwt` é necessário porque esta function faz streaming e responde a um pedido
+   `OPTIONS` (preflight de CORS) antes de qualquer `Authorization` — a verificação de JWT da
+   gateway do Supabase corre antes do código da function e bloqueia esse preflight. A function
+   já verifica a autenticação sozinha (linha do `Authorization`), por isso continua segura sem
+   esse passo automático da gateway.
+
+`supabase/functions/generate-meal-plan/tca_data.json` é uma cópia recortada e commitada de
+`public/js/data/tca_data.js` (só `id/nome/cat/kcal/prot/hc/lip/agtrans/na`, sem os restantes
+campos de vitaminas/minerais) — a Edge Function (Deno) não consegue importar o ficheiro do frontend em
+runtime, por isso esta cópia existe à parte e **não se sincroniza sozinha**. Sempre que
+`tca_data.js` mudar (novos alimentos, correções), corre:
+```bash
+node scripts/generate-tca-trimmed.mjs
+```
+e volta a publicar a function.
+
+Sem `ANTHROPIC_API_KEY` configurado, o botão "Gerar com IA" mostra um erro claro ao
+nutricionista — o resto da app continua a funcionar normalmente.
 
 ## Estrutura do projeto
 
@@ -80,8 +118,12 @@ public/          site estático servido em produção (Vercel)
   css/, js/, img/
 supabase/
   schema.sql               tabelas + RLS + bucket de Storage
-  functions/send-invite-email/     Edge Function do convite por email
-  functions/cleanup-meal-photos/   Edge Function agendada — apaga fotos de refeições >45 dias
+  functions/send-invite-email/      Edge Function do convite por email
+  functions/cleanup-meal-photos/    Edge Function agendada — apaga fotos de refeições >45 dias
+  functions/generate-meal-plan/     Edge Function do botão "Gerar com IA" (rascunho de plano)
+scripts/
+  generate-tca-trimmed.mjs  gera supabase/functions/generate-meal-plan/tca_data.json a partir
+                            de public/js/data/tca_data.js (correr manualmente quando este mudar)
 tests/           suite Playwright (ver secção abaixo)
 ```
 

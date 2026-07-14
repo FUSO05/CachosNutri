@@ -370,6 +370,7 @@ function saveAppData() {
   }
   try { localStorage.setItem('cachos_data', JSON.stringify(appData)); } catch(e) {}
   scheduleRemoteSync();
+  hideAiDraftBanner(); // qualquer guardado "gradua" um rascunho de IA pendente para plano guardado
 }
 
 function saveState() { saveAppData(); }
@@ -600,6 +601,7 @@ function goToPlan(clientId, planId) {
   nav = { view: 'plan', clientId, planId };
   state.activeDay = 0;
   state.days = plan.days;
+  hideAiDraftBanner(); // um rascunho de IA por guardar era de outro plano — não faz sentido aqui
 
   if (plan.waterMl === null) {
     const peso = parseFloat(client.info?.pPeso) || 0;
@@ -1588,6 +1590,11 @@ function renderMacroTargets(tot) {
   });
 }
 
+// null fora do fluxo de "Gerar com IA"; 'ai' enquanto o modal está aberto como passo prévio
+// a essa geração — só assim saveMacroTargets()/skipMacroTargetsForAI() sabem se devem
+// continuar para openAiPlanModal() ou só fechar (uso normal, a partir do botão de metas).
+let _macroTargetsFlow = null;
+
 function openMacroTargetsModal() {
   const client = appData.clients.find(c => c.id === nav.clientId);
   const plan   = client?.plans.find(p => p.id === nav.planId);
@@ -1605,8 +1612,35 @@ function openMacroTargetsModal() {
   document.getElementById('macroTargetsModal').style.display = 'flex';
 }
 
+// Passo prévio a "Gerar com IA": mostra sempre o modal de metas (pré-preenchido com as
+// metas já guardadas no plano, se existirem) para o nutricionista rever/ajustar antes de
+// cada geração — nunca salta este passo, mesmo que o plano já tenha metas definidas de
+// antes. "Gerar sem metas" continua disponível para avançar sem indicar nenhuma.
+function startAiPlanFlow() {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client?.plans.find(p => p.id === nav.planId);
+  if (!plan) return;
+
+  _macroTargetsFlow = 'ai';
+  document.getElementById('mt-modal-title').textContent = 'Metas para o plano gerado por IA';
+  document.getElementById('mt-banner-text').textContent =
+    'Opcional, mas ajuda a IA a acertar melhor as calorias e macros do plano gerado.';
+  document.getElementById('mt-skip-ai-btn').style.display = '';
+  openMacroTargetsModal();
+}
+
 function closeMacroTargetsModal() {
   document.getElementById('macroTargetsModal').style.display = 'none';
+  document.getElementById('mt-skip-ai-btn').style.display = 'none';
+  document.getElementById('mt-modal-title').textContent = 'Metas diárias';
+  document.getElementById('mt-banner-text').textContent = 'Os valores sugeridos baseiam-se no perfil do paciente.';
+  _macroTargetsFlow = null;
+}
+
+function skipMacroTargetsForAI() {
+  const wasAiFlow = _macroTargetsFlow === 'ai';
+  closeMacroTargetsModal();
+  if (wasAiFlow) openAiPlanModal();
 }
 
 function saveMacroTargets() {
@@ -1623,8 +1657,10 @@ function saveMacroTargets() {
 
   plan.macroTargets = { kcal, prot, hc, lip };
   saveAppData();
+  const wasAiFlow = _macroTargetsFlow === 'ai';
   closeMacroTargetsModal();
   renderChart();
+  if (wasAiFlow) openAiPlanModal();
 }
 
 // ── Equivalences ──────────────────────────────────────────────────────────────
@@ -1963,6 +1999,166 @@ function copyDay(toIdx) {
   saveAppData();
   closeCopyDayModal();
   switchDay(toIdx);
+}
+
+// ── Gerar plano com IA ──────────────────────────────────────────────────────
+// Rascunho gerado pela Edge Function generate-meal-plan (streaming NDJSON) a partir dos
+// dados clínicos já guardados na ficha do paciente. Nunca guardado automaticamente — o
+// nutricionista revê/edita e só persiste ao clicar "Guardar plano" no banner, ou ao fazer
+// qualquer edição normal (que já dispara o autosave existente via saveAppData()).
+let _aiPlanController = null; // AbortController da geração em curso
+let _aiPlanResult = null;     // { days, warnings } — só populado depois de "result", antes de aplicar
+
+function openAiPlanModal() {
+  document.getElementById('aiPlanModal').style.display = 'flex';
+  document.getElementById('ai-plan-ready').style.display = 'none';
+  document.getElementById('ai-plan-error').style.display = 'none';
+  document.getElementById('ai-reasoning-box').textContent = '';
+  document.querySelectorAll('#ai-stage-list .ai-stage').forEach(li => li.classList.remove('active', 'done'));
+  _aiPlanResult = null;
+  generatePlanWithAI();
+}
+
+function closeAiPlanModal() {
+  if (_aiPlanController) { _aiPlanController.abort(); _aiPlanController = null; }
+  document.getElementById('aiPlanModal').style.display = 'none';
+}
+
+function setAiStage(stage) {
+  let reached = false;
+  document.querySelectorAll('#ai-stage-list .ai-stage').forEach(li => {
+    if (li.dataset.stage === stage) { li.classList.add('active'); li.classList.remove('done'); reached = true; }
+    else if (!reached) { li.classList.remove('active'); li.classList.add('done'); }
+    else { li.classList.remove('active', 'done'); }
+  });
+}
+
+function showAiPlanError(message) {
+  document.getElementById('ai-plan-error-message').textContent = message;
+  document.getElementById('ai-plan-error').style.display = '';
+}
+
+async function generatePlanWithAI() {
+  document.getElementById('ai-plan-error').style.display = 'none';
+  document.getElementById('ai-plan-ready').style.display = 'none';
+  document.getElementById('ai-reasoning-box').textContent = '';
+  document.querySelectorAll('#ai-stage-list .ai-stage').forEach(li => li.classList.remove('active', 'done'));
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { showAiPlanError('Sessão expirada — recarrega a página e tenta novamente.'); return; }
+
+  _aiPlanController = new AbortController();
+  let res;
+  try {
+    res = await fetch(`${SUPABASE_URL}/functions/v1/generate-meal-plan`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ clientId: nav.clientId, planId: nav.planId }),
+      signal: _aiPlanController.signal
+    });
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    showAiPlanError('Não foi possível contactar o servidor. Tenta novamente.');
+    return;
+  }
+
+  if (!res.body) { showAiPlanError('Resposta inválida do servidor.'); return; }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let msg;
+        try { msg = JSON.parse(line); } catch (e) { continue; }
+        handleAiPlanMessage(msg);
+      }
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    showAiPlanError('A ligação foi interrompida a meio da geração. Tenta novamente.');
+  }
+}
+
+function handleAiPlanMessage(msg) {
+  if (msg.type === 'stage') {
+    setAiStage(msg.stage);
+  } else if (msg.type === 'reasoning_delta') {
+    const box = document.getElementById('ai-reasoning-box');
+    box.textContent += msg.text;
+    box.scrollTop = box.scrollHeight;
+  } else if (msg.type === 'result') {
+    _aiPlanResult = { days: msg.days, warnings: msg.warnings || [] };
+    document.getElementById('ai-plan-ready').style.display = '';
+  } else if (msg.type === 'error') {
+    showAiPlanError(msg.message);
+  }
+}
+
+function confirmApplyAiPlanDraft() {
+  if (!_aiPlanResult) return;
+  applyAiPlanDraft(_aiPlanResult.days, _aiPlanResult.warnings);
+}
+
+// Adaptado de applyTemplate() — mas cobre os 7 dias de uma vez e, propositadamente,
+// nunca chama saveAppData(): o rascunho fica só na memória/state.days até o
+// nutricionista confirmar (banner "Guardar plano") ou fazer uma edição normal.
+function applyAiPlanDraft(days, warnings) {
+  const client = appData.clients.find(c => c.id === nav.clientId);
+  const plan   = client && client.plans.find(p => p.id === nav.planId);
+  if (!plan) return;
+  plan.days = days.map(d => ({
+    meals: d.meals.map(m => ({
+      id: crypto.randomUUID(), nome: m.nome, hora: m.hora,
+      foods: m.foods
+        .map(f => ({ food: TCA.find(t => t.id === f.id), qty: f.qty }))
+        .filter(fi => fi.food != null)
+        .map(fi => ({ ...fi, id: crypto.randomUUID() }))
+    }))
+  }));
+  state.days = plan.days;
+  closeAiPlanModal();
+  showAiDraftBanner(warnings);
+  render();
+}
+
+function showAiDraftBanner(warnings) {
+  document.getElementById('ai-draft-banner').style.display = 'flex';
+  // Reinicia sempre a confirmação — nunca deixar um "já revi" de um rascunho anterior
+  // valer para este, mesmo que o nutricionista gere vários seguidos.
+  const checkbox = document.getElementById('ai-draft-confirm-checkbox');
+  checkbox.checked = false;
+  toggleAiDraftSaveBtn();
+  if (warnings && warnings.length) {
+    showAlertModal(warnings.join('\n\n'), { type: 'info', title: 'Avisos do rascunho gerado por IA' });
+  }
+}
+
+function hideAiDraftBanner() {
+  const el = document.getElementById('ai-draft-banner');
+  if (el) el.style.display = 'none';
+}
+
+function toggleAiDraftSaveBtn() {
+  const checked = document.getElementById('ai-draft-confirm-checkbox').checked;
+  document.getElementById('ai-draft-save-btn').disabled = !checked;
+}
+
+function saveAiDraftNow() {
+  if (!document.getElementById('ai-draft-confirm-checkbox').checked) return;
+  saveAppData();
+  hideAiDraftBanner();
 }
 
 function addMeal() {

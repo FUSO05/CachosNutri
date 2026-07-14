@@ -351,6 +351,12 @@
       <div id="dayTabs"></div>
       <select class="day-select-mobile" id="day-select-mobile" onchange="switchDay(parseInt(this.value))"></select>
       <div class="day-tabs-right">
+        <button class="btn-icon" onclick="startAiPlanFlow()" title="Gerar com IA">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 2l1.6 4.8L18 8l-4.4 1.2L12 14l-1.6-4.8L6 8l4.4-1.2z"/>
+            <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>
+          </svg>
+        </button>
         <button class="btn-icon" onclick="openTemplateModal()" title="Templates pré-definidos">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -366,6 +372,17 @@
             <rect x="6" y="14" width="12" height="8"/>
           </svg>
         </button>
+      </div>
+    </div>
+    <div id="ai-draft-banner" class="ai-draft-banner" style="display:none">
+      <span>✨ Rascunho gerado por IA — reveja antes de guardar. A IA pode errar em alergias,
+      patologias, medicação ou sugerir alimentos crus por engano — a responsabilidade do plano é sempre tua.</span>
+      <div class="ai-draft-banner-actions">
+        <label class="ai-draft-confirm">
+          <input type="checkbox" id="ai-draft-confirm-checkbox" onchange="toggleAiDraftSaveBtn()">
+          Confirmo que revi alergias, patologias, medicação e a adequação dos alimentos
+        </label>
+        <button class="btn-primary btn-sm" id="ai-draft-save-btn" onclick="saveAiDraftNow()" disabled>Guardar plano</button>
       </div>
     </div>
     <div class="main-layout">
@@ -572,13 +589,13 @@
 <div id="macroTargetsModal" class="modal-overlay" onclick="if(event.target===this)closeMacroTargetsModal()" style="display:none">
   <div class="modal-box macro-targets-box">
     <div class="modal-header">
-      <div class="modal-title">Metas diárias</div>
+      <div class="modal-title" id="mt-modal-title">Metas diárias</div>
       <button class="modal-close" onclick="closeMacroTargetsModal()">&times;</button>
     </div>
     <div class="modal-body">
       <div class="tg-banner">
         <svg width="15" height="15" fill="none" stroke="var(--green)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-        <span>Os valores sugeridos baseiam-se no perfil do paciente.</span>
+        <span id="mt-banner-text">Os valores sugeridos baseiam-se no perfil do paciente.</span>
       </div>
       <div class="targets-grid">
         <div class="tg-field">
@@ -601,6 +618,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-back" onclick="closeMacroTargetsModal()">Cancelar</button>
+      <button id="mt-skip-ai-btn" class="btn-back" style="display:none" onclick="skipMacroTargetsForAI()">Gerar sem metas</button>
       <button class="btn-primary" onclick="saveMacroTargets()">Guardar metas</button>
     </div>
   </div>
@@ -643,6 +661,38 @@
       <div id="template-grid" class="template-grid"></div>
       <div class="template-footer">
         <button class="btn-back btn-sm" onclick="openSaveTemplateModal()">➕ Guardar plano atual como template</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI PLAN MODAL -->
+<div id="aiPlanModal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Gerar plano com IA</div>
+      <button class="modal-close" onclick="closeAiPlanModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-hint">Rascunho gerado a partir do objetivo, alergias, patologias, medicação e notas já
+      guardados na ficha do paciente. Revê e edita tudo antes de guardar — nunca é guardado automaticamente.</p>
+
+      <ul class="ai-stage-list" id="ai-stage-list">
+        <li class="ai-stage" data-stage="a_gerar">A gerar o plano…</li>
+        <li class="ai-stage" data-stage="a_validar_alimentos">A validar alimentos…</li>
+        <li class="ai-stage" data-stage="a_verificar_alergenios">A verificar alergénios…</li>
+      </ul>
+
+      <div class="ai-reasoning-box" id="ai-reasoning-box"></div>
+
+      <div id="ai-plan-ready" style="display:none">
+        <p class="modal-hint">O rascunho está pronto. Vais poder rever e editar tudo antes de guardar.</p>
+        <button class="btn-primary" onclick="confirmApplyAiPlanDraft()">Carregar rascunho</button>
+      </div>
+
+      <div id="ai-plan-error" style="display:none">
+        <p class="modal-hint" id="ai-plan-error-message"></p>
+        <button class="btn-back" onclick="generatePlanWithAI()">Tentar novamente</button>
       </div>
     </div>
   </div>

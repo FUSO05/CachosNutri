@@ -1020,6 +1020,8 @@ body {
   border-radius: 20px;
   width: 380px;
   max-width: 92vw;
+  max-height: 85vh;
+  overflow-y: auto;
   padding: 36px 32px 28px;
   box-shadow: 0 24px 64px rgba(0,0,0,.18);
   text-align: center;
@@ -2284,8 +2286,11 @@ body {
   border-radius: 16px;
   width: 420px;
   max-width: 92vw;
+  max-height: 85vh;
   box-shadow: 0 20px 60px rgba(0,0,0,.22);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .modal-header {
   display: flex;
@@ -2293,6 +2298,7 @@ body {
   justify-content: space-between;
   padding: 18px 22px 14px;
   border-bottom: 1px solid var(--gray-100);
+  flex: 0 0 auto;
 }
 .modal-title { font-size: 15px; font-weight: 700; color: var(--gray-800); }
 .modal-close {
@@ -2309,13 +2315,14 @@ body {
   font-family: inherit;
 }
 .modal-close:hover { background: var(--gray-200); color: var(--gray-800); }
-.modal-body { padding: 20px 22px; }
+.modal-body { padding: 20px 22px; overflow-y: auto; flex: 1 1 auto; min-height: 0; }
 .modal-footer {
   padding: 14px 22px;
   border-top: 1px solid var(--gray-100);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex: 0 0 auto;
 }
 .profile-photo-area {
   display: flex;
@@ -2755,6 +2762,66 @@ body {
   padding-top: 12px;
   border-top: 1px solid var(--gray-100);
 }
+
+/* ── Gerar plano com IA ── */
+.ai-stage-list { list-style: none; padding: 0; margin: 16px 0; display: flex; flex-direction: column; gap: 8px; }
+.ai-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--gray-400);
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--gray-50);
+  transition: background .2s, color .2s;
+}
+.ai-stage::before { content: '○'; }
+.ai-stage.active { color: var(--green-dark); background: var(--green-light); font-weight: 600; }
+.ai-stage.active::before { content: '◐'; }
+.ai-stage.done { color: var(--gray-600); }
+.ai-stage.done::before { content: '✓'; color: var(--green); }
+.ai-reasoning-box {
+  max-height: 140px;
+  overflow-y: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gray-600);
+  background: var(--gray-50);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+}
+.ai-draft-banner {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--green-light);
+  border-bottom: 1px solid rgba(39,134,90,.15);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+.ai-draft-banner-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ai-draft-confirm {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+.ai-draft-confirm input[type="checkbox"] { accent-color: var(--green); width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; }
 .template-card--custom { position: relative; }
 .template-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .template-delete {
@@ -3116,6 +3183,14 @@ body {
   .lp-footer-brand { max-width: 100%; }
   .lp-footer-brand-name { justify-content: center; }
   .lp-footer-links { justify-content: center; width: 100%; }
+
+  /* O rodapé do modal de metas tem 3 botões (Cancelar/Gerar sem metas/Guardar metas)
+     quando aberto a partir do fluxo "Gerar com IA" (2 quando aberto normalmente) — com
+     "white-space:nowrap" nos botões, 3 numa só linha não cabem na largura do modal em
+     mobile e saem da caixa. Empilha em coluna só neste modal (não mexe no .modal-footer
+     genérico, que noutros modais só tem 2 botões e cabe bem numa linha). */
+  .macro-targets-box .modal-footer { flex-direction: column; }
+  .macro-targets-box .modal-footer button { width: 100%; justify-content: center; }
 
   /* 7 separadores de dia já não cabem numa linha, mesmo com fonte reduzida —
      trocam por um dropdown. Os ícones de ação (template/copiar/exportar)
