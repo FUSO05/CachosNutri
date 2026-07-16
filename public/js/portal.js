@@ -950,7 +950,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (_swRefreshing) return;
     _swRefreshing = true;
-    showToast('A atualizar para a versão mais recente…');
+    showToast('A atualizar…');
     setTimeout(() => window.location.reload(), 1200);
   });
 }

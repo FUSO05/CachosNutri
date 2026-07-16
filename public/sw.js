@@ -6,7 +6,7 @@
 // Ao alterar ficheiros desta lista (ou o próprio sw.js), sobe a versão abaixo
 // — isso força a limpeza da cache antiga e os clientes voltam a descarregar
 // tudo na próxima visita.
-const CACHE_NAME = 'cachosnutri-shell-v3';
+const CACHE_NAME = 'cachosnutri-shell-v4';
 const PRECACHE_URLS = [
   '/portal.html',
   '/manifest.json',
