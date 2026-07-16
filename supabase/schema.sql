@@ -491,3 +491,59 @@ create index if not exists meal_logs_client_id_logged_at_idx on meal_logs(client
 create index if not exists npl_client_id_idx on nutricionista_paciente_links(client_id);
 create index if not exists npl_nutricionista_id_idx on nutricionista_paciente_links(nutricionista_id);
 create index if not exists npl_paciente_id_idx on nutricionista_paciente_links(paciente_id);
+
+-- ============================================================
+-- 12. get_latest_meal_status — evita paginar/trazer o histórico inteiro de
+--     meal_logs (append-only) só para saber o estado mais recente de cada
+--     combinação (day_index, meal_index) de um plano. O PostgREST/supabase-js
+--     não expõe "distinct on" na API fluente, por isso esta lógica só é
+--     possível numa função — devolve só ~15-40 linhas (uma por combinação)
+--     em vez de todo o histórico de meses/anos de edições (ver PAGINATION.md).
+--     Não é "security definer": corre com o papel de quem chama, por isso
+--     continua sujeita à RLS já existente em meal_logs (um paciente só
+--     consegue mesmo ler os seus próprios logs, tal como antes).
+--
+--     log_date (coluna nova) + p_week_start/p_week_end: day_index é um ciclo
+--     "dia da semana" (0-6) que se repete todas as semanas — sem isto, marcar
+--     sexta-feira como feita numa semana fazia essa refeição aparecer
+--     permanentemente verde em TODAS as sextas-feiras futuras (bug reportado
+--     pelo utilizador: hoje quinta, ao navegar para sexta — que ainda não
+--     tinha chegado — o cartão já aparecia como feito, por causa da sexta da
+--     semana passada). log_date guarda a data real do dia em que o estado foi
+--     registado (logMealStatus só regista sempre para "hoje", nunca para
+--     outro dia — por isso log_date = data real de hoje no momento do
+--     insert). A função só considera logs entre p_week_start (incluído) e
+--     p_week_end (excluído), por isso um dia futuro desta semana ainda sem
+--     log próprio simplesmente não aparece — não herda o estado de uma
+--     semana anterior.
+-- ============================================================
+alter table meal_logs add column if not exists log_date date;
+update meal_logs set log_date = logged_at::date where log_date is null;
+
+-- drop da assinatura antiga (2 argumentos, sem janela de semana) — "create or replace"
+-- não substitui uma função quando a lista de parâmetros muda, ficaria como um
+-- overload solto se esta secção já tiver corrido antes com a versão anterior.
+drop function if exists get_latest_meal_status(uuid, uuid);
+
+create or replace function get_latest_meal_status(p_client_id uuid, p_plan_id uuid, p_week_start date, p_week_end date)
+returns table (day_index int, meal_index int, status text, note text, hora_real text, logged_at timestamptz)
+language sql
+stable
+as $$
+  select distinct on (meal_logs.day_index, meal_logs.meal_index)
+    meal_logs.day_index, meal_logs.meal_index, meal_logs.status, meal_logs.note,
+    meal_logs.hora_real, meal_logs.logged_at
+  from meal_logs
+  where meal_logs.client_id = p_client_id and meal_logs.plan_id = p_plan_id
+    and meal_logs.log_date >= p_week_start and meal_logs.log_date < p_week_end
+  order by meal_logs.day_index, meal_logs.meal_index, meal_logs.logged_at desc;
+$$;
+
+grant execute on function get_latest_meal_status(uuid, uuid, date, date) to authenticated;
+
+-- Índice desenhado para este "distinct on" — cobre o filtro de igualdade
+-- (client_id, plan_id), depois o filtro de intervalo (log_date), e só depois
+-- a ordem que a função usa para escolher a linha mais recente por grupo.
+drop index if exists meal_logs_client_plan_day_meal_idx;
+create index if not exists meal_logs_client_plan_date_day_meal_idx
+  on meal_logs(client_id, plan_id, log_date, day_index, meal_index, logged_at desc);

@@ -12,8 +12,10 @@ let portalMealViewIdx = 0;      // posição na lista de refeições do dia (com
 let portalWaterToday = 0;
 let portalTodayIdx = 0;          // dia real de hoje — não muda ao navegar com changePortalDay
 // { [day_index]: { [meal_index]: { status, note } } } — estado mais recente conhecido por
-// slot de dia da semana do plano atual (aproximação: não distingue semanas diferentes,
-// já que day_index sozinho não tem data associada — só a edição fica restrita a "hoje").
+// slot de dia da semana do plano atual, mas só dentro da SEMANA ATUAL (ver
+// get_latest_meal_status/log_date no schema.sql) — um dia futuro desta semana sem log
+// próprio não herda o estado da mesma posição numa semana anterior (bug já corrigido:
+// marcar sexta como feita não podia deixar a sexta seguinte já verde antes de chegar).
 let portalMealStatusByDay = {};
 let _noteModalMealIndex = null;
 
@@ -393,20 +395,24 @@ function logWaterCustom() {
 async function loadMealStatusByDay() {
   portalMealStatusByDay = {};
   if (!portalPlan) return;
-  const { data, error } = await sb
-    .from('meal_logs')
-    .select('day_index, meal_index, status, note, hora_real, logged_at')
-    .eq('client_id', portalClient.id)
-    .eq('plan_id', portalPlan.id)
-    .order('logged_at', { ascending: false });
+  // meal_logs é append-only (uma linha nova por cada mudança de estado) — em vez de
+  // trazer o histórico inteiro do plano e filtrar em JS, a função get_latest_meal_status
+  // já devolve só a linha mais recente por (day_index, meal_index) via "distinct on"
+  // do lado da base de dados (ver PAGINATION.md). A janela [início desta semana, início
+  // da próxima) é essencial, não só uma otimização: sem ela, um dia futuro desta semana
+  // (ex: sexta, se hoje é quinta) herdava o estado da mesma posição numa semana anterior.
+  const weekStart = localDateStr(-portalTodayIdx);
+  const weekEnd = localDateStr(7 - portalTodayIdx);
+  const { data, error } = await sb.rpc('get_latest_meal_status', {
+    p_client_id: portalClient.id,
+    p_plan_id: portalPlan.id,
+    p_week_start: weekStart,
+    p_week_end: weekEnd
+  });
   if (error) { console.error('Erro ao carregar estado das refeições:', error); return; }
-  // Mantém só a linha mais recente por (day_index, meal_index) — a query já vem ordenada
-  // por logged_at desc, por isso a primeira ocorrência de cada par é a mais recente.
   (data || []).forEach(r => {
     portalMealStatusByDay[r.day_index] = portalMealStatusByDay[r.day_index] || {};
-    if (!(r.meal_index in portalMealStatusByDay[r.day_index])) {
-      portalMealStatusByDay[r.day_index][r.meal_index] = { status: r.status, note: r.note, horaReal: r.hora_real };
-    }
+    portalMealStatusByDay[r.day_index][r.meal_index] = { status: r.status, note: r.note, horaReal: r.hora_real };
   });
 }
 
@@ -434,6 +440,7 @@ async function logMealStatus(mealIndex, status, note, isNoteSave, horaReal) {
     client_id: portalClient.id,
     plan_id: portalPlan.id,
     day_index: portalTodayIdx,
+    log_date: localDateStr(0), // logMealStatus só regista sempre para "hoje" — nunca outro dia
     meal_index: mealIndex,
     status,
     note: note || null,

@@ -2556,6 +2556,11 @@ async function buildAdherenceCardsHTML(client) {
 let _dailyMealNotes = [];
 let _mealCommentIdx = null;
 
+// Quantas consultas mostrar no histórico da aba Evolução — reposto a 20 sempre que
+// a aba é (re)construída de raiz; "Mostrar mais" só aumenta isto e redesenha só a
+// lista, sem refazer os pedidos de adesão/fotos (ver PAGINATION.md).
+let _evolutionConsultLimit = 20;
+
 function openMealCommentModal(i) {
   const entry = _dailyMealNotes[i];
   if (!entry) return;
@@ -2906,6 +2911,8 @@ async function renderEvolutionTab() {
   const container = document.getElementById('evolution-content');
   if (!container) return;
 
+  _evolutionConsultLimit = 20;
+
   const [adherenceHTML, mealPhotosHTML] = await Promise.all([
     buildAdherenceCardsHTML(client),
     buildMealPhotosTimelineHTML(client)
@@ -2913,40 +2920,7 @@ async function renderEvolutionTab() {
   if (nav.clientId !== client.id) return; // navegou para outro cliente durante o await
 
   const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
-  const hasData = consultations.length > 0;
   const hasCharts = consultations.length >= 2;
-
-  const cardsHTML = hasData
-    ? consultations.slice().reverse().map(c => {
-        const d = new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
-        const chips = [
-          c.peso            != null ? `<div class="consult-chip"><span class="chip-label">Peso</span><span class="chip-val">${c.peso} kg</span></div>` : '',
-          c.imc             != null ? `<div class="consult-chip"><span class="chip-label">IMC</span><span class="chip-val">${c.imc}</span></div>` : '',
-          c.massaGorda      != null ? `<div class="consult-chip"><span class="chip-label">Gordura</span><span class="chip-val">${c.massaGorda}%</span></div>` : '',
-          c.mig             != null ? `<div class="consult-chip"><span class="chip-label">MIG</span><span class="chip-val">${c.mig} kg</span></div>` : '',
-          c.somatorioPregas != null ? `<div class="consult-chip"><span class="chip-label">Σ Pregas</span><span class="chip-val">${c.somatorioPregas} mm</span></div>` : '',
-          c.perCinturaISAK  != null ? `<div class="consult-chip"><span class="chip-label">Cintura</span><span class="chip-val">${c.perCinturaISAK} cm</span></div>` : '',
-          c.perAnca         != null ? `<div class="consult-chip"><span class="chip-label">Anca</span><span class="chip-val">${c.perAnca} cm</span></div>` : '',
-        ].filter(Boolean).join('');
-        const note = c.notes ? `<div class="consult-note">${escHtml(c.notes)}</div>` : '';
-        return `
-          <div class="consultation-card">
-            <div class="consult-card-header">
-              <div class="consult-date">
-                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                ${d}
-              </div>
-              <button class="btn-danger-sm" onclick="deleteConsultation('${c.id}')" title="Eliminar registo">×</button>
-            </div>
-            <div class="consult-metrics">${chips}</div>
-            ${note}
-          </div>`;
-      }).join('')
-    : `<div class="evolution-empty">
-        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="color:var(--gray-300)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-top:12px">Sem registos de consulta</div>
-        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Preenche as informações do paciente e clica em "Registar consulta"</div>
-      </div>`;
 
   container.innerHTML = `
     ${adherenceHTML}
@@ -2969,10 +2943,70 @@ async function renderEvolutionTab() {
       <div class="evol-chart-card"><div class="evol-chart-title">% Massa Gorda</div><div class="evol-chart-canvas-wrap"><canvas id="chartGordura"></canvas></div></div>
       <div class="evol-chart-card"><div class="evol-chart-title">IMC</div><div class="evol-chart-canvas-wrap"><canvas id="chartIMC"></canvas></div></div>
     </div>` : ''}
-    <div class="consultations-list">${cardsHTML}</div>
+    <div id="consultations-list-wrap">${buildConsultationsListHTML(consultations)}</div>
   `;
 
   if (hasCharts) renderEvolutionCharts(consultations);
+}
+
+// Constrói só a lista de cartões de consulta (mais recente primeiro), limitada a
+// _evolutionConsultLimit — os gráficos (renderEvolutionCharts) continuam sempre a
+// usar o array "consultations" completo, só os cartões renderizados é que são
+// cortados (ver PAGINATION.md: sem isto, um paciente acompanhado há anos acumula
+// centenas de cartões no DOM sempre que a aba Evolução é aberta).
+function buildConsultationsListHTML(consultations) {
+  if (!consultations.length) {
+    return `<div class="evolution-empty">
+        <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24" style="color:var(--gray-300)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-top:12px">Sem registos de consulta</div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Preenche as informações do paciente e clica em "Registar consulta"</div>
+      </div>`;
+  }
+
+  const reversed = consultations.slice().reverse();
+  const visible = reversed.slice(0, _evolutionConsultLimit);
+  const cardsHTML = visible.map(c => {
+    const d = new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+    const chips = [
+      c.peso            != null ? `<div class="consult-chip"><span class="chip-label">Peso</span><span class="chip-val">${c.peso} kg</span></div>` : '',
+      c.imc             != null ? `<div class="consult-chip"><span class="chip-label">IMC</span><span class="chip-val">${c.imc}</span></div>` : '',
+      c.massaGorda      != null ? `<div class="consult-chip"><span class="chip-label">Gordura</span><span class="chip-val">${c.massaGorda}%</span></div>` : '',
+      c.mig             != null ? `<div class="consult-chip"><span class="chip-label">MIG</span><span class="chip-val">${c.mig} kg</span></div>` : '',
+      c.somatorioPregas != null ? `<div class="consult-chip"><span class="chip-label">Σ Pregas</span><span class="chip-val">${c.somatorioPregas} mm</span></div>` : '',
+      c.perCinturaISAK  != null ? `<div class="consult-chip"><span class="chip-label">Cintura</span><span class="chip-val">${c.perCinturaISAK} cm</span></div>` : '',
+      c.perAnca         != null ? `<div class="consult-chip"><span class="chip-label">Anca</span><span class="chip-val">${c.perAnca} cm</span></div>` : '',
+    ].filter(Boolean).join('');
+    const note = c.notes ? `<div class="consult-note">${escHtml(c.notes)}</div>` : '';
+    return `
+      <div class="consultation-card">
+        <div class="consult-card-header">
+          <div class="consult-date">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            ${d}
+          </div>
+          <button class="btn-danger-sm" onclick="deleteConsultation('${c.id}')" title="Eliminar registo">×</button>
+        </div>
+        <div class="consult-metrics">${chips}</div>
+        ${note}
+      </div>`;
+  }).join('');
+
+  const remaining = reversed.length - visible.length;
+  const moreBtn = remaining > 0
+    ? `<button class="btn-back evolution-more-btn" onclick="showMoreConsultations()">Mostrar mais (${remaining} restantes)</button>`
+    : '';
+
+  return `<div class="consultations-list">${cardsHTML}</div>${moreBtn}`;
+}
+
+function showMoreConsultations() {
+  const client = currentClient();
+  if (!client) return;
+  _evolutionConsultLimit += 20;
+  const wrap = document.getElementById('consultations-list-wrap');
+  if (!wrap) return;
+  const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
+  wrap.innerHTML = buildConsultationsListHTML(consultations);
 }
 
 // ── Exportação PDF ────────────────────────────────────────────────────────────

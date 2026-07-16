@@ -1266,6 +1266,11 @@ body {
   flex-direction: column;
   gap: 10px;
 }
+.evolution-more-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
 .consultation-card {
   background: white;
   border: 1px solid rgba(39,134,90,.10);
