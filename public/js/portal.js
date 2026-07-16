@@ -174,6 +174,18 @@ async function handlePortalLogout() {
   portalClients = [];
   portalClient = null;
   portalPlan = null;
+
+  // No PWA instalado (telemóvel), a landing page é para nutricionistas/visitantes
+  // — não faz sentido o paciente ser levado para lá ao sair. Em vez de navegar,
+  // tenta fechar a janela (funciona nalguns contextos standalone Android) e, já
+  // que fechar não é garantido em todos os browsers/SOs, mostra sempre o ecrã de
+  // login do próprio portal como destino seguro caso o fecho não aconteça.
+  const isStandalonePwa = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalonePwa) {
+    window.close();
+    showPortalAuth();
+    return;
+  }
   window.location.href = 'index.html';
 }
 
