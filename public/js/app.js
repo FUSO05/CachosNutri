@@ -1423,8 +1423,8 @@ function renderPlanDetail(plan, client) {
           <div class="pd-action-text"><div class="pd-action-label">Exportar PDF</div><div class="pd-action-desc">Gerar plano para entregar ao paciente</div></div>
         </button>
         <button class="pd-action pd-action--danger" onclick="deletePlan('${plan.id}', event)">
-          <div class="pd-action-icon" style="background:#fdf0f0">
-            <svg width="14" height="14" fill="none" stroke="#e74c3c" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          <div class="pd-action-icon pd-action-icon--danger">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </div>
           <div class="pd-action-text"><div class="pd-action-label">Eliminar plano</div><div class="pd-action-desc">Remover permanentemente</div></div>
         </button>
@@ -1569,7 +1569,7 @@ function renderChart() {
         datasets: [{
           data,
           backgroundColor: ['#e74c3c','#f39c12','#9b59b6'],
-          borderWidth: 2, borderColor: '#fff', hoverOffset: 4,
+          borderWidth: 2, borderColor: isDarkTheme() ? '#181C19' : '#fff', hoverOffset: 4,
         }]
       },
       options: {

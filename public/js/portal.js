@@ -276,9 +276,6 @@ async function loadPortalData() {
     showAlertModal('Não foi possível carregar os seus dados. Tente novamente mais tarde.');
   }
 
-  document.getElementById('portal-user-name').textContent =
-    portalUser.user_metadata?.nome || portalUser.email || '';
-
   if (!portalClients.length) {
     document.getElementById('portal-empty').style.display = '';
     document.getElementById('portal-main').style.display  = 'none';
@@ -602,7 +599,7 @@ function renderPortalPlano() {
   const waterHTML = `
     <div class="portal-section">
       <div class="portal-section-title">
-        <svg width="14" height="14" fill="none" stroke="#3b9bd4" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg>
+        <svg width="14" height="14" fill="none" stroke="var(--water-fg)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg>
         Água diária
       </div>
       <div class="portal-water-widget">

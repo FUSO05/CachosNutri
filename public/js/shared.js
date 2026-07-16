@@ -5,6 +5,40 @@
 const DAYS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const FOTOS_MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+// ── Tema claro/escuro ──────────────────────────────────────────────────────────
+// A deteção inicial (system preference + localStorage) já corre inline no <head>
+// de cada página, antes deste ficheiro carregar, para evitar um flash do tema
+// errado (FOUC) — este bloco só liga o clique do botão e mantém o estado em
+// sincronia depois disso. Páginas sem shared.js (index/termos/privacidade/
+// reembolso) têm a mesma lógica duplicada em public/js/theme.js.
+const THEME_KEY = 'cachos_theme';
+
+function isDarkTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+function applyTheme(theme) {
+  if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+}
+
+function toggleTheme() {
+  const next = isDarkTheme() ? 'light' : 'dark';
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  applyTheme(next);
+}
+
+function initThemeToggle() {
+  const btn = document.getElementById('theme-toggle-btn');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', isDarkTheme() ? 'true' : 'false');
+  btn.addEventListener('click', toggleTheme);
+}
+
+document.addEventListener('DOMContentLoaded', initThemeToggle);
+
 // Formata um objeto Date como 'yyyy-mm-dd' local — usado pelos calendários de fotos de
 // refeições (portal do paciente e área do nutricionista) para calcular limites de mês.
 function dateToYmd(d) {
@@ -365,10 +399,17 @@ function renderEvolutionCharts(consultations) {
     new Date(c.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })
   );
 
+  // Chart.js desenha em <canvas> — CSS/data-theme não têm qualquer efeito aí,
+  // por isso as cores de grelha/eixos/linha têm de escolher entre claro/escuro
+  // aqui em JS (ver DARK-THEME nota em isDarkTheme()).
+  const dark = isDarkTheme();
+  const gridColor = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.04)';
+  const tickColor = dark ? '#94A3B8' : undefined;
+
   const chartDefs = [
-    { id: 'chartPeso',    label: 'Peso (kg)',       key: 'peso',       color: '#27865a' },
+    { id: 'chartPeso',    label: 'Peso (kg)',       key: 'peso',       color: dark ? '#10B981' : '#27865a' },
     { id: 'chartGordura', label: '% Massa Gorda',   key: 'massaGorda', color: '#f59e0b' },
-    { id: 'chartIMC',     label: 'IMC',             key: 'imc',        color: '#4285f4' },
+    { id: 'chartIMC',     label: 'IMC',             key: 'imc',        color: dark ? '#60A5FA' : '#4285f4' },
   ];
 
   chartDefs.forEach(({ id, label, key, color }) => {
@@ -399,8 +440,8 @@ function renderEvolutionCharts(consultations) {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: 'rgba(0,0,0,.04)' }, ticks: { font: { size: 11 } } }
+          x: { grid: { color: gridColor }, ticks: { font: { size: 11 }, color: tickColor } },
+          y: { grid: { color: gridColor }, ticks: { font: { size: 11 }, color: tickColor } }
         }
       }
     });
