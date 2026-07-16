@@ -187,7 +187,8 @@ async function syncProfileToSupabase() {
 // localStorage (ver loadProfile) serve só de cache para pintar mais depressa.
 async function fetchProfileFromSupabase() {
   try {
-    const { data: prof } = await sb.from('profiles').select('nome, email, cedula, photo_url, sexo, data_nascimento').eq('id', currentUser.id).single();
+    const { data: prof, error } = await sb.from('profiles').select('nome, email, cedula, photo_url, sexo, data_nascimento').eq('id', currentUser.id).single();
+    if (error) { console.error('Erro ao atualizar perfil a partir do Supabase:', error); return; }
     if (prof) {
       if (prof.nome) appProfile.name = prof.nome;
       if (prof.email) appProfile.email = prof.email;
@@ -460,23 +461,20 @@ async function syncAppDataToSupabase(retryCount) {
   setSyncStatus('syncing');
   const nutricionistaId = currentUser.id;
   try {
-    const clientIds = [];
-    const planIds = [];
-    const consultationIds = [];
+    const clientRows = [];
+    const planRows = [];
+    const consultationRows = [];
 
     for (const client of appData.clients) {
-      clientIds.push(client.id);
-      const { error: cErr } = await sb.from('clients').upsert({
+      clientRows.push({
         id: client.id,
         nutricionista_id: nutricionistaId,
         nome: client.nome,
         info: client.info || {}
       });
-      if (cErr) throw cErr;
 
       for (const plan of client.plans) {
-        planIds.push(plan.id);
-        const { error: pErr } = await sb.from('plans').upsert({
+        planRows.push({
           id: plan.id,
           client_id: client.id,
           nome: plan.nome,
@@ -484,12 +482,10 @@ async function syncAppDataToSupabase(retryCount) {
           water_ml: plan.waterMl,
           days: plan.days
         });
-        if (pErr) throw pErr;
       }
 
       for (const cons of (client.consultations || [])) {
-        consultationIds.push(cons.id);
-        const { error: xErr } = await sb.from('consultations').upsert({
+        consultationRows.push({
           id: cons.id,
           client_id: client.id,
           date: new Date(cons.date).toISOString(),
@@ -499,8 +495,24 @@ async function syncAppDataToSupabase(retryCount) {
           per_cintura_isak: numOrNull(cons.perCinturaISAK), per_anca: numOrNull(cons.perAnca), per_braco: numOrNull(cons.perBraco),
           notes: cons.notes || null
         });
-        if (xErr) throw xErr;
       }
+    }
+
+    const clientIds = clientRows.map(r => r.id);
+    const planIds = planRows.map(r => r.id);
+    const consultationIds = consultationRows.map(r => r.id);
+
+    if (clientRows.length) {
+      const { error: cErr } = await sb.from('clients').upsert(clientRows);
+      if (cErr) throw cErr;
+    }
+    if (planRows.length) {
+      const { error: pErr } = await sb.from('plans').upsert(planRows);
+      if (pErr) throw pErr;
+    }
+    if (consultationRows.length) {
+      const { error: xErr } = await sb.from('consultations').upsert(consultationRows);
+      if (xErr) throw xErr;
     }
 
     await pruneDeleted('clients', 'nutricionista_id', nutricionistaId, clientIds);
@@ -640,6 +652,34 @@ function createClient() {
   }, 120);
 }
 
+// O "on delete cascade" do Postgres limpa as TABELAS relacionadas do cliente
+// (plans, meal_logs, progress_photos, etc.), mas nunca toca no Storage — os
+// ficheiros de fotos de refeições (meal-photos/{clientId}/{data}/...) ficariam
+// órfãos para sempre (o cron cleanup-meal-photos só sabe o que apagar através
+// das linhas de progress_photos, que já desapareceram pelo cascade). Por isso
+// esta limpeza best-effort corre à parte, ao eliminar o paciente.
+async function deleteClientStorage(clientId) {
+  try {
+    const { data: dateFolders, error: listErr } = await sb.storage.from('meal-photos').list(clientId);
+    if (listErr) { console.error('Erro ao listar fotos do Storage para limpeza:', listErr); return; }
+    if (!dateFolders || !dateFolders.length) return;
+
+    const allPaths = [];
+    for (const folder of dateFolders) {
+      const { data: files, error: filesErr } = await sb.storage.from('meal-photos').list(`${clientId}/${folder.name}`);
+      if (filesErr) { console.error('Erro ao listar fotos do Storage para limpeza:', filesErr); continue; }
+      (files || []).forEach(f => allPaths.push(`${clientId}/${folder.name}/${f.name}`));
+    }
+    if (!allPaths.length) return;
+
+    // Uma só chamada para todos os ficheiros do paciente, em vez de uma por ficheiro.
+    const { error: removeErr } = await sb.storage.from('meal-photos').remove(allPaths);
+    if (removeErr) console.error('Erro ao limpar fotos do Storage do paciente eliminado:', removeErr);
+  } catch (e) {
+    console.error('Erro ao limpar fotos do Storage do paciente eliminado:', e);
+  }
+}
+
 function deleteClient(clientId, e) {
   e.stopPropagation();
   const client = appData.clients.find(c => c.id === clientId);
@@ -651,6 +691,9 @@ function deleteClient(clientId, e) {
       appData.clients = appData.clients.filter(c => c.id !== clientId);
       saveAppData();
       renderDashboard();
+      // Best-effort, não bloqueia a UI — o paciente já desapareceu da lista;
+      // a limpeza de ficheiros corre em segundo plano e trata o seu próprio erro.
+      deleteClientStorage(clientId);
     }
   );
 }
@@ -994,7 +1037,8 @@ async function loadInviteLink(clientId) {
   // paciente ter sido apagada no Supabase (ex: apagada manualmente em
   // Authentication → Users). Confirma que o cliente continua mesmo associado
   // antes de mostrar "Associado" — senão trata como se nunca tivesse sido.
-  const { data: clientRow } = await sb.from('clients').select('paciente_id').eq('id', clientId).single();
+  const { data: clientRow, error: clientErr } = await sb.from('clients').select('paciente_id').eq('id', clientId).single();
+  if (clientErr) { console.error('Erro ao confirmar associação do paciente:', clientErr); return link; }
   if (!clientRow || !clientRow.paciente_id) {
     await sb.from('nutricionista_paciente_links').update({ status: 'revoked' }).eq('id', link.id);
     return null;
@@ -1102,13 +1146,19 @@ function revokeInvite(clientId, linkId) {
     'Remover acesso ao portal',
     'Tem a certeza que quer remover o acesso deste paciente ao portal? Pode voltar a convidar mais tarde.',
     async () => {
-      const { error: linkErr } = await sb.from('nutricionista_paciente_links').update({ status: 'revoked' }).eq('id', linkId);
+      // Ordem importa: limpar clients.paciente_id primeiro é a escrita que realmente
+      // revoga o acesso (a policy RLS do paciente depende disto). Se a segunda escrita
+      // (marcar o link como revoked) falhar depois desta ter tido sucesso, o acesso já
+      // está removido na mesma — e loadInviteLink() auto-corrige o status do link para
+      // "revoked" da próxima vez que for lido (self-heal já existente).
       const { error: clientErr } = await sb.from('clients').update({ paciente_id: null }).eq('id', clientId);
-      if (linkErr || clientErr) {
-        console.error('Erro ao remover acesso ao portal:', linkErr || clientErr);
+      if (clientErr) {
+        console.error('Erro ao remover acesso ao portal:', clientErr);
         showAlertModal('Não foi possível remover o acesso. Tente novamente.');
         return;
       }
+      const { error: linkErr } = await sb.from('nutricionista_paciente_links').update({ status: 'revoked' }).eq('id', linkId);
+      if (linkErr) console.error('Erro ao marcar convite como revogado (acesso já foi removido):', linkErr);
       const client = appData.clients.find(c => c.id === clientId);
       if (client) renderInviteSection(client);
     },

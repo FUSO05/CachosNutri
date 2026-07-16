@@ -468,3 +468,26 @@ create policy "paciente vê os comentários das suas refeições"
   using (exists (
     select 1 from clients c where c.id = meal_comments.client_id and c.paciente_id = auth.uid()
   ));
+
+-- ============================================================
+-- 11. Índices em falta — foreign keys não são indexadas automaticamente
+--     pelo Postgres (só chave primária e colunas/constraints unique o são).
+--     Sem estes índices, queries que filtram diretamente por estas colunas
+--     fazem sequential scan à tabela inteira, o que prende a ligação à BD
+--     mais tempo do que o necessário (ver INDEXES.md).
+--     progress_photos, meal_comments e patient_consents já estão cobertas
+--     pelos seus próprios unique constraints (client_id é a primeira coluna),
+--     por isso não precisam de índice extra aqui.
+-- ============================================================
+create index if not exists clients_nutricionista_id_idx on clients(nutricionista_id);
+create index if not exists clients_paciente_id_idx on clients(paciente_id);
+
+create index if not exists plans_client_id_idx on plans(client_id);
+create index if not exists consultations_client_id_idx on consultations(client_id);
+
+create index if not exists daily_water_logs_client_id_logged_at_idx on daily_water_logs(client_id, logged_at desc);
+create index if not exists meal_logs_client_id_logged_at_idx on meal_logs(client_id, logged_at desc);
+
+create index if not exists npl_client_id_idx on nutricionista_paciente_links(client_id);
+create index if not exists npl_nutricionista_id_idx on nutricionista_paciente_links(nutricionista_id);
+create index if not exists npl_paciente_id_idx on nutricionista_paciente_links(paciente_id);

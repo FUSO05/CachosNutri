@@ -74,23 +74,21 @@ Deno.serve(async (req: Request) => {
     if (selectError) return json({ error: selectError.message }, 500);
     if (!rows || !rows.length) return json({ ok: true, deleted: 0 });
 
-    let deleted = 0;
-    const failures: string[] = [];
-
-    for (const row of rows) {
-      const { error: storageError } = await supabase.storage.from(BUCKET).remove([row.storage_path]);
-      if (storageError) {
-        // Não apaga a linha se o Storage falhar — evita perder a referência ao objeto
-        // (fica para a próxima execução do cron tentar de novo).
-        failures.push(`${row.id}: ${storageError.message}`);
-        continue;
-      }
-      const { error: deleteError } = await supabase.from('progress_photos').delete().eq('id', row.id);
-      if (deleteError) { failures.push(`${row.id}: ${deleteError.message}`); continue; }
-      deleted++;
+    // Um único pedido para o Storage e um único delete em massa na tabela, em vez de
+    // 2 pedidos por linha — Edge Functions cobram por tempo de CPU/execução, e isto
+    // reduz dezenas de pedidos sequenciais para só 2 (ver N-PLUS-ONE.md).
+    const { error: storageError } = await supabase.storage.from(BUCKET).remove(rows.map(r => r.storage_path));
+    if (storageError) {
+      // Não apaga nenhuma linha se o Storage falhar — evita perder a referência ao
+      // objeto (fica tudo para a próxima execução do cron tentar de novo).
+      return json({ error: storageError.message }, 500);
     }
 
-    return json({ ok: true, deleted, total: rows.length, failures: failures.length ? failures : undefined });
+    const idsToDelete = rows.map(r => r.id);
+    const { error: deleteError } = await supabase.from('progress_photos').delete().in('id', idsToDelete);
+    if (deleteError) return json({ error: deleteError.message }, 500);
+
+    return json({ ok: true, deleted: idsToDelete.length, total: rows.length });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

@@ -5,3 +5,10 @@ playwright-report/
 .env.local
 supabase/.temp/
 IA-MEAL-PLAN-NOTAS.md
+CACHING.md
+CONNECTION-POOLING.md
+INDEXES.md
+MEMORY-LEAKS.md
+N-PLUS-ONE.md
+PROMISES.md
+TRANSACTIONS.md

@@ -778,7 +778,14 @@ function deleteMealPhoto(mealIndex) {
     async () => {
       const path = entry.storage_path;
       const { error: storageError } = await sb.storage.from('meal-photos').remove([path]);
-      if (storageError) console.error('Erro ao apagar foto do storage:', storageError);
+      if (storageError) {
+        // Não apaga a linha se o Storage falhar — evita ficar com um ficheiro órfão
+        // que nem o cron de limpeza (cleanup-meal-photos) consegue encontrar depois
+        // (esse cron só sabe o que apagar através desta linha em progress_photos).
+        console.error('Erro ao apagar foto do storage:', storageError);
+        showToast('Não foi possível apagar a foto. Tente novamente.', 'error');
+        return;
+      }
       const { error: dbError } = await sb.from('progress_photos').delete()
         .match({ client_id: portalClient.id, photo_date: date, meal_index: mealIndex });
       if (dbError) {
@@ -912,7 +919,23 @@ async function openStoryForDay(date, startMealIndex) {
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/portal.html' })
+      .then((reg) => {
+        // força uma verificação a cada abertura — sem isto o browser pode continuar
+        // a usar o sw.js em cache dele até 24h antes de reparar que há um novo
+        reg.update().catch(() => {});
+      })
       .catch((err) => console.error('Erro ao registar service worker:', err));
+  });
+
+  // quando o novo service worker assume controlo (skipWaiting+clients.claim em sw.js),
+  // os separadores já abertos continuam a correr o JS antigo em memória até recarregar —
+  // avisa e recarrega sozinho, para o paciente não ficar preso numa versão desatualizada
+  let _swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swRefreshing) return;
+    _swRefreshing = true;
+    showToast('A atualizar para a versão mais recente…');
+    setTimeout(() => window.location.reload(), 1200);
   });
 }
 
