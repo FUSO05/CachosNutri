@@ -76,13 +76,7 @@ function showPortalAuthError(which, msg) {
   el.classList.toggle('visible', !!msg);
 }
 
-function traduzErroAuthPortal(msg) {
-  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou password incorretos.';
-  if (/User already registered/i.test(msg))   return 'Já existe uma conta com este e-mail.';
-  if (/Password should be at least/i.test(msg)) return 'A password deve ter pelo menos 6 caracteres.';
-  if (/Unable to validate email address/i.test(msg)) return 'E-mail inválido.';
-  return msg;
-}
+// traduzErroAuth() vem de shared.js — partilhada com auth.js e app.js.
 
 // ── Auth: ações ──────────────────────────────────────────────────────────────
 // Contas de nutricionista não devem entrar no portal do paciente (têm a app
@@ -110,18 +104,20 @@ async function handlePortalLogin() {
   const btn = document.getElementById('portal-login-btn');
   setButtonLoading(btn, true);
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { setButtonLoading(btn, false); showPortalAuthError('login', traduzErroAuthPortal(error.message)); return; }
+  if (error) { setButtonLoading(btn, false); showPortalAuthError('login', traduzErroAuth(error.message)); return; }
   const isPaciente = await verificarRolePaciente(data.user);
   if (isPaciente === null) {
     await sb.auth.signOut();
     setButtonLoading(btn, false);
-    showPortalAuthError('login', 'Esta conta não tem um perfil válido. Contacte o seu nutricionista.');
+    showPortalAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
     return;
   }
   if (!isPaciente) {
     await sb.auth.signOut();
     setButtonLoading(btn, false);
-    showPortalAuthError('login', 'Esta conta é de nutricionista. Aceda à plataforma principal em vez do portal do paciente.');
+    // Não diz de que tipo é a conta (evita confirmar a quem tenta entrar aqui
+    // que estes dados de acesso pertencem a um nutricionista).
+    showPortalAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
     return;
   }
   setButtonLoading(btn, false);
@@ -146,7 +142,7 @@ async function handlePortalSignup() {
     }
   });
   setButtonLoading(btn, false);
-  if (error) { showPortalAuthError('signup', traduzErroAuthPortal(error.message)); return; }
+  if (error) { showPortalAuthError('signup', traduzErroAuth(error.message)); return; }
 
   setPendingInviteCode(code);
 
@@ -410,7 +406,7 @@ async function savePortalPassword() {
   if (!pass || pass.length < 8) { showFieldError('portal-password-error', 'A password deve ter pelo menos 8 caracteres.'); return; }
   if (pass !== confirm) { showFieldError('portal-password-error', 'As passwords não coincidem.'); return; }
   const { error } = await sb.auth.updateUser({ password: pass });
-  if (error) { showFieldError('portal-password-error', traduzErroAuthPortal(error.message)); return; }
+  if (error) { showFieldError('portal-password-error', traduzErroAuth(error.message)); return; }
   document.getElementById('portalNewPassword').value = '';
   document.getElementById('portalConfirmPassword').value = '';
   showToast('Password atualizada');
@@ -1299,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!isPaciente) {
       await sb.auth.signOut();
       showPortalAuth();
-      showPortalAuthError('login', 'Esta conta é de nutricionista. Aceda à plataforma principal em vez do portal do paciente.');
+      showPortalAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
       return;
     }
     portalUser = session.user;

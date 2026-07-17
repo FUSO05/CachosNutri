@@ -60,6 +60,21 @@ function showFieldError(elId, msg) {
   el.classList.toggle('visible', !!msg);
 }
 
+// Traduz mensagens de erro do Supabase Auth para português — usado em
+// login.html (auth.js), portal.html (portal.js) e no perfil do nutricionista
+// (app.js, mudança de password). O "fallback" nunca devolve a mensagem
+// original (normalmente em inglês e com detalhe interno a mais) — mostra
+// sempre uma frase genérica em português em vez disso.
+function traduzErroAuth(msg) {
+  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou password incorretos.';
+  if (/User already registered/i.test(msg))   return 'Já existe uma conta com este e-mail.';
+  if (/New password should be different/i.test(msg)) return 'A nova password tem de ser diferente da atual.';
+  if (/Password should be at least|password.*too short|weak password/i.test(msg)) return 'A password é demasiado curta ou fraca.';
+  if (/Unable to validate email address|invalid.*email/i.test(msg)) return 'E-mail inválido.';
+  if (/rate limit|too many requests/i.test(msg)) return 'Demasiadas tentativas. Tente novamente dentro de momentos.';
+  return 'Ocorreu um erro. Tente novamente.';
+}
+
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
 }

@@ -252,7 +252,7 @@ async function initApp() {
   }
   if (!isNutri) {
     await sb.auth.signOut();
-    window.location.href = 'login.html?erro=role_paciente';
+    window.location.href = 'login.html?erro=sem_acesso';
     return;
   }
   loadProfile();
@@ -307,7 +307,7 @@ async function saveNutriPassword() {
   if (!pass || pass.length < 8) { showFieldError('nutri-password-error', 'A password deve ter pelo menos 8 caracteres.'); return; }
   if (pass !== confirm) { showFieldError('nutri-password-error', 'As passwords não coincidem.'); return; }
   const { error } = await sb.auth.updateUser({ password: pass });
-  if (error) { showFieldError('nutri-password-error', error.message); return; }
+  if (error) { showFieldError('nutri-password-error', traduzErroAuth(error.message)); return; }
   document.getElementById('profNewPassword').value = '';
   document.getElementById('profConfirmPassword').value = '';
   showToast('Password atualizada');

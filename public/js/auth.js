@@ -26,13 +26,7 @@ function showAuthError(which, msg) {
   el.classList.toggle('visible', !!msg);
 }
 
-function traduzErroAuth(msg) {
-  if (/Invalid login credentials/i.test(msg)) return 'E-mail ou password incorretos.';
-  if (/User already registered/i.test(msg))   return 'Já existe uma conta com este e-mail.';
-  if (/Password should be at least/i.test(msg)) return 'A password deve ter pelo menos 6 caracteres.';
-  if (/Unable to validate email address/i.test(msg)) return 'E-mail inválido.';
-  return msg;
-}
+// traduzErroAuth() vem de shared.js — partilhada com portal.js e app.js.
 
 // Se já houver sessão válida (ex: utilizador voltou a esta página com o browser),
 // salta logo para a app em vez de mostrar o formulário outra vez.
@@ -72,13 +66,16 @@ async function handleLogin() {
   if (isNutri === null) {
     await sb.auth.signOut();
     setButtonLoading(btn, false);
-    showAuthError('login', 'Esta conta não tem um perfil válido. Contacte o suporte.');
+    showAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
     return;
   }
   if (!isNutri) {
     await sb.auth.signOut();
     setButtonLoading(btn, false);
-    showAuthError('login', 'Esta conta é de paciente. Aceda ao portal do paciente (portal.html) em vez da aplicação principal.');
+    // Não diz de que tipo é a conta (evita confirmar a quem tenta entrar aqui
+    // que estes dados de acesso pertencem a um paciente) — ver traduzErroAuth
+    // para o mesmo princípio nas mensagens de autenticação.
+    showAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
     return;
   }
   setButtonLoading(btn, false);
@@ -171,8 +168,8 @@ function skipImport() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const erro = new URLSearchParams(window.location.search).get('erro');
-  if (erro === 'role_paciente') {
-    showAuthError('login', 'Esta conta é de paciente. Aceda ao portal do paciente (portal.html) em vez da aplicação principal.');
+  if (erro === 'sem_acesso') {
+    showAuthError('login', 'Não foi possível entrar com esta conta nesta área.');
   } else if (erro === 'sessao_invalida') {
     showAuthError('login', 'A tua sessão já não é válida. Inicia sessão novamente.');
   }

@@ -652,8 +652,12 @@ async function streamGeneration(
   });
 
   if (!anthropicRes.ok || !anthropicRes.body) {
+    // O texto de erro da API (errText) fica só nos logs da função — pode
+    // conter detalhe interno do fornecedor do modelo que não deve ir para o
+    // ecrã do utilizador.
     const errText = await anthropicRes.text().catch(() => '');
-    send({ type: 'error', message: `Falha ao contactar o modelo de IA (${anthropicRes.status}). ${errText}`.trim() });
+    console.error('Erro ao contactar o modelo de IA:', anthropicRes.status, errText);
+    send({ type: 'error', message: 'Não foi possível gerar o plano de momento. Tenta novamente.' });
     return;
   }
 
@@ -778,8 +782,11 @@ Deno.serve(async (req: Request) => {
       try {
         await streamGeneration(controller, encoder, info, macroTargets);
       } catch (e) {
+        // O erro real (e) fica só nos logs da função — pode ser uma exceção
+        // interna em inglês, não algo para mostrar tal e qual ao utilizador.
+        console.error('Erro inesperado a gerar plano:', e);
         try {
-          controller.enqueue(encoder.encode(JSON.stringify({ type: 'error', message: String(e) }) + '\n'));
+          controller.enqueue(encoder.encode(JSON.stringify({ type: 'error', message: 'Ocorreu um erro inesperado. Tenta novamente.' }) + '\n'));
         } catch {
           // conexão já fechada do lado do cliente — nada a fazer
         }
