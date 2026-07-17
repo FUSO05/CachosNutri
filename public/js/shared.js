@@ -49,6 +49,17 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Mostra/limpa uma mensagem de erro num elemento ".auth-error" — essa classe só
+// fica visível com ".visible" aplicada (ver style.css), por isso definir só o
+// textContent sem tocar na classe deixa o erro invisível (bug já apanhado uma
+// vez em savePortalPassword). Partilhado entre portal.js e app.js.
+function showFieldError(elId, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('visible', !!msg);
+}
+
 function formatDate(ts) {
   return new Date(ts).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
 }

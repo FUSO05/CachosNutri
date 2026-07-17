@@ -547,3 +547,126 @@ grant execute on function get_latest_meal_status(uuid, uuid, date, date) to auth
 drop index if exists meal_logs_client_plan_day_meal_idx;
 create index if not exists meal_logs_client_plan_date_day_meal_idx
   on meal_logs(client_id, plan_id, log_date, day_index, meal_index, logged_at desc);
+
+-- ============================================================
+-- 13. profiles — nutricionista lê o perfil dos seus pacientes ligados
+--     (nome/email/foto). Necessário para a área de Definições do paciente
+--     no portal: uma vez que a conta está ligada (clients.paciente_id
+--     definido), o nutricionista passa a ver na ficha do cliente o
+--     nome/email/foto que o próprio paciente define no seu perfil, em vez
+--     dos campos manuais anteriores — isto exige que o nutricionista
+--     consiga mesmo ler essa linha de profiles, o que a policy única
+--     existente (id = auth.uid()) não permite.
+-- ============================================================
+drop policy if exists "nutricionista vê perfil dos seus pacientes" on profiles;
+create policy "nutricionista vê perfil dos seus pacientes"
+  on profiles for select
+  using (
+    exists (
+      select 1 from clients
+      where clients.paciente_id = profiles.id
+        and clients.nutricionista_id = auth.uid()
+    )
+  );
+
+-- ============================================================
+-- 14. profiles — telefone do paciente, migração inicial de dados de
+--     identidade ao ligar a conta, e bloqueio permanente da data de
+--     nascimento depois de definida uma primeira vez.
+-- ============================================================
+alter table profiles add column if not exists telefone text;
+
+-- Uma vez definida, a data de nascimento nunca mais muda (nutricionista OU
+-- paciente) — pedido explícito do utilizador, para não desalinhar cálculos
+-- de idade já feitos. Só bloqueia mudanças reais (o mesmo valor reenviado
+-- no mesmo update, ex: ao gravar outros campos do perfil, passa sempre).
+create or replace function prevent_birthdate_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  if OLD.data_nascimento is not null and NEW.data_nascimento is distinct from OLD.data_nascimento then
+    raise exception 'A data de nascimento não pode ser alterada depois de definida.';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists profiles_lock_birthdate on profiles;
+create trigger profiles_lock_birthdate
+  before update on profiles
+  for each row execute function prevent_birthdate_change();
+
+-- accept_invite (substitui a versão da secção 2b): ao ligar a conta, o nome
+-- fica sempre o que o paciente já escolheu no registo (profiles.nome,
+-- preenchido pelo signUp) — não se copia clients.nome por cima. Mas
+-- nascimento/género/telefone só existem do lado do nutricionista até aqui
+-- (client.info.pNascimento/pGenero/pTelefone, preenchidos antes de o
+-- paciente ter conta) — por isso esses migram uma única vez para profiles,
+-- servindo de ponto de partida; a partir daqui o paciente é que os edita
+-- nas suas Definições.
+create or replace function accept_invite(p_code text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_link nutricionista_paciente_links%rowtype;
+  v_client clients%rowtype;
+begin
+  if p_code is null or length(trim(p_code)) = 0 then
+    raise exception 'Código de convite inválido.';
+  end if;
+
+  select * into v_link
+  from nutricionista_paciente_links
+  where code = upper(trim(p_code)) and status = 'pending'
+  limit 1
+  for update;
+
+  if not found then
+    raise exception 'Convite inválido ou já utilizado.';
+  end if;
+
+  update nutricionista_paciente_links
+    set paciente_id = auth.uid(), status = 'active', accepted_at = now()
+    where id = v_link.id;
+
+  update clients set paciente_id = auth.uid() where id = v_link.client_id;
+
+  select * into v_client from clients where id = v_link.client_id;
+
+  update profiles set
+    data_nascimento = coalesce(data_nascimento, nullif(v_client.info->>'pNascimento', '')::date),
+    sexo            = coalesce(nullif(sexo, ''), nullif(v_client.info->>'pGenero', '')),
+    telefone        = coalesce(nullif(telefone, ''), nullif(v_client.info->>'pTelefone', ''))
+  where id = auth.uid();
+
+  return json_build_object('ok', true, 'client_id', v_link.client_id, 'nutricionista_id', v_link.nutricionista_id);
+end;
+$$;
+
+grant execute on function accept_invite(text) to authenticated;
+
+-- ============================================================
+-- 15. profiles — o bloqueio da data de nascimento (secção 14) só se aplica
+--     a pedidos autenticados da app (nutricionista/paciente através do
+--     PostgREST) — corrigir manualmente no Supabase Dashboard (SQL Editor
+--     ou Table Editor) continua sempre possível, porque essas ligações não
+--     passam por auth.uid() (não há request.jwt.claims nessa sessão, só
+--     existe quando o pedido vem autenticado via PostgREST).
+-- ============================================================
+create or replace function prevent_birthdate_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  if auth.uid() is not null
+     and OLD.data_nascimento is not null
+     and NEW.data_nascimento is distinct from OLD.data_nascimento then
+    raise exception 'A data de nascimento não pode ser alterada depois de definida.';
+  end if;
+  return NEW;
+end;
+$$;

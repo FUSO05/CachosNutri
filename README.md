@@ -165,7 +165,3 @@ Skeleton loader.
 Integrar passos diários com Google Health etc.
 
 Adicionar área de atividade, em que posso adicionar atividade físicas que realizei no dia, em que posso colocar a duração e kcal que queimei. Tudo isto ficaria disponível para o Nutricionista também.
-
-Na area de cliente, em vez de termos um botão sari, quero quer coloques uma area nesse local para o perfil do cliente, tal como ja fazemos no app.html, mas desta vez para o cliente. O que quero é que quando
-  clicado expanda um pouco uma area em que vai ter a foto de perfil, o nome da pessoa embaixo, e depois na parte inferior uma engrenagem com um texto a frente a dizer definições, em que ele pode configurar o seu
-  perfil, que é o email e foto.

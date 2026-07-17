@@ -161,9 +161,17 @@
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
               Dados Pessoais
             </div>
-            <div class="form-field"><label class="field-label">Nome completo</label><input class="field-input" type="text" id="pNome" placeholder="Nome do paciente"></div>
+            <div class="form-field">
+              <label class="field-label">Nome completo</label>
+              <input class="field-input" type="text" id="pNome" placeholder="Nome do paciente">
+              <span class="field-lock-hint" id="pNome-lock-hint" style="display:none">Definido pelo paciente na conta — só ele pode alterar</span>
+            </div>
             <div class="form-row">
-              <div class="form-field"><label class="field-label">Data de nascimento</label><input class="field-input" type="date" id="pNascimento" oninput="updateAge()"></div>
+              <div class="form-field">
+                <label class="field-label">Data de nascimento</label>
+                <input class="field-input" type="date" id="pNascimento" oninput="updateAge()">
+                <span class="field-lock-hint" id="pNascimento-lock-hint" style="display:none">Definido pelo paciente na conta — só ele pode alterar</span>
+              </div>
               <div class="form-field"><label class="field-label">Idade</label><input class="field-input field-calc" type="text" id="pIdade" readonly placeholder="—"></div>
             </div>
             <div class="form-field">
@@ -171,9 +179,18 @@
               <select class="field-select" id="pGenero" onchange="updateTMB()">
                 <option value="">Selecionar…</option><option value="M">Masculino</option><option value="F">Feminino</option>
               </select>
+              <span class="field-lock-hint" id="pGenero-lock-hint" style="display:none">Definido pelo paciente na conta — só ele pode alterar</span>
             </div>
-            <div class="form-field"><label class="field-label">E-mail</label><input class="field-input" type="email" id="pEmail" placeholder="email@exemplo.com"></div>
-            <div class="form-field"><label class="field-label">Telefone</label><input class="field-input" type="tel" id="pTelefone" placeholder="+351 912 345 678"></div>
+            <div class="form-field">
+              <label class="field-label">E-mail</label>
+              <input class="field-input" type="email" id="pEmail" placeholder="email@exemplo.com">
+              <span class="field-lock-hint" id="pEmail-lock-hint" style="display:none">Definido pelo paciente na conta — só ele pode alterar</span>
+            </div>
+            <div class="form-field">
+              <label class="field-label">Telefone</label>
+              <input class="field-input" type="tel" id="pTelefone" placeholder="+351 912 345 678">
+              <span class="field-lock-hint" id="pTelefone-lock-hint" style="display:none">Definido pelo paciente na conta — só ele pode alterar</span>
+            </div>
             <div class="consent-field">
               <label class="consent-check-label">
                 <input type="checkbox" id="pConsentimento" onchange="onConsentimentoChange()">
@@ -546,13 +563,29 @@
         <div class="form-field"><label class="field-label">E-mail profissional</label><input class="field-input" type="email" id="profEmail" placeholder="email@exemplo.com"></div>
         <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="profCedula" placeholder="Ex: 1234N (Ordem dos Nutricionistas)"></div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-back" onclick="closeProfileModal()">Cancelar</button>
-      <button class="btn-primary" onclick="saveProfile()">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Guardar
-      </button>
+      <button class="btn-primary settings-save-btn" onclick="saveProfile()">Guardar perfil</button>
+
+      <div class="settings-section" style="margin-top:20px">
+        <div class="settings-section-title">Login &amp; Segurança</div>
+        <div class="profile-fields">
+          <div class="form-field"><label class="field-label">Nova password</label><input class="field-input" type="password" id="profNewPassword" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8"></div>
+          <div class="form-field"><label class="field-label">Confirmar password</label><input class="field-input" type="password" id="profConfirmPassword" placeholder="Repita a nova password" autocomplete="new-password" minlength="8"></div>
+        </div>
+        <div class="auth-error" id="nutri-password-error"></div>
+        <button class="btn-primary settings-save-btn" onclick="saveNutriPassword()">Guardar password</button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Privacidade</div>
+        <a class="settings-row-link" href="termos.html" target="_blank" rel="noopener">Termos de Serviço</a>
+        <a class="settings-row-link" href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
+        <a class="settings-row-link" href="mailto:lnluisnunes2005@gmail.com?subject=Pedido%20de%20dados%20-%20CachosNutri">Pedir exportação/eliminação dos meus dados</a>
+      </div>
+
+      <div class="settings-section settings-section--last">
+        <div class="settings-section-title">Ajuda &amp; Suporte</div>
+        <a class="settings-row-link" href="mailto:lnluisnunes2005@gmail.com">Contactar suporte</a>
+      </div>
     </div>
   </div>
 </div>

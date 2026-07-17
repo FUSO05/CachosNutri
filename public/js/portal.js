@@ -174,6 +174,12 @@ async function handlePortalLogout() {
   portalClients = [];
   portalClient = null;
   portalPlan = null;
+  portalProfile = { nome: '', email: '', photo: '', nascimento: '', sexo: '', telefone: '' };
+  // Limpa a cache local do perfil — a chave não é por utilizador, por isso
+  // sem isto outro paciente que entre a seguir no mesmo dispositivo via um
+  // instante o nome/foto do paciente anterior antes de a rede confirmar.
+  try { localStorage.removeItem(PORTAL_PROFILE_CACHE_KEY); } catch (e) {}
+  closePortalProfileMenu();
 
   // No PWA instalado (telemóvel), a landing page é para nutricionistas/visitantes
   // — não faz sentido o paciente ser levado para lá ao sair. Em vez de navegar,
@@ -196,7 +202,226 @@ async function afterPortalAuth() {
     if (!ok) showAlertModal('O código de convite não é válido ou já foi utilizado. Pode pedir um novo ao seu nutricionista, ou introduzi-lo manualmente mais tarde.', { title: 'Convite inválido' });
   }
   showPortalApp();
-  await loadPortalData();
+  await loadPortalData(); // já traz o perfil embutido (ver dentro da função)
+}
+
+// ── Perfil e Definições do paciente ──────────────────────────────────────────
+// profiles.nome/email/photo_url/data_nascimento/sexo/telefone são as mesmas
+// colunas já usadas no perfil do nutricionista (ver saveProfile/
+// syncProfileToSupabase em app.js), sem cedula (não se aplica ao paciente).
+// Estes dados passam a ser só do paciente — a ficha do cliente do lado do
+// nutricionista só os mostra, já não os edita (ver app.js). A data de
+// nascimento fica permanentemente bloqueada depois de definida uma primeira
+// vez (trigger profiles_lock_birthdate em schema.sql) — refletido aqui
+// desativando o campo assim que já tiver valor.
+let portalProfile = { nome: '', email: '', photo: '', nascimento: '', sexo: '', telefone: '' };
+let _portalPendingPhoto = null;
+
+// Cache local do último perfil confirmado pelo Supabase — evita o "flash" de
+// dados vazios/avatar por defeito enquanto a rede ainda não respondeu (mesmo
+// padrão já usado no perfil do nutricionista, ver appProfile/cachos_profile em
+// app.js). Pinta de imediato com o que ficou de uma visita anterior; a rede
+// só confirma/corrige a seguir — não acrescenta pedido nenhum ao servidor.
+const PORTAL_PROFILE_CACHE_KEY = 'cachos_portal_profile';
+
+function loadCachedPortalProfile() {
+  try {
+    const raw = localStorage.getItem(PORTAL_PROFILE_CACHE_KEY);
+    if (raw) portalProfile = { ...portalProfile, ...JSON.parse(raw) };
+  } catch (e) {}
+}
+
+function cachePortalProfile() {
+  try { localStorage.setItem(PORTAL_PROFILE_CACHE_KEY, JSON.stringify(portalProfile)); } catch (e) {}
+}
+
+function applyPortalProfileRow(prof) {
+  portalProfile.nome       = prof.nome || (portalClient && portalClient.nome) || '';
+  portalProfile.email      = prof.email || '';
+  portalProfile.photo      = prof.photo_url || '';
+  portalProfile.nascimento = prof.data_nascimento || '';
+  portalProfile.sexo       = prof.sexo || '';
+  portalProfile.telefone   = prof.telefone || '';
+  cachePortalProfile();
+  updatePortalProfileUI();
+}
+
+// Só usada quando loadPortalData() não conseguiu trazer o perfil já embutido
+// (ex: paciente ainda sem nenhum cliente ligado) — no caminho normal, o
+// próprio select de loadPortalData() já traz profiles junto (ver abaixo),
+// numa só viagem à rede em vez de duas sequenciais. Isto importa sobretudo
+// com muitos utilizadores em simultâneo: metade dos pedidos a menos por
+// carregamento de página é o que realmente ajuda a escalar, não só a
+// perceção de velocidade de um utilizador sozinho.
+async function fetchPortalProfile() {
+  const { data: prof, error } = await sb.from('profiles').select('nome, email, photo_url, data_nascimento, sexo, telefone').eq('id', portalUser.id).single();
+  if (error) { console.error('Erro ao carregar perfil do paciente:', error); return; }
+  applyPortalProfileRow(prof);
+}
+
+function updatePortalProfileUI() {
+  const name = portalProfile.nome || (portalClient && portalClient.nome) || (portalUser && portalUser.email) || 'Paciente';
+  const initial = name ? name[0].toUpperCase() : 'P';
+  const nameEl = document.getElementById('portal-topbar-name');
+  const ddNameEl = document.getElementById('portal-dd-name');
+  const clientNameEl = document.getElementById('portal-client-name');
+  if (nameEl) nameEl.textContent = name;
+  if (ddNameEl) ddNameEl.textContent = name;
+  if (clientNameEl) clientNameEl.textContent = name;
+  ['portal-topbar-avatar', 'portal-dd-avatar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (portalProfile.photo) {
+      el.innerHTML = `<img src="${escHtml(portalProfile.photo)}" alt="">`;
+    } else {
+      el.textContent = initial;
+    }
+  });
+}
+
+function togglePortalProfileMenu() {
+  const dd = document.getElementById('portal-profile-dropdown');
+  if (dd.style.display === 'none') openPortalProfileMenu();
+  else closePortalProfileMenu();
+}
+
+function openPortalProfileMenu() {
+  document.getElementById('portal-profile-dropdown').style.display = '';
+  document.querySelector('.portal-profile-btn').setAttribute('aria-expanded', 'true');
+  // Adiado para o próximo tick — senão o próprio clique que abre o menu (ainda a
+  // borbulhar até ao document) fechava-o de imediato.
+  setTimeout(() => document.addEventListener('click', _onPortalProfileMenuOutsideClick, true), 0);
+}
+
+function closePortalProfileMenu() {
+  const dd = document.getElementById('portal-profile-dropdown');
+  if (!dd || dd.style.display === 'none') return;
+  dd.style.display = 'none';
+  document.querySelector('.portal-profile-btn').setAttribute('aria-expanded', 'false');
+  document.removeEventListener('click', _onPortalProfileMenuOutsideClick, true);
+}
+
+function _onPortalProfileMenuOutsideClick(e) {
+  if (!e.target.closest('.portal-profile-wrap')) closePortalProfileMenu();
+}
+
+function openPortalSettingsModal() {
+  closePortalProfileMenu();
+  document.getElementById('portalProfName').value       = portalProfile.nome       || '';
+  document.getElementById('portalProfEmail').value      = portalProfile.email      || '';
+  document.getElementById('portalProfNascimento').value = portalProfile.nascimento || '';
+  document.getElementById('portalProfGenero').value     = portalProfile.sexo       || '';
+  document.getElementById('portalProfTelefone').value   = portalProfile.telefone   || '';
+  // Uma vez definida, a data de nascimento fica bloqueada para sempre (ver
+  // trigger profiles_lock_birthdate) — desativa aqui para o paciente não
+  // tentar mudar e só descobrir o erro ao gravar.
+  document.getElementById('portalProfNascimento').disabled = !!portalProfile.nascimento;
+  _portalPendingPhoto = null;
+  updatePortalSettingsPhotoUI();
+  document.getElementById('portalNewPassword').value = '';
+  document.getElementById('portalConfirmPassword').value = '';
+  showFieldError('portal-password-error', '');
+  showFieldError('portal-profile-error', '');
+  updatePortalConsentStatusText();
+  document.getElementById('portalSettingsModal').style.display = '';
+}
+
+function closePortalSettingsModal() {
+  document.getElementById('portalSettingsModal').style.display = 'none';
+}
+
+function updatePortalSettingsPhotoUI() {
+  const img     = document.getElementById('portalProfPhotoImg');
+  const initial = document.getElementById('portalProfPhotoInitial');
+  const photo   = _portalPendingPhoto || portalProfile.photo;
+  if (photo) {
+    img.src = photo;
+    img.style.display = '';
+    initial.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    initial.style.display = '';
+    const name = document.getElementById('portalProfName').value || portalProfile.nome || 'P';
+    initial.textContent = name[0].toUpperCase();
+  }
+}
+
+// Mesmo mecanismo de handlePhotoUpload() em app.js: reduz a imagem a no máximo
+// 300px via canvas e guarda como data-URI JPEG — sem bucket de Storage, tal
+// como o perfil do nutricionista (ver profiles.photo_url).
+function handlePortalPhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 300 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      _portalPendingPhoto = canvas.toDataURL('image/jpeg', 0.85);
+      updatePortalSettingsPhotoUI();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function savePortalProfile() {
+  showFieldError('portal-profile-error', '');
+  const nome       = document.getElementById('portalProfName').value.trim();
+  const email      = document.getElementById('portalProfEmail').value.trim();
+  const nascimento = document.getElementById('portalProfNascimento').value || null;
+  const sexo       = document.getElementById('portalProfGenero').value || null;
+  const telefone   = document.getElementById('portalProfTelefone').value.trim();
+  const payload = { nome, email, data_nascimento: nascimento, sexo, telefone };
+  if (_portalPendingPhoto) payload.photo_url = _portalPendingPhoto;
+  const { error } = await sb.from('profiles').update(payload).eq('id', portalUser.id);
+  if (error) {
+    console.error('Erro ao guardar perfil do paciente:', error);
+    // A data de nascimento pode recusar por já estar definida (trigger
+    // profiles_lock_birthdate) — não deve acontecer com o campo desativado,
+    // mas cobre qualquer outra tentativa (ex: API direta).
+    showFieldError('portal-profile-error', 'Não foi possível guardar o perfil. Tente novamente.');
+    return;
+  }
+  portalProfile.nome       = nome;
+  portalProfile.email      = email;
+  portalProfile.nascimento = nascimento || '';
+  portalProfile.sexo       = sexo || '';
+  portalProfile.telefone   = telefone;
+  if (_portalPendingPhoto) { portalProfile.photo = _portalPendingPhoto; _portalPendingPhoto = null; }
+  document.getElementById('portalProfNascimento').disabled = !!portalProfile.nascimento;
+  cachePortalProfile();
+  updatePortalProfileUI();
+  showToast('Perfil guardado');
+}
+
+// Só troca profiles.email (o que o nutricionista vê) — não chama auth.updateUser,
+// por isso o login continua a ser feito com o email original. Ver contexto no
+// plano: mudança de email é só um campo de contacto, sem fluxo de confirmação.
+async function savePortalPassword() {
+  const pass    = document.getElementById('portalNewPassword').value;
+  const confirm = document.getElementById('portalConfirmPassword').value;
+  showFieldError('portal-password-error', '');
+  if (!pass || pass.length < 8) { showFieldError('portal-password-error', 'A password deve ter pelo menos 8 caracteres.'); return; }
+  if (pass !== confirm) { showFieldError('portal-password-error', 'As passwords não coincidem.'); return; }
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) { showFieldError('portal-password-error', traduzErroAuthPortal(error.message)); return; }
+  document.getElementById('portalNewPassword').value = '';
+  document.getElementById('portalConfirmPassword').value = '';
+  showToast('Password atualizada');
+}
+
+async function updatePortalConsentStatusText() {
+  const el = document.getElementById('portal-consent-status-text');
+  if (!portalClient) { el.textContent = 'Sem consentimento registado.'; return; }
+  const { data, error } = await sb.from('patient_consents').select('consented_at').eq('client_id', portalClient.id).maybeSingle();
+  if (error || !data) { el.textContent = 'Sem consentimento registado.'; return; }
+  el.textContent = `Consentimento aceite em ${formatDate(data.consented_at)}.`;
 }
 
 // ── Convite ──────────────────────────────────────────────────────────────────
@@ -277,9 +502,22 @@ function rowToPortalConsultation(row) {
 }
 
 async function loadPortalData() {
+  // Pinta já com o último perfil confirmado (cache local), antes de qualquer
+  // pedido à rede — evita mostrar nome/avatar por defeito enquanto se espera
+  // pela resposta (ver loadCachedPortalProfile/cachePortalProfile acima).
+  loadCachedPortalProfile();
+  updatePortalProfileUI();
+
+  // profiles!paciente_id vem embutido na mesma viagem — clients.paciente_id é
+  // sempre o próprio paciente autenticado aqui, por isso este embed traz o seu
+  // próprio perfil (nome/email/foto/nascimento/género/telefone) sem precisar
+  // de um segundo pedido a seguir (fetchPortalProfile fica só de reserva para
+  // quando ainda não há nenhum cliente ligado, ver abaixo). Um pedido a menos
+  // por carregamento de página importa sobretudo com muitos utilizadores em
+  // simultâneo — é isso, não só a perceção de velocidade, que ajuda a escalar.
   const { data: rows, error } = await sb
     .from('clients')
-    .select('id, nome, info, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*)')
+    .select('id, nome, info, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*), profiles!paciente_id(nome, email, photo_url, data_nascimento, sexo, telefone)')
     .eq('paciente_id', portalUser.id);
 
   portalClients = error ? [] : (rows || []).map(rowToPortalClient);
@@ -288,9 +526,14 @@ async function loadPortalData() {
     showAlertModal('Não foi possível carregar os seus dados. Tente novamente mais tarde.');
   }
 
+  const profRow = rows && rows[0] && (Array.isArray(rows[0].profiles) ? rows[0].profiles[0] : rows[0].profiles);
+  if (profRow) applyPortalProfileRow(profRow);
+  else if (!error) fetchPortalProfile(); // sem cliente ligado ainda — só aqui vale a pena o segundo pedido
+
   if (!portalClients.length) {
     document.getElementById('portal-empty').style.display = '';
     document.getElementById('portal-main').style.display  = 'none';
+    updatePortalProfileUI();
     return;
   }
   document.getElementById('portal-empty').style.display = 'none';
@@ -299,6 +542,7 @@ async function loadPortalData() {
   portalClient = portalClients[0];
   portalPlan   = portalClient.plans[0] || null;
   document.getElementById('portal-client-name').textContent = portalClient.nome;
+  updatePortalProfileUI();
   document.getElementById('portal-plan-sub').textContent = portalPlan
     ? `· ${portalPlan.nome || 'Sem nome'}`
     : '';
@@ -1066,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pending = takePendingInviteCode();
     if (pending) await acceptInviteCode(pending);
     showPortalApp();
-    await loadPortalData();
+    await loadPortalData(); // já traz o perfil embutido (ver dentro da função)
   } else {
     showPortalAuth();
   }

@@ -279,13 +279,38 @@ function openProfileModal() {
   document.getElementById('profSex').value        = appProfile.sex;
   document.getElementById('profEmail').value      = appProfile.email;
   document.getElementById('profCedula').value     = appProfile.cedula || '';
+  // Tal como na ficha do paciente, a data de nascimento fica permanentemente
+  // bloqueada depois de definida uma primeira vez (trigger
+  // profiles_lock_birthdate em schema.sql, aplica-se a qualquer linha de
+  // profiles, incluindo a do próprio nutricionista) — disabled em vez de
+  // readOnly, senão o seletor nativo de data ainda abria e deixava escolher
+  // outro valor, só falhando ao gravar.
+  document.getElementById('profNascimento').disabled = !!appProfile.nascimento;
   updateProfileAge();
   updateProfilePhotoUI();
+  document.getElementById('profNewPassword').value = '';
+  document.getElementById('profConfirmPassword').value = '';
+  showFieldError('nutri-password-error', '');
   document.getElementById('profileModal').style.display = '';
 }
 
 function closeProfileModal() {
   document.getElementById('profileModal').style.display = 'none';
+}
+
+// Mesmo mecanismo de savePortalPassword() em portal.js — sb.auth.updateUser
+// não distingue nutricionista/paciente, é sempre a sessão ativa.
+async function saveNutriPassword() {
+  const pass    = document.getElementById('profNewPassword').value;
+  const confirm = document.getElementById('profConfirmPassword').value;
+  showFieldError('nutri-password-error', '');
+  if (!pass || pass.length < 8) { showFieldError('nutri-password-error', 'A password deve ter pelo menos 8 caracteres.'); return; }
+  if (pass !== confirm) { showFieldError('nutri-password-error', 'As passwords não coincidem.'); return; }
+  const { error } = await sb.auth.updateUser({ password: pass });
+  if (error) { showFieldError('nutri-password-error', error.message); return; }
+  document.getElementById('profNewPassword').value = '';
+  document.getElementById('profConfirmPassword').value = '';
+  showToast('Password atualizada');
 }
 
 function handlePhotoUpload(input) {
@@ -399,11 +424,24 @@ function numOrNull(v) {
 }
 
 function rowToClient(row) {
+  // profiles!paciente_id vem embutido como objeto (relação a-um, paciente_id
+  // aponta para a chave primária de profiles) — normaliza para o caso de a
+  // API devolver array, consoante a versão do PostgREST.
+  const profRow = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
   return {
     id: row.id,
     nome: row.nome,
     createdAt: new Date(row.created_at).getTime(),
     info: row.info || {},
+    // Definido só quando o paciente já se ligou à conta (ver convite/portal) —
+    // a partir daí, nome/email da ficha deixam de ser editáveis pelo
+    // nutricionista e passam a refletir o que o próprio paciente define no
+    // seu perfil (ver applyLinkedPatientFieldState/savePatientInfo).
+    pacienteId: row.paciente_id || null,
+    pacienteProfile: profRow ? {
+      nome: profRow.nome || '', email: profRow.email || '', photo: profRow.photo_url || '',
+      nascimento: profRow.data_nascimento || '', sexo: profRow.sexo || '', telefone: profRow.telefone || ''
+    } : null,
     consultations: (row.consultations || [])
       .slice().sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(rowToConsultation),
@@ -442,7 +480,7 @@ async function loadAppData() {
   try {
     const { data: rows, error } = await sb
       .from('clients')
-      .select('id, nome, info, created_at, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*)')
+      .select('id, nome, info, created_at, paciente_id, profiles!paciente_id(nome, email, photo_url, data_nascimento, sexo, telefone), plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*)')
       .eq('nutricionista_id', currentUser.id)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -730,7 +768,7 @@ function renderDashboard() {
       </div>`
     : appData.clients.map(c => `
         <div class="client-card" onclick="goToClient('${c.id}')">
-          <div class="client-avatar">${getInitials(c.nome)}</div>
+          <div class="client-avatar">${c.pacienteProfile?.photo ? `<img src="${escHtml(c.pacienteProfile.photo)}" alt="">` : getInitials(c.nome)}</div>
           <div class="client-card-info">
             <div class="client-card-name">${escHtml(c.nome)}</div>
             <div class="client-card-meta">Criado em ${formatDate(c.createdAt)}</div>
@@ -835,9 +873,61 @@ function filterPatients(query) {
 // ── Client page ───────────────────────────────────────────────────────────────
 function renderClientPage(client) {
   loadInfoForm(client.info || {});
+  applyLinkedPatientFieldState(client);
   renderPlansList(client);
   renderInviteSection(client);
   renderPatientConsentStatus(client);
+}
+
+// Uma vez que a conta do paciente está ligada (client.pacienteId definido, ver
+// rowToClient/convite), os campos de "Dados Pessoais" (nome, nascimento,
+// género, email, telefone) deixam de ser editáveis à mão aqui — passam a
+// refletir sempre o que o próprio paciente define no seu perfil no portal
+// (ver savePortalProfile em portal.js), lido via profiles!paciente_id já
+// embutido em loadAppData(). Os campos clínicos/de avaliação (peso, altura,
+// dobras, perímetros, atividade, objetivo, alergias, patologias, medicação,
+// notas) NÃO entram aqui — continuam a ser inseridos pelo nutricionista, é
+// ele quem os mede/avalia. Antes de haver conta ligada, nada muda: todos os
+// campos continuam editáveis como sempre foram.
+function applyLinkedPatientFieldState(client) {
+  const nomeEl       = document.getElementById('pNome');
+  const emailEl      = document.getElementById('pEmail');
+  const nascimentoEl = document.getElementById('pNascimento');
+  const generoEl     = document.getElementById('pGenero');
+  const telefoneEl   = document.getElementById('pTelefone');
+  const hints = {
+    pNome: document.getElementById('pNome-lock-hint'),
+    pEmail: document.getElementById('pEmail-lock-hint'),
+    pNascimento: document.getElementById('pNascimento-lock-hint'),
+    pGenero: document.getElementById('pGenero-lock-hint'),
+    pTelefone: document.getElementById('pTelefone-lock-hint')
+  };
+  const prof = client.pacienteProfile;
+  const locked = !!(client.pacienteId && prof);
+  if (locked) {
+    if (prof.nome)       nomeEl.value       = prof.nome;
+    if (prof.email)      emailEl.value      = prof.email;
+    if (prof.nascimento) nascimentoEl.value = prof.nascimento;
+    if (prof.sexo)       generoEl.value     = prof.sexo;
+    if (prof.telefone)   telefoneEl.value   = prof.telefone;
+    updateAge();
+    // client.nome é o nome mostrado em todo o lado (cabeçalho, migalha de pão,
+    // cartão do dashboard) — mantém-se sincronizado com a conta do paciente.
+    if (prof.nome && client.nome !== prof.nome) {
+      client.nome = prof.nome;
+      document.getElementById('client-page-name').textContent = prof.nome;
+      updateBreadcrumb();
+    }
+  }
+  nomeEl.readOnly     = locked;
+  emailEl.readOnly    = locked;
+  telefoneEl.readOnly = locked;
+  // <input type="date"> ignora readOnly no seletor nativo em vários browsers
+  // (dava para abrir o calendário e mudar na mesma, só falhava ao gravar) —
+  // disabled bloqueia mesmo a interação. <select> também não tem readOnly.
+  nascimentoEl.disabled = locked;
+  generoEl.disabled     = locked;
+  Object.entries(hints).forEach(([, hintEl]) => { if (hintEl) hintEl.style.display = locked ? '' : 'none'; });
 }
 
 // Mostra se o próprio paciente já deu consentimento no portal (tabela
@@ -905,7 +995,14 @@ function savePatientInfo() {
   if (!client && isDraft) client = draftClient;
   if (!client) return;
   if (!client.info) client.info = {};
+  // Uma vez ligada a conta do paciente, pNome/pEmail ficam só-leitura (ver
+  // applyLinkedPatientFieldState) e são sempre o que está em pacienteProfile —
+  // não há nada de novo a gravar deles aqui, e não se deve sobrescrever
+  // client.nome com um valor que não veio de uma edição real.
+  const locked = !!(client.pacienteId && client.pacienteProfile);
+  const LOCKED_FIELDS = ['pNome', 'pEmail', 'pNascimento', 'pGenero', 'pTelefone'];
   PATIENT_FIELDS.forEach(id => {
+    if (locked && LOCKED_FIELDS.includes(id)) return;
     const el = document.getElementById(id);
     if (el) client.info[id] = el.value;
   });
@@ -913,11 +1010,13 @@ function savePatientInfo() {
   client.info.pConsentimento = consentChecked;
   client.info.pConsentimentoData = consentChecked ? (client.info.pConsentimentoData || new Date().toISOString()) : null;
   renderConsentimentoLabel(client.info.pConsentimentoData);
-  const newNome = client.info.pNome?.trim();
-  if (newNome) {
-    client.nome = newNome;
-    document.getElementById('client-page-name').textContent = newNome;
-    updateBreadcrumb();
+  if (!locked) {
+    const newNome = client.info.pNome?.trim();
+    if (newNome) {
+      client.nome = newNome;
+      document.getElementById('client-page-name').textContent = newNome;
+      updateBreadcrumb();
+    }
   }
   if (isDraft) {
     appData.clients.push(client);

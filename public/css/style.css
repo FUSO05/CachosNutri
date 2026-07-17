@@ -985,7 +985,9 @@ body {
   flex-shrink: 0;
   letter-spacing: .5px;
   box-shadow: 0 2px 8px rgba(39,134,90,.3);
+  overflow: hidden;
 }
+.client-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .client-card-info { flex: 1; min-width: 0; }
 .client-card-name { font-size: 14px; font-weight: 600; color: var(--gray-800); }
 .client-card-meta { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
@@ -2314,8 +2316,12 @@ body {
   line-height: 1.5;
   color: var(--gray-500);
   margin: 0 0 14px;
-  text-align: center; 
+  text-align: center;
 }
+.modal-hint a,
+.modal-hint a:visited,
+.modal-hint a:hover,
+.modal-hint a:active { color: var(--green-dark); }
 .field-input, .field-select {
   width: 100%;
   padding: 8px 10px;
@@ -2332,6 +2338,9 @@ body {
 .field-input::placeholder { color: var(--gray-300); }
 .field-calc { background: var(--gray-50); color: var(--gray-600); cursor: default; }
 .field-calc-highlight { background: var(--green-light); color: var(--green); font-weight: 700; }
+.field-input[readonly], .field-input:disabled { background: var(--gray-50); color: var(--gray-600); cursor: default; opacity: 1; }
+.field-select:disabled { background: var(--gray-50); color: var(--gray-600); cursor: default; opacity: 1; }
+.field-lock-hint { display: block; font-size: 10.5px; color: var(--gray-400); margin-top: 3px; }
 .field-textarea {
   width: 100%;
   padding: 8px 10px;
@@ -2484,6 +2493,51 @@ body {
 }
 .profile-photo-hint { font-size: 11px; color: var(--gray-400); }
 .profile-fields { display: flex; flex-direction: column; gap: 12px; }
+
+/* ── DEFINIÇÕES (portal do paciente) — secções empilhadas, cada uma com o
+   seu próprio botão de guardar ── */
+.settings-section {
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.settings-section--last { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.settings-section-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gray-800);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: 12px;
+}
+.settings-save-btn { margin-top: 12px; width: 100%; justify-content: center; }
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--gray-200);
+  background: var(--surface-alt);
+  border-radius: 8px;
+  color: var(--gray-700);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.settings-row:hover { background: var(--gray-100); }
+.settings-row-text { font-size: 12.5px; color: var(--gray-600); margin-bottom: 10px; }
+.settings-row-link {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--green-dark);
+  text-decoration: none;
+}
+.settings-row-link:hover { text-decoration: underline; }
+.settings-row-link + .settings-row-link { margin-top: 8px; }
 
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; }
@@ -3401,6 +3455,95 @@ body.portal-page-body { height: 100%; overflow: hidden; }
 .portal-brand-img { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; }
 .portal-topbar-user { display: flex; align-items: center; gap: 12px; font-size: 12.5px; color: var(--gray-600); }
 
+.portal-profile-wrap { position: relative; }
+.portal-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px 5px 5px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+.portal-profile-btn:hover { background: var(--gray-100); }
+.portal-avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: white;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.portal-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.portal-avatar--lg { width: 52px; height: 52px; font-size: 20px; }
+.portal-profile-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gray-700);
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.portal-profile-chevron { color: var(--gray-400); flex-shrink: 0; }
+
+.portal-profile-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 230px;
+  max-width: 92vw;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 14px 10px 8px;
+  z-index: 1500;
+  animation: portalDdIn .12s ease-out;
+}
+@keyframes portalDdIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.portal-profile-dropdown-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px 14px;
+}
+.portal-profile-dropdown-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-800);
+  text-align: center;
+  word-break: break-word;
+}
+.portal-dd-divider { height: 1px; background: var(--gray-100); margin: 0 2px 8px; }
+.portal-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 8px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  color: var(--gray-700);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.portal-dd-item:hover { background: var(--gray-100); }
+.portal-dd-item--danger { color: var(--red); }
+.portal-dd-item--danger:hover { background: var(--danger-bg); }
+
 .portal-install-banner {
   flex: 0 0 auto;
   display: flex;
@@ -3708,6 +3851,9 @@ body.portal-page-body { height: 100%; overflow: hidden; }
   .portal-page-header { justify-content: center; text-align: center; }
   .portal-water-actions { justify-content: center; }
   .portal-water-custom-input { width: 60px; flex: 0 0 60px; }
+  .portal-profile-name { display: none; }
+  .portal-profile-chevron { display: none; }
+  .portal-profile-dropdown { right: -8px; }
 }
 @media (max-height: 680px) {
   .portal-stat .stat-icon-wrap { display: none; }
