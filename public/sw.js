@@ -6,7 +6,7 @@
 // Ao alterar ficheiros desta lista (ou o próprio sw.js), sobe a versão abaixo
 // — isso força a limpeza da cache antiga e os clientes voltam a descarregar
 // tudo na próxima visita.
-const CACHE_NAME = 'cachosnutri-shell-v12';
+const CACHE_NAME = 'cachosnutri-shell-v13';
 const PRECACHE_URLS = [
   '/portal.html',
   '/manifest.json',
@@ -16,8 +16,8 @@ const PRECACHE_URLS = [
   '/js/supabase-client.js',
   '/img/fav.png',
   '/img/fav.ico',
-  '/img/icon-pwa-192.jpeg',
-  '/img/icon-pwa-512.jpeg',
+  '/img/icon-pwa-192.webp',
+  '/img/icon-pwa-512.webp',
 ];
 
 self.addEventListener('install', (event) => {
