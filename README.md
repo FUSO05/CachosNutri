@@ -1,6 +1,29 @@
 # CachosNutri
 
-Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INSA completa.
+**Planeamento alimentar profissional para nutricionistas.**
+Vanilla JS · Supabase · Anthropic Claude · Playwright
+
+## Sobre o projeto
+
+CachosNutri é uma webapp que permite a nutricionistas criar, gerir e
+acompanhar planos alimentares semanais para os seus pacientes, com cálculo
+automático de macronutrientes a partir da tabela oficial de composição de
+alimentos do INSA (Instituto Nacional de Saúde Doutor Ricardo Jorge). Cada
+paciente tem acesso a um portal próprio para seguir o seu plano do dia,
+registar água e refeições, e acompanhar a sua evolução — tudo sincronizado
+na cloud, sem instalação nem servidor próprio.
+
+## Índice
+
+- [Funcionalidades](#funcionalidades)
+- [Stack técnica](#stack-técnica)
+- [Configuração](#configuração-supabase)
+  - [Convite por email do Portal do Paciente](#convite-por-email-do-portal-do-paciente)
+  - [Fotos de refeições — bucket e limpeza automática](#fotos-de-refeições--bucket-e-limpeza-automática)
+  - [Gerar plano com IA](#gerar-plano-com-ia)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Testes automatizados](#testes-automatizados)
+- [Fonte dos dados](#fonte-dos-dados)
 
 ## Funcionalidades
 
@@ -15,7 +38,22 @@ Webapp de planeamento alimentar para nutricionistas, com a base de dados TCA-INS
 - **Consentimento informado + exportação RGPD** — registo de consentimento por paciente e exportação de todos os dados em JSON
 - **Impressão** — layout limpo para imprimir ou exportar para PDF, com nome e nº de cédula profissional do nutricionista
 
+## Stack técnica
+
+| Camada | Tecnologia | Papel |
+|---|---|---|
+| Frontend | HTML/CSS/JavaScript vanilla | Sem build nem framework — corre diretamente no browser |
+| Base de dados + Auth | [Supabase](https://supabase.com) (Postgres) | Dados, autenticação e isolamento por utilizador via Row Level Security |
+| Armazenamento | Supabase Storage | Fotos de refeições dos pacientes (bucket privado) |
+| Lógica de servidor | Supabase Edge Functions (Deno) | Envio de convites, geração de planos com IA, limpeza agendada de fotos |
+| Geração de planos | [Anthropic Claude Haiku 4.5](https://console.anthropic.com) | Rascunho de plano semanal a partir da ficha do paciente |
+| Email transacional | [Resend](https://resend.com) | Envio do convite de acesso ao Portal do Paciente |
+| Alojamento | [Vercel](https://vercel.com) | Serve o site estático em produção |
+| Testes | [Playwright](https://playwright.dev) | Testes end-to-end contra um projeto Supabase real |
+
 ## Configuração (Supabase)
+
+**Pré-requisitos**: uma conta [Supabase](https://supabase.com) (grátis) e, para correr os testes automatizados, [Node.js](https://nodejs.org).
 
 A app fala diretamente com o Supabase a partir do browser (sem servidor próprio):
 
@@ -151,15 +189,12 @@ Sem estas variáveis definidas, esses testes aparecem como *skipped* — nunca f
 
 ## Fonte dos dados
 
-**INSA — Instituto Nacional de Saúde Doutor Ricardo Jorge**  
-Tabela de Composição de Alimentos (BDCA), versão 7.1, 2026  
+**INSA — Instituto Nacional de Saúde Doutor Ricardo Jorge**
+Tabela de Composição de Alimentos (BDCA), versão 7.1, 2026
 https://portfir.insa.min-saude.pt/
 
 Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos saturados, hidratos de carbono, açúcares, sal, fibra, proteínas, colesterol, água.
 
+---
 
-## TO DO'S
-
-Integrar passos diários com Google Health etc.
-
-Adicionar área de atividade, em que posso adicionar atividade físicas que realizei no dia, em que posso colocar a duração e kcal que queimei. Tudo isto ficaria disponível para o Nutricionista também.
+Projeto privado e proprietário — todos os direitos reservados.
