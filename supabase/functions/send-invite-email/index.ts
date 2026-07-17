@@ -35,6 +35,9 @@ Deno.serve(async (req: Request) => {
 
     const { code, email, clientNome, nutricionistaNome } = await req.json();
     if (!code || !email) return json({ error: 'Pedido inválido: falta code ou email.' }, 400);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return json({ error: 'Endereço de email inválido.' }, 400);
+    }
 
     // Client autenticado como o próprio nutricionista chamador — a query seguinte
     // respeita a RLS de nutricionista_paciente_links, confirmando que este código

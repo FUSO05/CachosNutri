@@ -1216,6 +1216,15 @@ async function sendInvite(clientId) {
   const emailEl = document.getElementById('invite-email');
   const email = emailEl?.value.trim();
   if (!email) return;
+  // O campo é type="email", mas isso só é validado pelo browser num submit de
+  // formulário a sério — aqui é só um onclick a ler .value diretamente, por
+  // isso "asdasdasd" (sem @) passava sem aviso nenhum e criava o convite na
+  // mesma (o envio a sério pela Resend falha, mas o registo do convite e o
+  // link partilhável já tinham sido criados antes disso, sem validar nada).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showAlertModal('Introduza um endereço de email válido.');
+    return;
+  }
   const client = appData.clients.find(c => c.id === clientId);
   if (!client || !currentUser) return;
 

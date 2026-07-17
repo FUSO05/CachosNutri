@@ -160,8 +160,6 @@ Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos satu
 
 ## TO DO'S
 
-Testar mais níveis de segurança sem ser RLS no supabase.
-
 Integrar passos diários com Google Health etc.
 
 Adicionar área de atividade, em que posso adicionar atividade físicas que realizei no dia, em que posso colocar a duração e kcal que queimei. Tudo isto ficaria disponível para o Nutricionista também.

@@ -670,3 +670,60 @@ begin
   return NEW;
 end;
 $$;
+
+-- ============================================================
+-- 16. accept_invite — expiração de convites (substitui a versão da secção
+--     14). Um código "pending" ficava válido para sempre; com 32^6 (~1 mil
+--     milhões) de combinações não é praticamente explorável por força
+--     bruta, mas por higiene de segurança (achado da auditoria Wolf Hub)
+--     passa a expirar 7 dias depois de criado. Um convite expirado
+--     devolve exatamente o mesmo erro genérico de sempre ("Convite
+--     inválido ou já utilizado.") — não distingue "não existe" de
+--     "expirou", para não dar pistas extra a quem estiver a tentar
+--     códigos ao acaso.
+-- ============================================================
+create or replace function accept_invite(p_code text)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_link nutricionista_paciente_links%rowtype;
+  v_client clients%rowtype;
+begin
+  if p_code is null or length(trim(p_code)) = 0 then
+    raise exception 'Código de convite inválido.';
+  end if;
+
+  select * into v_link
+  from nutricionista_paciente_links
+  where code = upper(trim(p_code))
+    and status = 'pending'
+    and invited_at > now() - interval '7 days'
+  limit 1
+  for update;
+
+  if not found then
+    raise exception 'Convite inválido ou já utilizado.';
+  end if;
+
+  update nutricionista_paciente_links
+    set paciente_id = auth.uid(), status = 'active', accepted_at = now()
+    where id = v_link.id;
+
+  update clients set paciente_id = auth.uid() where id = v_link.client_id;
+
+  select * into v_client from clients where id = v_link.client_id;
+
+  update profiles set
+    data_nascimento = coalesce(data_nascimento, nullif(v_client.info->>'pNascimento', '')::date),
+    sexo            = coalesce(nullif(sexo, ''), nullif(v_client.info->>'pGenero', '')),
+    telefone        = coalesce(nullif(telefone, ''), nullif(v_client.info->>'pTelefone', ''))
+  where id = auth.uid();
+
+  return json_build_object('ok', true, 'client_id', v_link.client_id, 'nutricionista_id', v_link.nutricionista_id);
+end;
+$$;
+
+grant execute on function accept_invite(text) to authenticated;

@@ -735,6 +735,10 @@ Deno.serve(async (req: Request) => {
     return corsJson(req, { type: 'error', message: 'Pedido inválido.' }, 400);
   }
   if (!clientId) return corsJson(req, { type: 'error', message: 'Falta clientId.' }, 400);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_RE.test(clientId) || (planId !== undefined && !UUID_RE.test(planId))) {
+    return corsJson(req, { type: 'error', message: 'Pedido inválido.' }, 400);
+  }
 
   // Mesmo padrão do send-invite-email: reencaminha o Authorization de quem chama, a RLS
   // garante que só devolve o cliente se pertencer mesmo a este nutricionista.
