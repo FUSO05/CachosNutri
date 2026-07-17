@@ -12,7 +12,7 @@
   })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CachosNutri</title>
+  <title>CachosNutri - Nutricionista</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="icon" type="image/png" href="img/fav.ico">
@@ -105,7 +105,58 @@
 
   <!-- ── DASHBOARD ── -->
   <div id="pg-clients" class="pg-scroll">
-    <div id="dashboard-content"></div>
+    <!-- Skeleton estático — renderDashboard() substitui todo o innerHTML assim
+         que loadAppData()/fetchProfileFromSupabase() terminarem, por isso não
+         precisa de nenhuma lógica de "esconder": desaparece sozinho. -->
+    <div id="dashboard-content">
+      <!-- Reaproveita as classes reais do dashboard (.dash-header/.dash-stats/
+           .stat-card/.dash-hero/.dash-patients/...) em vez de inventar uma forma
+           parecida — assim o espaçamento/tamanho é sempre igual ao render real,
+           sem "saltos" de layout quando renderDashboard() substitui isto. -->
+      <div class="dashboard">
+        <div class="dash-header">
+          <div style="width:100%;max-width:420px">
+            <div class="skel skel-greeting"></div>
+            <div class="skel skel-sub"></div>
+          </div>
+          <div class="skel skel-date"></div>
+        </div>
+
+        <div class="dash-stats">
+          <div class="stat-card"><div class="skel skel-stat-icon"></div><div><div class="skel skel-stat-num"></div><div class="skel skel-stat-label"></div></div></div>
+          <div class="stat-card"><div class="skel skel-stat-icon"></div><div><div class="skel skel-stat-num"></div><div class="skel skel-stat-label"></div></div></div>
+          <div class="stat-card"><div class="skel skel-stat-icon"></div><div><div class="skel skel-stat-num"></div><div class="skel skel-stat-label"></div></div></div>
+          <div class="stat-card"><div class="skel skel-stat-icon"></div><div><div class="skel skel-stat-num"></div><div class="skel skel-stat-label"></div></div></div>
+        </div>
+
+        <div class="dash-body">
+          <div class="dash-left" style="width:100%">
+            <div class="dash-hero">
+              <div class="dash-hero-text" style="width:100%">
+                <div class="skel skel-hero-title"></div>
+                <div class="skel skel-hero-title" style="width:55%"></div>
+                <div class="skel skel-hero-sub"></div>
+                <div class="skel skel-hero-sub" style="width:65%;margin-bottom:20px"></div>
+                <div class="skel skel-hero-btn"></div>
+              </div>
+              <div class="dash-hero-visual"><div class="skel skel-hero-visual"></div></div>
+            </div>
+
+            <div class="dash-patients">
+              <div class="dash-patients-header">
+                <div class="skel skel-section-title"></div>
+                <div class="skel skel-search"></div>
+              </div>
+              <div class="clients-list">
+                <div class="client-card-skeleton"><div class="skel skel-circle"></div><div class="client-card-info"><div class="skel skel-line skel-line--name"></div><div class="skel skel-line skel-line--meta"></div></div></div>
+                <div class="client-card-skeleton"><div class="skel skel-circle"></div><div class="client-card-info"><div class="skel skel-line skel-line--name"></div><div class="skel skel-line skel-line--meta"></div></div></div>
+                <div class="client-card-skeleton"><div class="skel skel-circle"></div><div class="client-card-info"><div class="skel skel-line skel-line--name"></div><div class="skel skel-line skel-line--meta"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── PACIENTE ── -->

@@ -267,9 +267,14 @@ async function initApp() {
     } catch (e) { console.error('Erro ao importar dados locais:', e); }
   }
 
-  await loadAppData();
+  // loadAppData() (clientes/planos/consultas) e fetchProfileFromSupabase()
+  // (perfil do próprio nutricionista) são pedidos independentes — nenhum usa
+  // o resultado do outro — por isso correm em paralelo em vez de um a seguir
+  // ao outro. Isto era o principal motivo do atraso sentido logo a seguir ao
+  // login, incluindo ao abrir o primeiro cliente (o utilizador clicava antes
+  // de fetchProfileFromSupabase() ter sequer começado).
+  await Promise.all([loadAppData(), fetchProfileFromSupabase()]);
   goToClients();
-  await fetchProfileFromSupabase();
   updateSidebarUser();
 }
 
@@ -844,7 +849,7 @@ function renderDashboard() {
             </div>
             <div class="dash-hero-visual">
               <div class="hero-plate-bg"></div>
-              <img src="img/plate.png" alt="Prato saudável" class="hero-plate-img">
+              <img src="img/plate.webp" alt="Prato saudável" class="hero-plate-img">
             </div>
           </div>
 
@@ -3012,10 +3017,14 @@ async function renderEvolutionTab() {
 
   _evolutionConsultLimit = 20;
 
-  const [adherenceHTML, mealPhotosHTML] = await Promise.all([
-    buildAdherenceCardsHTML(client),
-    buildMealPhotosTimelineHTML(client)
-  ]);
+  // As fotos de refeição (buildMealPhotosTimelineHTML) já vêm com os pedidos
+  // internos otimizados (URLs assinados em lote, com cache — ver
+  // getSignedPhotoUrls em shared.js), mas continuam a depender da latência do
+  // Storage/CDN, que pode ser lenta. Antes, o resto do ecrã (adesão, gráficos,
+  // histórico de consultas — nada disto depende de fotos) ficava em branco à
+  // espera das fotos também. Agora só se espera pela adesão para o render
+  // principal; as fotos entram à parte, mostrando um spinner entretanto.
+  const adherenceHTML = await buildAdherenceCardsHTML(client);
   if (nav.clientId !== client.id) return; // navegou para outro cliente durante o await
 
   const consultations = (client.consultations || []).slice().sort((a, b) => a.date - b.date);
@@ -3023,7 +3032,7 @@ async function renderEvolutionTab() {
 
   container.innerHTML = `
     ${adherenceHTML}
-    ${mealPhotosHTML}
+    <div id="meal-photos-timeline"><div class="spinner"></div></div>
     <div class="evolution-header">
       <div class="evolution-title">Histórico de Evolução</div>
       <div class="evolution-header-actions">
@@ -3046,6 +3055,14 @@ async function renderEvolutionTab() {
   `;
 
   if (hasCharts) renderEvolutionCharts(consultations);
+
+  // Corre à parte, sem bloquear o resto do ecrã acima (já visível). Troca só
+  // o innerHTML do placeholder do spinner quando as fotos estiverem prontas.
+  buildMealPhotosTimelineHTML(client).then(mealPhotosHTML => {
+    if (nav.clientId !== client.id) return; // navegou para outro cliente entretanto
+    const el = document.getElementById('meal-photos-timeline');
+    if (el) el.innerHTML = mealPhotosHTML;
+  });
 }
 
 // Constrói só a lista de cartões de consulta (mais recente primeiro), limitada a

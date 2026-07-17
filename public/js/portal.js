@@ -563,10 +563,18 @@ async function continuePortalDataLoad() {
   portalFotosByDate = {};
   portalFotosLoadedMonths = new Set();
 
-  await loadWaterToday();
-  await loadMealStatusByDay();
-  await loadMealCommentsForToday();
-  await ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth);
+  // Os 4 pedidos são independentes entre si (cada um só escreve o seu próprio
+  // estado — portalWaterToday/portalMealStatusByDay/portalMealCommentsByDate/
+  // portalFotosByDate — nenhum lê o resultado dos outros), por isso correm em
+  // paralelo em vez de um a seguir ao outro. Antes disto, o ecrã ficava com o
+  // nome/separadores já visíveis mas o conteúdo do "Plano de hoje" em branco
+  // durante a soma de 4 pedidos sequenciais.
+  await Promise.all([
+    loadWaterToday(),
+    loadMealStatusByDay(),
+    loadMealCommentsForToday(),
+    ensurePortalFotosMonthLoaded(portalCalYear, portalCalMonth)
+  ]);
 
   showPortalTab('plano');
   maybeShowPortalInstallBanner();

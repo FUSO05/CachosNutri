@@ -12,7 +12,7 @@
   })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CachosNutri — Planeamento alimentar para nutricionistas</title>
+  <title>CachosNutri</title>
   <meta name="description" content="Software de planeamento alimentar profissional para nutricionistas: fichas de paciente, planos semanais, antropometria completa e relatórios, sincronizados e seguros.">
   <meta name="robots" content="index, follow">
   <meta name="google-site-verification" content="fao1taKiXe_EE3nKWAAYkm9xwfD_j-h2AbYuoLGFw2k" />
@@ -29,11 +29,11 @@
   <meta property="og:title" content="CachosNutri — Planeamento alimentar para nutricionistas">
   <meta property="og:description" content="Software de planeamento alimentar profissional para nutricionistas: fichas de paciente, planos semanais, antropometria completa e relatórios, sincronizados e seguros.">
   <meta property="og:url" content="https://cachosnutri.vercel.app/">
-  <meta property="og:image" content="https://cachosnutri.vercel.app/img/icon-pwa-512.jpeg">
+  <meta property="og:image" content="https://cachosnutri.vercel.app/img/icon-pwa-512.webp">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="CachosNutri — Planeamento alimentar para nutricionistas">
   <meta name="twitter:description" content="Software de planeamento alimentar profissional para nutricionistas: fichas de paciente, planos semanais, antropometria completa e relatórios, sincronizados e seguros.">
-  <meta name="twitter:image" content="https://cachosnutri.vercel.app/img/icon-pwa-512.jpeg">
+  <meta name="twitter:image" content="https://cachosnutri.vercel.app/img/icon-pwa-512.webp">
 
   <!-- Dados estruturados — ajuda o Google a perceber que isto é um produto de software -->
   <script type="application/ld+json">
@@ -70,13 +70,20 @@
         <svg class="lp-nav-link-arrow" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
     </div>
-    <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">
-      <span class="lp-nav-cta-text">Entrar</span>
-      <svg class="lp-nav-cta-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-    </button>
-    <button class="lp-nav-toggle" type="button" onclick="toggleMobileNav()" aria-label="Abrir menu">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-    </button>
+    <!-- Agrupados para se manterem sempre juntos: sem este wrapper, quando
+         .lp-nav-links sai do fluxo (position:absolute) em mobile, sobram só
+         3 itens flex diretos em .lp-nav (marca/cta/toggle) e justify-content:
+         space-between empurra o "Entrar" sozinho para o centro em vez de
+         ficar ao pé do menu. -->
+    <div class="lp-nav-mobile-actions">
+      <button class="lp-nav-cta" type="button" onclick="window.location.href='login.html'">
+        <span class="lp-nav-cta-text">Entrar</span>
+        <svg class="lp-nav-cta-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <button class="lp-nav-toggle" type="button" onclick="toggleMobileNav()" aria-label="Abrir menu">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
   </nav>
 
   <header class="lp-hero">
@@ -95,7 +102,7 @@
       </div>
     </div>
     <div class="lp-hero-img">
-      <img src="img/pexels-janetrangdoan-1105166.jpg" alt="Taça de fruta e frutos vermelhos" loading="lazy">
+      <img src="img/pexels-janetrangdoan-1105166.webp" alt="Taça de fruta e frutos vermelhos" loading="lazy">
       <div class="lp-hero-badge">
         <div class="lp-hero-badge-num">1.376</div>
         <div class="lp-hero-badge-label">Alimentos na base TCA-INSA</div>
@@ -183,12 +190,12 @@
         <div class="lp-feature-sub">Acompanhe a evolução dos seus pacientes com gráficos e insights</div>
       </div>
     </div>
-    <img class="lp-features-banner" src="img/pexels-alxs-3025236.jpg" alt="Frutas e vegetais frescos" loading="lazy">
+    <img class="lp-features-banner" src="img/pexels-alxs-3025236.webp" alt="Frutas e vegetais frescos" loading="lazy">
   </section>
 
   <section class="lp-showcase">
     <div class="lp-showcase-img-wrap">
-      <img src="img/pexels-saad-meliani-3671245-5881607.jpg" alt="Vegetais e leguminosas variadas" loading="lazy">
+      <img src="img/pexels-saad-meliani-3671245-5881607.webp" alt="Vegetais e leguminosas variadas" loading="lazy">
       <div class="lp-showcase-overlay">
         <div class="lp-showcase-num">100%</div>
         <div class="lp-showcase-label">Dados sincronizados e seguros</div>
@@ -203,7 +210,7 @@
 
   <section class="lp-showcase lp-showcase--reverse">
     <div class="lp-showcase-img-wrap">
-      <img src="img/pexels-riste-spiroski-2147701595-30108000.jpg" alt="Prato equilibrado com legumes e proteína" loading="lazy">
+      <img src="img/pexels-riste-spiroski-2147701595-30108000.webp" alt="Prato equilibrado com legumes e proteína" loading="lazy">
     </div>
     <div class="lp-showcase-text">
       <span class="lp-eyebrow">Em qualquer lugar</span>
@@ -245,10 +252,10 @@
   </section>
 
   <section class="lp-gallery">
-    <img src="img/pexels-mike-jones-8805091.jpg" alt="Taça de fruta variada" loading="lazy">
-    <img src="img/pexels-dalia-al-refai-235376732-17131199.jpg" alt="Taça em forma de coração com fruta" loading="lazy">
-    <img src="img/pexels-anhelina-vasylyk-734724285-34337569.jpg" alt="Salada grega" loading="lazy">
-    <img src="img/pexels-yaroslav-shuraev-8851930.jpg" alt="Ingredientes frescos numa bancada" loading="lazy">
+    <img src="img/pexels-mike-jones-8805091.webp" alt="Taça de fruta variada" loading="lazy">
+    <img src="img/pexels-dalia-al-refai-235376732-17131199.webp" alt="Taça em forma de coração com fruta" loading="lazy">
+    <img src="img/pexels-anhelina-vasylyk-734724285-34337569.webp" alt="Salada grega" loading="lazy">
+    <img src="img/pexels-yaroslav-shuraev-8851930.webp" alt="Ingredientes frescos numa bancada" loading="lazy">
   </section>
 
   <section class="lp-cta-final">

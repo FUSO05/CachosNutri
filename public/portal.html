@@ -12,7 +12,7 @@
   })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portal do Paciente — CachosNutri</title>
+  <title>CachosNutri - Paciente</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="icon" type="image/png" href="img/fav.ico">
@@ -144,7 +144,63 @@
         </button>
       </div>
 
-      <div id="portal-view-plano"></div>
+      <!-- renderPortalPlano() substitui sempre este innerHTML por completo assim
+           que os dados do dia terminam de carregar — este skeleton é só o estado
+           inicial, nunca precisa de ser escondido à parte. Reaproveita as classes
+           reais (.portal-page-header/.portal-day-nav/.portal-section/.portal-day-totals/
+           .portal-stat/.portal-meal-nav/.portal-meal-card/...) para o espaçamento/
+           tamanho ficar sempre igual ao render real, em qualquer largura de ecrã. -->
+      <div id="portal-view-plano">
+        <div class="portal-page-header">
+          <div class="portal-page-title">Plano de hoje</div>
+          <div class="portal-day-nav">
+            <span class="portal-day-nav-btn" aria-hidden="true">‹</span>
+            <span class="skel skel-day-label"></span>
+            <span class="portal-day-nav-btn" aria-hidden="true">›</span>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-title">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            Resumo nutricional
+          </div>
+          <div class="portal-day-totals">
+            <div class="portal-stat"><div class="skel stat-icon-wrap"></div><div class="skel skel-portal-value"></div><div class="skel skel-portal-label"></div></div>
+            <div class="portal-stat"><div class="skel stat-icon-wrap"></div><div class="skel skel-portal-value"></div><div class="skel skel-portal-label"></div></div>
+            <div class="portal-stat"><div class="skel stat-icon-wrap"></div><div class="skel skel-portal-value"></div><div class="skel skel-portal-label"></div></div>
+            <div class="portal-stat"><div class="skel stat-icon-wrap"></div><div class="skel skel-portal-value"></div><div class="skel skel-portal-label"></div></div>
+          </div>
+        </div>
+
+        <div class="portal-section">
+          <div class="portal-section-title">
+            <svg width="14" height="14" fill="none" stroke="var(--water-fg)" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 8 2 13a10 10 0 0020 0C22 8 17.5 2 12 2z"/></svg>
+            Água diária
+          </div>
+          <div class="skel skel-water-bar"></div>
+        </div>
+
+        <div class="portal-meal-nav">
+          <span class="portal-day-nav-btn" aria-hidden="true">‹</span>
+          <span class="skel skel-meal-nav-label"></span>
+          <span class="portal-day-nav-btn" aria-hidden="true">›</span>
+        </div>
+        <div class="portal-meals">
+          <div class="portal-meal-card">
+            <div class="portal-meal-header">
+              <div class="skel skel-meal-name"></div>
+              <div class="skel skel-meal-time"></div>
+            </div>
+            <div class="portal-food-rows">
+              <div class="skel skel-food-row"></div>
+              <div class="skel skel-food-row"></div>
+              <div class="skel skel-food-row"></div>
+            </div>
+            <div class="skel skel-meal-status"></div>
+          </div>
+        </div>
+      </div>
       <div id="portal-view-evolucao" style="display:none"></div>
       <div id="portal-view-fotos" style="display:none"></div>
     </div>

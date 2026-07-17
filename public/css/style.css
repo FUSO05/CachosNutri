@@ -264,6 +264,7 @@ body {
   transition: opacity .2s ease, transform .2s ease;
 }
 .lp-nav-link--boxed:hover .lp-nav-link-arrow { opacity: 1; transform: translateX(0); }
+.lp-nav-mobile-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .lp-nav-toggle {
   display: none;
   align-items: center;
@@ -803,8 +804,15 @@ body {
 }
 .dash-hero-badge > div { min-width: 0; }
 .dhb-title { font-size: 11px; font-weight: 600; color: var(--gray-700); }
-.dhb-sub   { font-size: 10px; color: var(--gray-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dhb-count { font-size: 11px; font-weight: 600; color: var(--green); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Sem "nowrap+ellipsis" — o badge só tem 50% da largura de .dash-hero-text,
+   que por sua vez encolhe à medida que a imagem fixa ao lado (230px) fica com
+   uma fatia maior da linha; entre ~1025-1280px isso já chegava a cortar
+   "Dados nutricionais confiáveis e atualizados"/"1.376 alimentos" a meio,
+   mesmo ainda em layout desktop (hero em linha, não em coluna). Antes só
+   corrigido para ≤1024px; deixar quebrar linha sempre evita cortar em
+   qualquer largura, não só em mobile. */
+.dhb-sub   { font-size: 10px; color: var(--gray-400); }
+.dhb-count { font-size: 11px; font-weight: 600; color: var(--green); margin-left: auto; }
 
 /* Hero visual */
 .dash-hero-visual {
@@ -1000,6 +1008,82 @@ body {
   border-radius: 20px;
   font-weight: 600;
 }
+
+/* ── SKELETON DO DASHBOARD (só o primeiro carregamento da sessão) ──
+   Reaproveita as classes reais do dashboard para o layout (.dash-header,
+   .dash-stats, .stat-card, .dash-hero, .dash-patients, ...) — estas peças
+   .skel-* só substituem o CONTEÚDO (texto/ícones) por blocos com shimmer,
+   nunca o contentor à volta, para o tamanho/espaçamento ser sempre igual ao
+   render real e não haver "saltos" de layout quando troca para o conteúdo
+   verdadeiro. */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skel {
+  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 37%, var(--gray-100) 63%);
+  background-size: 400px 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+/* .dash-header */
+.skel-greeting { height: 26px; width: 320px; margin-bottom: 8px; }
+.skel-sub      { height: 13px; width: 380px; }
+.skel-date     { height: 30px; width: 190px; border-radius: 8px; }
+/* .dash-stats / .stat-card */
+.skel-stat-icon  { width: 42px; height: 42px; border-radius: 11px; }
+.skel-stat-num   { height: 21px; width: 36px; max-width: 100%; margin-bottom: 4px; }
+.skel-stat-label { height: 11px; width: 70px; max-width: 100%; }
+/* Sem isto, a div de texto (2º filho de .stat-card, sem classe própria — é a
+   mesma estrutura no render real e no skeleton) não encolhe abaixo da largura
+   fixa das barras acima, mesmo com pouco espaço no grid de 2 colunas em
+   mobile — o texto real consegue quebrar linha e encolher, as barras do
+   skeleton não, por isso só o skeleton "saía" do ecrã. Isto sozinho corrige o
+   flex *dentro* do cartão, mas o cartão em si é que é o item do grid
+   .dash-stats — sem min-width:0 também aqui, o grid não deixa o cartão
+   encolher abaixo do seu conteúdo mínimo e a coluna "empurra" para fora do
+   ecrã (mesmo problema, um nível acima). */
+.stat-card > div:last-child { min-width: 0; }
+.dash-stats .stat-card { min-width: 0; }
+/* .dash-hero */
+.skel-hero-title { height: 24px; width: 320px; margin-bottom: 10px; }
+.skel-hero-sub   { height: 12px; width: 100%; margin-bottom: 8px; }
+.skel-hero-btn   { height: 40px; width: 190px; border-radius: 8px; }
+.skel-hero-visual { width: 100%; height: 100%; border-radius: 20px; }
+/* .dash-patients-header */
+.skel-section-title { height: 14px; width: 130px; }
+.skel-search         { height: 34px; width: 180px; border-radius: 8px; }
+/* .clients-list — client-card-skeleton mimica .client-card ao milímetro */
+.client-card-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.skel-circle { width: 40px; height: 40px; border-radius: 50%; }
+.client-card-skeleton .client-card-info { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.skel-line { height: 10px; }
+.skel-line--name { width: 50%; height: 12px; }
+.skel-line--meta { width: 32%; }
+
+/* ── SKELETON DO "PLANO DE HOJE" (portal do paciente) — mesmo princípio: os
+   contentores (.portal-day-nav, .portal-section, .portal-stat, .portal-meal-nav,
+   .portal-meal-card, ...) são os reais, só o conteúdo de texto/ícone é que vira
+   shimmer, por isso já herda todas as regras responsivas existentes destas
+   classes (ver @media 480px / max-height 680px mais abaixo). */
+.skel-day-label      { height: 13px; width: 60px; }
+.skel-portal-value   { height: 15px; width: 30px; margin-top: 2px; }
+.skel-portal-label   { height: 8px;  width: 46px; margin-top: 3px; }
+.skel-water-bar      { height: 78px; border-radius: 10px; }
+.skel-meal-nav-label { height: 13px; width: 100px; }
+.skel-meal-name      { height: 13px; width: 120px; }
+.skel-meal-time      { height: 11px; width: 44px; }
+.skel-food-row       { height: 14px; margin: 4px 0; }
+.skel-meal-status    { height: 34px; margin-top: 10px; border-radius: 8px; }
 .btn-danger-sm {
   width: 28px; height: 28px;
   border: 1px solid var(--gray-200);
@@ -3100,6 +3184,18 @@ body {
   animation: btn-spin .6s linear infinite;
 }
 @keyframes btn-spin { to { transform: rotate(360deg); } }
+
+/* ── Spinner genérico (não preso a um botão) — reaproveita @keyframes btn-spin.
+   Usado em secções que carregam à parte do resto do ecrã (ex: fotos da aba
+   Evolução), para não bloquear o conteúdo já pronto à volta. ── */
+.spinner {
+  width: 22px; height: 22px;
+  border: 2.5px solid var(--gray-200);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: btn-spin .7s linear infinite;
+  margin: 24px auto;
+}
 .action-block-overlay {
   position: fixed;
   inset: 0;
@@ -3256,6 +3352,25 @@ body {
   }
   .lp-nav-links a { width: 100%; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
   .lp-nav-links a:last-child { border-bottom: none; }
+  /* "Área do Paciente" (.lp-nav-link--boxed) tem o seu próprio padding/margin/
+     border em pílula, pensado para o hover em desktop — sem este reset, essas
+     regras (mais específicas) ganhavam à linha acima e ficava com um padding
+     diferente dos outros 2 itens e sem a linha separadora. A seta, que em
+     desktop só aparece no hover, fica sempre visível aqui — não há "hover" a
+     sério no dropdown mobile. */
+  .lp-nav-links a.lp-nav-link--boxed {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px 0;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--gray-100);
+    background-color: transparent;
+  }
+  .lp-nav-links a.lp-nav-link--boxed:last-child { border-bottom: none; }
+  .lp-nav-links .lp-nav-link-arrow { opacity: 1; transform: none; }
   .lp-nav-links--open { max-height: 260px; opacity: 1; }
   .lp-hero { flex-direction: column; padding: 40px 20px 56px; gap: 28px; }
   .lp-hero-text h1 { font-size: 28px; }
@@ -3293,6 +3408,12 @@ body {
   .dash-hero-text { width: 100%; max-width: 100%; }
   .dash-hero-sub { max-width: 100%; }
   .dash-hero-visual { width: 100%; max-width: 200px; height: 200px; margin: 0 auto; }
+  /* Em desktop o badge fica a 50% ao lado da imagem (.dash-hero-visual); aqui
+     o hero já empilhou em coluna e o badge fica sozinho na sua própria linha
+     — manter 50% herdado deixava "Dados nutricionais confiáveis e
+     atualizados"/"1.376 alimentos" cada vez mais cortados (ellipsis) à medida
+     que o ecrã encolhe, mesmo havendo largura de sobra na linha toda. */
+  .dash-hero-badge { width: 100%; }
   .dash-patients-header { flex-direction: column; align-items: stretch; gap: 10px; }
 
   /* ── Client info page ── */

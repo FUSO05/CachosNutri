@@ -160,7 +160,7 @@ Campos incluídos por alimento: energia (kcal/kJ), lípidos, ácidos gordos satu
 
 ## TO DO'S
 
-Skeleton loader.
+Testar mais níveis de segurança sem ser RLS no supabase.
 
 Integrar passos diários com Google Health etc.
 
