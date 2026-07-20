@@ -1323,3 +1323,59 @@ drop policy if exists "utilizador regista o seu próprio uso de IA" on ai_genera
 create policy "utilizador regista o seu próprio uso de IA"
   on ai_generation_usage for insert
   with check (profile_id = auth.uid());
+
+-- ============================================================
+-- 21. Política de estudantes — opção 1 (aviso visível), backlog P0.
+--
+--     21a: o paciente passa a poder ler o "role" (só isso é pedido pelo
+--     frontend, embora a policy — como todas as outras deste ficheiro — dê
+--     acesso à linha toda) do profile do seu próprio nutricionista/estudante
+--     ligado, para o portal conseguir mostrar um aviso quando o plano foi
+--     feito por uma conta de estudante em formação, não por um nutricionista
+--     com cédula. Não existia nenhuma policy de profiles nesta direção
+--     (paciente -> profile de quem o segue) até agora.
+--
+--     21b: admin_get_student_plan_stats() — métrica "% planos por conta de
+--     estudante vs. nutricionista" pedida no critério de pronto, visível no
+--     dashboard de admin. Devolve só contagens agregadas (nunca linhas de
+--     "plans"/"clients" em si — dados clínicos não são para o admin ver,
+--     mesmo agregados por trás de uma function, o objetivo aqui é só a
+--     percentagem, não o conteúdo).
+-- ============================================================
+drop policy if exists "paciente vê o profile do seu nutricionista" on profiles;
+create policy "paciente vê o profile do seu nutricionista"
+  on profiles for select
+  using (
+    exists (
+      select 1 from clients
+      where clients.nutricionista_id = profiles.id
+        and clients.paciente_id = auth.uid()
+    )
+  );
+
+create or replace function admin_get_student_plan_stats()
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total int;
+  v_student int;
+begin
+  if not is_admin() then
+    raise exception 'Não autorizado.';
+  end if;
+
+  select count(*) into v_total from plans;
+  select count(*) into v_student
+    from plans p
+    join clients c on c.id = p.client_id
+    join profiles pr on pr.id = c.nutricionista_id
+    where pr.role = 'estudante';
+
+  return json_build_object('total_plans', v_total, 'student_plans', v_student);
+end;
+$$;
+
+grant execute on function admin_get_student_plan_stats() to authenticated;

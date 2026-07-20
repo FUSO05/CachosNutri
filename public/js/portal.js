@@ -463,10 +463,15 @@ function showPortalApp() {
 
 // ── Data loading ─────────────────────────────────────────────────────────────
 function rowToPortalClient(row) {
+  const nutriProfile = Array.isArray(row.nutri_profile) ? row.nutri_profile[0] : row.nutri_profile;
   return {
     id: row.id,
     nome: row.nome,
     info: row.info || {},
+    // 'estudante' quando o plano é elaborado por uma conta de estudante em formação, não por
+    // um nutricionista com cédula — usado para mostrar o aviso de transparência no portal
+    // (backlog "Política de estudantes — opção 1").
+    nutricionistaRole: nutriProfile?.role || null,
     consultations: (row.consultations || [])
       .slice().sort((a, b) => new Date(a.date) - new Date(b.date))
       .map(rowToPortalConsultation),
@@ -511,9 +516,12 @@ async function loadPortalData() {
   // quando ainda não há nenhum cliente ligado, ver abaixo). Um pedido a menos
   // por carregamento de página importa sobretudo com muitos utilizadores em
   // simultâneo — é isso, não só a perceção de velocidade, que ajuda a escalar.
+  // nutri_profile:profiles!nutricionista_id(role) precisa de alias — sem isso colidia com a
+  // chave "profiles" já usada pelo embed profiles!paciente_id logo a seguir (duas colunas
+  // embutidas da mesma tabela ficam com o mesmo nome de chave por omissão no PostgREST).
   const { data: rows, error } = await sb
     .from('clients')
-    .select('id, nome, info, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*), profiles!paciente_id(nome, email, photo_url, data_nascimento, sexo, telefone)')
+    .select('id, nome, info, plans(id, nome, macro_targets, water_ml, days, created_at), consultations(*), profiles!paciente_id(nome, email, photo_url, data_nascimento, sexo, telefone), nutri_profile:profiles!nutricionista_id(role)')
     .eq('paciente_id', portalUser.id);
 
   portalClients = error ? [] : (rows || []).map(rowToPortalClient);
@@ -877,6 +885,16 @@ function renderPortalPlano() {
       </div>
     </div>`;
 
+  // Aviso de transparência (backlog "Política de estudantes — opção 1"): o plano foi
+  // elaborado por uma conta de estudante de nutrição em formação, não por um nutricionista
+  // com cédula profissional. Não é dispensável (sem botão de fechar) — é uma informação a
+  // manter sempre visível, não um aviso pontual.
+  const studentNoticeHTML = portalClient.nutricionistaRole === 'estudante' ? `
+    <div class="portal-student-notice">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Este plano foi elaborado por um estudante de nutrição em formação, não por um nutricionista com cédula profissional.</span>
+    </div>` : '';
+
   el.innerHTML = `
     <div class="portal-page-header">
       <div class="portal-page-title">Plano de hoje</div>
@@ -886,6 +904,8 @@ function renderPortalPlano() {
         <button class="portal-day-nav-btn" onclick="changePortalDay(1)" type="button" aria-label="Dia seguinte">›</button>
       </div>
     </div>
+
+    ${studentNoticeHTML}
 
     <div class="portal-section">
       <div class="portal-section-title">

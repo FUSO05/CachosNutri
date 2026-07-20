@@ -39,16 +39,23 @@ Nota de capacidade: sendo só tu a trabalhar nisto, os dois P0 mais pesados (Aud
 
 ---
 
-### [ ] Política de estudantes — opção 1 (aviso visível), assumida temporariamente
+### [x] Política de estudantes — opção 1 (aviso visível), assumida temporariamente
 - **Estimativa:** 2-3 dias
 - **Onde:** Portal do paciente, PDF exportado, Termos de Serviço
 - **Dependências:** texto legal atualizado
 - **Critério de pronto:**
-  - [ ] Aviso visível ao paciente implementado no portal
-  - [ ] Aviso visível incluído no PDF exportado do plano
-  - [ ] Métrica "% planos publicados por conta de estudante vs. nutricionista" a ser registada
-  - [ ] Métrica visível no dashboard de admin
+  - [x] Aviso visível ao paciente implementado no portal
+  - [x] Aviso visível incluído no PDF exportado do plano
+  - [x] Métrica "% planos publicados por conta de estudante vs. nutricionista" a ser registada
+  - [x] Métrica visível no dashboard de admin
 - **Ponto de reavaliação:** 2-3 meses após lançamento, ou quando houver volume suficiente para a métrica ser significativa. Se os dados justificarem, subir para opção 2 (revisão por nutricionista supervisor).
+- **Notas:**
+  - **20 jul 2026** — Implementado:
+    - Portal (`portal.js`): banner não-dispensável no topo de "Plano de hoje" quando `clients.nutricionista_id` aponta para uma conta `role='estudante'` — nova RLS ("paciente vê o profile do seu nutricionista", schema.sql secção 21) e um segundo embed (`nutri_profile:profiles!nutricionista_id(role)`) na mesma query que já ia buscar os dados do paciente, sem pedido extra.
+    - PDF (`app.js` `generatePdf()`): mesmo aviso, condicional a `appProfile.role === 'estudante'` (agora populado em `initApp()` a partir do profile já lido para o gate de verificação) — necessário porque o paciente pode imprimir/guardar o PDF e nunca mais abrir o portal.
+    - Métrica: nova RPC `admin_get_student_plan_stats()` (security definer, só admin) devolve só contagens agregadas (`total_plans`/`student_plans`) — nunca linhas de `plans`/`clients` a título individual, para não expor dados clínicos ao admin nem agregados por trás. Cartão novo no topo do `admin.html` com a percentagem.
+    - Termos de Serviço: novo parágrafo na secção 1 (quem pode usar) a explicar o estatuto de estudante e que os planos ficam identificados; secção 2 ajustada para refletir que a responsabilidade clínica é de quem elabora o plano, não só do "nutricionista".
+  - **Falta antes de considerar isto em produção**: correr a secção 21 nova do `schema.sql` no SQL Editor (idempotente, só acrescenta — o resto do ficheiro já está deployado).
 - **Notas:**
 
 ---

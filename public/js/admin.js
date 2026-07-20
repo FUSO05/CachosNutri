@@ -68,6 +68,30 @@ function showAdminShell() {
   document.getElementById('pg-admin-auth').style.display = 'none';
   document.getElementById('pg-admin-shell').style.display = '';
   loadAdminProfiles();
+  loadStudentPlanStats();
+}
+
+// Backlog "Política de estudantes — opção 1": % de planos criados por contas de estudante vs.
+// nutricionista, para decidir dentro de 2-3 meses se vale a pena subir para revisão por
+// supervisor. Só contagens agregadas — a RPC nunca devolve linhas de "plans"/"clients" (dados
+// clínicos), só os totais (ver admin_get_student_plan_stats, schema.sql secção 21).
+async function loadStudentPlanStats() {
+  const el = document.getElementById('admin-student-stats');
+  if (!el) return;
+  const { data, error } = await sb.rpc('admin_get_student_plan_stats');
+  if (error || !data) {
+    console.error('Erro ao carregar estatística de planos por estudante:', error);
+    el.innerHTML = '';
+    return;
+  }
+  const total = data.total_plans || 0;
+  const student = data.student_plans || 0;
+  const pct = total ? Math.round((student / total) * 100) : 0;
+  el.innerHTML = `
+    <div class="admin-stats-label">Planos criados por contas de estudante</div>
+    <div class="admin-stats-value">${pct}%</div>
+    <div class="admin-stats-sub">${student} de ${total} planos no total</div>
+  `;
 }
 
 function setAdminFilter(status) {

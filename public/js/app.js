@@ -109,7 +109,7 @@ const PLAN_TEMPLATES = {
 };
 
 let appData    = { version: 1, clients: [] };
-let appProfile = { name: '', nascimento: '', sex: '', email: '', photo: '', cedula: '' };
+let appProfile = { name: '', nascimento: '', sex: '', email: '', photo: '', cedula: '', role: '' };
 let nav        = { view: 'welcome', clientId: null, planId: null };
 let state      = { activeDay: 0, days: [] };
 let draftClient = null;
@@ -574,6 +574,10 @@ async function initApp() {
   }
 
   loadProfile();
+  // Usado para o aviso de transparência no PDF exportado quando quem gerou o plano é uma
+  // conta de estudante (backlog "Política de estudantes — opção 1") — já temos verifProf.role
+  // aqui, sem precisar de outro pedido a fetchProfileFromSupabase() só para isto.
+  appProfile.role = verifProf.role;
   updateSidebarUser();
 
   const pendingImport = sessionStorage.getItem('cachos_pending_import');
@@ -3504,6 +3508,12 @@ function generatePdf() {
   const nutriSubLine = appProfile.cedula
     ? `${nutriName} · Cédula nº ${escHtml(appProfile.cedula)}`
     : nutriName;
+  // Backlog "Política de estudantes — opção 1": mesmo aviso de transparência do portal,
+  // também no PDF — o paciente pode imprimir/guardar o PDF e nunca mais voltar a abrir o
+  // portal, por isso o aviso não pode existir só lá.
+  const studentNoticeHTML = appProfile.role === 'estudante'
+    ? `<div class="pdf-student-notice">Este plano foi elaborado por um estudante de nutrição em formação, não por um nutricionista com cédula profissional.</div>`
+    : '';
 
   document.getElementById('pdf-output').innerHTML = `
     ${pageStyle}
@@ -3521,6 +3531,7 @@ function generatePdf() {
           <div class="pdf-patient-name">${patientName}</div>
         </div>
       </div>
+      ${studentNoticeHTML}
       <div class="pdf-divider"></div>
       ${bodyHTML}
     </div>`;
