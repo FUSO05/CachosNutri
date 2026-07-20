@@ -51,6 +51,74 @@ const MODEL_ID = 'claude-haiku-4-5-20251001';
 const ANTHROPIC_VERSION = '2023-06-01';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Limite por PACIENTE, não por conta — um nutricionista com muitos pacientes deve conseguir
+// gerar para cada um deles, o que um limite só por conta não permitiria a partir de um certo
+// nº de pacientes. Pedido explícito do utilizador (substitui a primeira versão, que era por
+// conta): 3/dia e 10/mês por paciente.
+//
+// Dois níveis, não um só — descoberto em uso real: uma geração pode gastar tokens reais na
+// Anthropic e ainda assim falhar na validação desta function (ex.: "alimento inexistente",
+// ver validatePlan) — o nutricionista tem de clicar "tentar novamente", o que sem isto gastava
+// uma das 3 tentativas do dia sem nunca lhe dar um plano usável. Por isso:
+//   - PLANS_* conta só gerações que terminaram em sucesso (error_message is null) — é este que
+//     reflete "planos que o nutricionista conseguiu mesmo obter", e o que os nºs 3/10 do
+//     pedido original querem dizer.
+//   - ATTEMPTS_* conta TODAS as chamadas à Anthropic (sucesso + falha) — continua a ser preciso
+//     um teto aqui, senão uma patologia/alergia mal reconhecida podia gerar erro atrás de erro
+//     indefinidamente sem nunca bater no limite de sucesso, e cada uma dessas tentativas
+//     continua a custar dinheiro real. Margem de 2x sobre o limite de sucesso, ajustável.
+const DAILY_PLANS_LIMIT_PER_PATIENT = 3;
+const MONTHLY_PLANS_LIMIT_PER_PATIENT = 10;
+const DAILY_ATTEMPTS_LIMIT_PER_PATIENT = DAILY_PLANS_LIMIT_PER_PATIENT * 2;
+const MONTHLY_ATTEMPTS_LIMIT_PER_PATIENT = MONTHLY_PLANS_LIMIT_PER_PATIENT * 2;
+
+// Devolve uma mensagem de erro (para mostrar ao utilizador) se algum limite foi atingido, ou
+// null se pode prosseguir. Corre antes de qualquer chamada à Anthropic — abuso não deve custar
+// nada. Filtra por client_id (não por profile_id): a RLS de "clients" já garante, antes deste
+// ponto do pedido, que este client_id pertence mesmo ao nutricionista que está a chamar — não
+// é preciso repetir essa verificação aqui.
+async function checkRateLimit(supabase: ReturnType<typeof createClient>, clientId: string): Promise<string | null> {
+  const now = new Date();
+  const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+
+  const countSince = async (since: string, onlySuccessful: boolean) => {
+    let query = supabase
+      .from('ai_generation_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+      .gte('created_at', since);
+    if (onlySuccessful) query = query.is('error_message', null);
+    return query;
+  };
+
+  const { count: dailyPlans, error: dailyPlansErr } = await countSince(startOfDay, true);
+  if (dailyPlansErr) { console.error('Erro ao verificar limite diário de IA:', dailyPlansErr); return null; } // erro transitório não deve bloquear geração legítima
+  if ((dailyPlans ?? 0) >= DAILY_PLANS_LIMIT_PER_PATIENT) {
+    return `Atingiu o limite diário de ${DAILY_PLANS_LIMIT_PER_PATIENT} planos gerados com IA para este paciente. Pode voltar a gerar amanhã.`;
+  }
+
+  const { count: dailyAttempts, error: dailyAttemptsErr } = await countSince(startOfDay, false);
+  if (dailyAttemptsErr) { console.error('Erro ao verificar limite diário de tentativas de IA:', dailyAttemptsErr); return null; }
+  if ((dailyAttempts ?? 0) >= DAILY_ATTEMPTS_LIMIT_PER_PATIENT) {
+    return 'Atingiu o limite diário de tentativas de geração com IA para este paciente (demasiados erros seguidos). Reveja os dados do paciente ou tente novamente amanhã.';
+  }
+
+  const { count: monthlyPlans, error: monthlyPlansErr } = await countSince(startOfMonth, true);
+  if (monthlyPlansErr) { console.error('Erro ao verificar limite mensal de IA:', monthlyPlansErr); return null; }
+  if ((monthlyPlans ?? 0) >= MONTHLY_PLANS_LIMIT_PER_PATIENT) {
+    return `Atingiu o limite mensal de ${MONTHLY_PLANS_LIMIT_PER_PATIENT} planos gerados com IA para este paciente.`;
+  }
+
+  const { count: monthlyAttempts, error: monthlyAttemptsErr } = await countSince(startOfMonth, false);
+  if (monthlyAttemptsErr) { console.error('Erro ao verificar limite mensal de tentativas de IA:', monthlyAttemptsErr); return null; }
+  if ((monthlyAttempts ?? 0) >= MONTHLY_ATTEMPTS_LIMIT_PER_PATIENT) {
+    return 'Atingiu o limite mensal de tentativas de geração com IA para este paciente (demasiados erros seguidos).';
+  }
+
+  return null;
+}
+
 // Produção + qualquer localhost:<porta> (servidor local de desenvolvimento) — nunca um site
 // de terceiros consegue forjar o Authorization real de uma sessão só por declarar este Origin.
 const PROD_ORIGIN = 'https://cachosnutri.vercel.app';
@@ -373,11 +441,17 @@ function buildSystemPrompt(allowedFoods: TcaFood[], patologias: Patologia[], mac
         'objetivo, patologias ou notas do paciente pedirem uma dieta pobre em sal/sódio (não há ' +
         'filtro automático nestes casos vindos só de texto livre — a escolha é tua):\n' +
         foodsToTable(allowedFoods),
-      // Sem cache_control de propósito: ao ritmo de uso real (gerações pouco frequentes,
-      // raramente dentro da mesma janela de 1h), pagar sempre o preço de escrita de cache
-      // (2x o preço base) sem quase nunca beneficiar da leitura barata sai mais caro do que
-      // simplesmente pagar o preço base todas as vezes. Reconsiderar se o uso aumentar muito
-      // (várias gerações seguidas na mesma hora).
+      // Sem cache_control de propósito. Já foi tentado 2 vezes e revertido as duas: a
+      // primeira vez (raciocínio teórico, antes de medir) concluiu que, ao ritmo de uso
+      // esperado, o preço de escrita de cache (2x o preço base) raramente seria compensado
+      // por uma leitura barata a seguir. A segunda vez foi mesmo posta em produção
+      // (cache_control só no bloco da tabela filtrada, depois de separar as instruções 100%
+      // estáticas para um bloco à parte) e o custo real por plano SUBIU de ~6 para ~10
+      // cêntimos — confirma o raciocínio teórico com um número real, não é só suposição.
+      // Não tentar de novo sem antes teres uma leitura de uso real (ai_generation_usage,
+      // schema.sql secção 20) que mostre chamadas repetidas ao mesmo paciente dentro da
+      // janela de cache (5 min) — sem isso, cada geração paga sempre o preço de escrita e
+      // quase nunca chega a ler em cache.
     },
     ...(patologiasBlock ? [{ type: 'text', text: patologiasBlock }] : []),
     ...(macroBlock ? [{ type: 'text', text: macroBlock }] : []),
@@ -611,10 +685,41 @@ function validatePlan(
   return { days, warnings };
 }
 
+// Regista tokens consumidos por geração (schema.sql secção 20) — é o que permite medir se o
+// prompt caching está mesmo a compensar (cache_read_input_tokens alto = a repetir prefixo em
+// cache; cache_creation_input_tokens sem leituras a seguir = a pagar o extra sem proveito).
+// Nunca bloqueia a resposta ao utilizador: se a escrita falhar, só fica registado nos logs —
+// a geração já aconteceu e já foi faturada pela Anthropic de qualquer forma, não faz sentido
+// devolver erro ao nutricionista por causa disto.
+async function logUsage(supabase: ReturnType<typeof createClient>, usage: AnthropicUsage, clientId: string, errorMessage: string | null) {
+  try {
+    const { error } = await supabase.from('ai_generation_usage').insert({
+      client_id: clientId,
+      input_tokens: usage.input_tokens ?? null,
+      output_tokens: usage.output_tokens ?? null,
+      cache_creation_input_tokens: usage.cache_creation_input_tokens ?? null,
+      cache_read_input_tokens: usage.cache_read_input_tokens ?? null,
+      error_message: errorMessage,
+    });
+    if (error) console.error('Erro ao registar uso de IA:', error);
+  } catch (e) {
+    console.error('Erro inesperado ao registar uso de IA:', e);
+  }
+}
+
+type AnthropicUsage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+};
+
 // ── Chamada à Anthropic (stream manual, sem SDK — ver plano) ────────────────
 async function streamGeneration(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
+  supabase: ReturnType<typeof createClient>,
+  clientId: string,
   info: Record<string, unknown>,
   macroTargets: MacroTargets | null
 ) {
@@ -666,6 +771,10 @@ async function streamGeneration(
   let buf = '';
   let toolJson = '';
   let sawToolUse = false;
+  // input_tokens/cache_*_tokens só vêm em message_start; output_tokens só fica definitivo no
+  // último message_delta (o de message_start é sempre 0 nesse momento) — por isso guarda-se
+  // aqui à parte em vez de ler só um evento.
+  const usage: AnthropicUsage = {};
 
   while (true) {
     const { done, value } = await reader.read();
@@ -683,7 +792,16 @@ async function streamGeneration(
       } catch {
         continue;
       }
-      if (evt.type === 'content_block_delta') {
+      if (evt.type === 'message_start') {
+        const u = evt.message?.usage;
+        if (u) {
+          usage.input_tokens = u.input_tokens;
+          usage.cache_creation_input_tokens = u.cache_creation_input_tokens;
+          usage.cache_read_input_tokens = u.cache_read_input_tokens;
+        }
+      } else if (evt.type === 'message_delta') {
+        if (typeof evt.usage?.output_tokens === 'number') usage.output_tokens = evt.usage.output_tokens;
+      } else if (evt.type === 'content_block_delta') {
         if (evt.delta?.type === 'text_delta' && evt.delta.text) {
           send({ type: 'reasoning_delta', text: evt.delta.text });
         } else if (evt.delta?.type === 'input_json_delta' && evt.delta.partial_json) {
@@ -694,8 +812,24 @@ async function streamGeneration(
     }
   }
 
+  // Regista-se sempre no fim, com o resultado final (sucesso ou o motivo exato da falha) — não
+  // logo aqui, ao contrário de uma versão anterior desta function: os tokens já foram
+  // consumidos/faturados pela Anthropic independentemente do que acontece a seguir (falha de
+  // parsing, alimento inexistente, etc.), mas o limite diário/mensal (checkRateLimit) só deve
+  // contar como "plano usado" as gerações que resultam mesmo num plano — uma falha de
+  // validação (ex.: "alimento inexistente") gastou dinheiro real mas não deu ao nutricionista
+  // nada aproveitável, e obrigá-lo a "tentar novamente" já é o preço que paga; não devia além
+  // disso ficar com menos planos de sobra no dia. logUsage grava sempre (para observabilidade
+  // de custo total), errorMessage é que distingue "plano usado" de "tentativa falhada" para
+  // efeitos do limite — ver checkRateLimit().
+  const logAndSend = async (errorMessage: string | null, resultPayload?: unknown) => {
+    if (usage.input_tokens != null) await logUsage(supabase, usage, clientId, errorMessage);
+    if (errorMessage) send({ type: 'error', message: errorMessage });
+    else if (resultPayload) send(resultPayload);
+  };
+
   if (!sawToolUse) {
-    send({ type: 'error', message: 'O modelo não conseguiu gerar um plano estruturado. Tenta novamente.' });
+    await logAndSend('O modelo não conseguiu gerar um plano estruturado. Tenta novamente.');
     return;
   }
 
@@ -705,7 +839,7 @@ async function streamGeneration(
   try {
     parsed = JSON.parse(toolJson);
   } catch {
-    send({ type: 'error', message: 'Resposta do modelo em formato inválido. Tenta gerar novamente.' });
+    await logAndSend('Resposta do modelo em formato inválido. Tenta gerar novamente.');
     return;
   }
 
@@ -714,11 +848,11 @@ async function streamGeneration(
   const allowedIds = new Set(allowedFoods.map((f) => f.id));
   const result = validatePlan(parsed?.days, info.pAlergias, parsed?.avisos_ia, allowedIds);
   if ('error' in result) {
-    send({ type: 'error', message: result.error });
+    await logAndSend(result.error);
     return;
   }
 
-  send({ type: 'result', days: result.days, warnings: result.warnings });
+  await logAndSend(null, { type: 'result', days: result.days, warnings: result.warnings });
 }
 
 Deno.serve(async (req: Request) => {
@@ -739,6 +873,11 @@ Deno.serve(async (req: Request) => {
   if (!UUID_RE.test(clientId) || (planId !== undefined && !UUID_RE.test(planId))) {
     return corsJson(req, { type: 'error', message: 'Pedido inválido.' }, 400);
   }
+  // const (não a "let clientId" original) para o tipo ficar garantidamente "string", não
+  // "string | undefined" — a verificação acima já confirma isso, mas o TypeScript não
+  // consegue confiar nesse estreitamento dentro do closure de stream.start() mais abaixo
+  // sem esta cópia const.
+  const validClientId: string = clientId;
 
   // Mesmo padrão do send-invite-email: reencaminha o Authorization de quem chama, a RLS
   // garante que só devolve o cliente se pertencer mesmo a este nutricionista.
@@ -747,6 +886,17 @@ Deno.serve(async (req: Request) => {
     Deno.env.get('SUPABASE_ANON_KEY')!,
     { global: { headers: { Authorization: authHeader } } }
   );
+
+  // Limite diário/mensal por PACIENTE (schema.sql secção 20) — verificado ANTES de gastar
+  // qualquer chamada à Anthropic, para o caso de abuso nem chegar a custar nada. Corre antes
+  // de confirmar que este clientId pertence mesmo a este nutricionista (isso só acontece a
+  // seguir, na leitura de "clients") — inofensivo mesmo assim: a RLS de ai_generation_usage
+  // só deixa ver linhas com profile_id = auth.uid(), por isso um clientId alheio devolve
+  // sempre contagem 0 aqui, e a geração é bloqueada de qualquer forma pela leitura de
+  // "clients" a seguir. Ajusta as constantes consoante o custo real observado (a tabela
+  // guarda os tokens de cada geração para isso).
+  const rateLimitError = await checkRateLimit(supabase, validClientId);
+  if (rateLimitError) return corsJson(req, { type: 'error', message: rateLimitError }, 429);
 
   const { data: client, error: clientError } = await supabase
     .from('clients')
@@ -784,7 +934,7 @@ Deno.serve(async (req: Request) => {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        await streamGeneration(controller, encoder, info, macroTargets);
+        await streamGeneration(controller, encoder, supabase, validClientId, info, macroTargets);
       } catch (e) {
         // O erro real (e) fica só nos logs da função — pode ser uma exceção
         // interna em inglês, não algo para mostrar tal e qual ao utilizador.

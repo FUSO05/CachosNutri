@@ -1265,3 +1265,61 @@ begin
 end;
 $$;
 grant execute on function convert_estudante_to_nutricionista(text, text, text) to authenticated;
+
+-- ============================================================
+-- 20. ai_generation_usage — limite de uso da IA por PACIENTE + observabilidade
+--     de custo (backlog P0 "Limite de uso da IA por conta + prompt caching" —
+--     pedido explícito do utilizador para ser por paciente, não por conta, já
+--     que um nutricionista com muitos pacientes precisa de conseguir gerar
+--     para cada um deles). Uma linha por chamada real à Anthropic feita pela
+--     Edge Function generate-meal-plan (só depois de a Anthropic responder com
+--     tokens consumidos — nunca antes de gastar, nunca para pedidos que nem
+--     chegaram a ser aceites pelo limite). profile_id usa DEFAULT auth.uid()
+--     em vez de vir explícito no insert — a Edge Function já corre com o
+--     Authorization de quem chama, por isso não precisa de um pedido extra só
+--     para saber quem é antes de gravar. client_id vem explícito (é o
+--     paciente para quem a geração foi pedida, já confirmado por RLS de
+--     "clients" como pertencente a este nutricionista antes deste ponto).
+-- ============================================================
+create table if not exists ai_generation_usage (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null default auth.uid() references profiles(id) on delete cascade,
+  client_id uuid references clients(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  input_tokens integer,
+  output_tokens integer,
+  cache_creation_input_tokens integer,
+  cache_read_input_tokens integer
+);
+
+-- Acrescentada depois de a tabela já ter sido criada em produção (por isso "alter... add
+-- column", não editada dentro do "create table" acima — isso seria um no-op numa tabela já
+-- existente). null = geração terminou em sucesso (deu um plano usável); texto = motivo exato
+-- da falha (ex.: "O modelo incluiu um alimento inexistente..."). É o que permite a
+-- checkRateLimit() distinguir "planos realmente obtidos" (o que os limites de 3/dia e 10/mês
+-- querem dizer) de "tentativas" (sucesso + falha, com um teto mais alto à parte) — sem isto,
+-- uma geração que gastou tokens reais mas falhou na validação (alimento inexistente, etc.)
+-- consumia uma das 3 tentativas do dia sem nunca dar ao nutricionista um plano.
+alter table ai_generation_usage add column if not exists error_message text;
+
+alter table ai_generation_usage enable row level security;
+
+create index if not exists ai_generation_usage_profile_created_idx
+  on ai_generation_usage(profile_id, created_at);
+create index if not exists ai_generation_usage_client_created_idx
+  on ai_generation_usage(client_id, created_at);
+
+-- Sem policy de update/delete de propósito — este registo tem de ser
+-- imutável, senão o próprio utilizador conseguiria apagar as suas linhas
+-- mais antigas para "resetar" o contador do limite diário/mensal (a
+-- verificação de limite em checkRateLimit() conta linhas diretamente desta
+-- tabela). Só select/insert das suas próprias linhas.
+drop policy if exists "utilizador vê o seu próprio uso de IA" on ai_generation_usage;
+create policy "utilizador vê o seu próprio uso de IA"
+  on ai_generation_usage for select
+  using (profile_id = auth.uid());
+
+drop policy if exists "utilizador regista o seu próprio uso de IA" on ai_generation_usage;
+create policy "utilizador regista o seu próprio uso de IA"
+  on ai_generation_usage for insert
+  with check (profile_id = auth.uid());
