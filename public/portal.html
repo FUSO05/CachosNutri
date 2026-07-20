@@ -45,7 +45,7 @@
 
       <div class="auth-tabs">
         <button class="auth-tab active" id="portal-tab-login" onclick="switchPortalAuthTab('login')" type="button">Entrar</button>
-        <button class="auth-tab" id="portal-tab-signup" onclick="switchPortalAuthTab('signup')" type="button">Criar conta</button>
+        <button class="auth-tab" id="portal-tab-signup" onclick="switchPortalAuthTab('signup')" type="button">Registar</button>
       </div>
 
       <form class="auth-form" id="portal-form-login" onsubmit="event.preventDefault(); handlePortalLogin();">
@@ -62,7 +62,7 @@
         <div class="form-field"><label class="field-label">Password</label><input class="field-input" type="password" id="portal-signup-password" placeholder="Mínimo 8 caracteres" autocomplete="new-password" minlength="8" required></div>
         <div class="form-field"><label class="field-label">Código de convite</label><input class="field-input" type="text" id="portal-signup-code" style="text-transform:uppercase" required></div>
         <div class="auth-error" id="portal-signup-error"></div>
-        <button class="btn-primary auth-submit" type="submit" id="portal-signup-btn">Criar conta</button>
+        <button class="btn-primary auth-submit" type="submit" id="portal-signup-btn">Registar</button>
       </form>
     </div>
   </div>

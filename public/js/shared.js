@@ -113,6 +113,11 @@ function localDateStr(offsetDays = 0) {
 // ── Modal de aviso/erro — substitui alert() nativo e erros que antes só iam
 // para a consola. Cada página que o usa tem de incluir o markup #alertModal
 // (ver app.html/portal.html). opts.type: 'error' (omissão) ou 'info'.
+// opts.onClose (opcional): callback chamado quando o utilizador fecha o modal
+// (botão Ok ou X) — usado quando é preciso continuar um fluxo só depois de o
+// utilizador confirmar que leu o aviso (ex: navegar só depois do "Ok").
+let _alertModalOnClose = null;
+
 function showAlertModal(message, opts) {
   opts = opts || {};
   const overlay = document.getElementById('alertModal');
@@ -121,12 +126,16 @@ function showAlertModal(message, opts) {
   document.getElementById('alert-title').textContent = opts.title || (isInfo ? 'Aviso' : 'Ocorreu um erro');
   document.getElementById('alert-message').textContent = message;
   document.getElementById('alert-icon-wrap').className = 'alert-icon-wrap' + (isInfo ? ' alert-icon-wrap--info' : '');
+  _alertModalOnClose = opts.onClose || null;
   overlay.style.display = '';
 }
 
 function closeAlertModal() {
   const overlay = document.getElementById('alertModal');
   if (overlay) overlay.style.display = 'none';
+  const cb = _alertModalOnClose;
+  _alertModalOnClose = null;
+  if (cb) cb();
 }
 
 // ── Modal de confirmação — usado para ações destrutivas/irreversíveis (apagar,

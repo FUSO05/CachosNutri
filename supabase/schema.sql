@@ -727,3 +727,541 @@ end;
 $$;
 
 grant execute on function accept_invite(text) to authenticated;
+
+-- ============================================================
+-- 17. profiles — verificação profissional do nutricionista + admin (Fase 5)
+--
+--     Duas frentes, aditivas:
+--     a) Novo estado de conta: status ('pending_verification' | 'approved' |
+--        'rejected'). Contas de nutricionista já existentes ficam 'approved'
+--        automaticamente — o próprio DEFAULT do ALTER TABLE preenche as linhas
+--        já existentes, não é preciso nenhum UPDATE em separado. Contas de
+--        paciente também recebem 'approved' (o campo não tem significado
+--        para elas, mas mantém-se NOT NULL em toda a tabela por simplicidade).
+--     b) Novo role 'admin' — só criado manualmente via SQL Editor (ver
+--        README), nunca por signup. is_admin() e a policy de leitura em
+--        profiles asseguram que só quem tem essa linha consegue rever
+--        pedidos de verificação de outros utilizadores.
+--
+--     cedula (secção 8) é reaproveitada como o nº de cédula profissional
+--     capturado no registo — não se cria um campo novo para o mesmo conceito.
+--     pais_atuacao/corpo_profissional são novos porque não existia nada
+--     equivalente. documentos_verificacao guarda só os 2 caminhos mais
+--     recentes no Storage (não há histórico de submissões antigas — uma
+--     resubmissão substitui a anterior, tal como já acontece com
+--     progress_photos).
+-- ============================================================
+
+-- 17a. role — adiciona 'admin' à constraint existente. Nome da constraint é o
+--      default do Postgres para um "check" inline sem nome; se este DROP não
+--      apanhar nada, confirma o nome real com:
+--        select conname from pg_constraint where conrelid = 'profiles'::regclass and contype = 'c';
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check
+  check (role in ('nutricionista', 'paciente', 'admin'));
+
+-- 17b. Novas colunas. status com DEFAULT 'approved' faz o backfill de todas as
+--      linhas existentes (nutricionistas reais em produção não ficam bloqueados).
+alter table profiles add column if not exists status text not null default 'approved'
+  check (status in ('pending_verification', 'approved', 'rejected'));
+alter table profiles add column if not exists motivo_rejeicao text;
+alter table profiles add column if not exists pais_atuacao text check (pais_atuacao in ('PT', 'BR'));
+alter table profiles add column if not exists corpo_profissional text check (corpo_profissional in ('ON', 'CRN'));
+alter table profiles add column if not exists documentos_verificacao jsonb not null default '{}';
+
+create index if not exists profiles_status_idx on profiles(status) where role = 'nutricionista';
+
+-- 17c. handle_new_user — substitui a versão da secção 1. Nutricionistas novos
+--      nascem 'pending_verification'; pacientes continuam 'approved' (nunca
+--      precisaram de verificação). País/cédula/corpo profissional vêm do
+--      próprio signUp() (options.data), tal como role/nome já vinham.
+create or replace function handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, role, nome, email, status, cedula, pais_atuacao, corpo_profissional)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'role', 'nutricionista'),
+    new.raw_user_meta_data->>'nome',
+    new.email,
+    case when coalesce(new.raw_user_meta_data->>'role', 'nutricionista') = 'nutricionista'
+      then 'pending_verification' else 'approved' end,
+    new.raw_user_meta_data->>'cedula',
+    new.raw_user_meta_data->>'pais_atuacao',
+    new.raw_user_meta_data->>'corpo_profissional'
+  );
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- 17d. is_admin() — helper reutilizado pela policy de leitura em profiles, pela
+--      RPC de aprovação/rejeição e pela policy do bucket de documentos.
+--      security definer: corre com privilégio elevado só para esta verificação
+--      pontual (evita qualquer risco de recursão da RLS de profiles sobre si
+--      própria ao ser chamada a partir de uma policy de profiles).
+--      Tem de ser "language plpgsql", não "language sql" — uma function SQL
+--      simples de uma única instrução pode ser inlined pelo planner mesmo
+--      sendo security definer, o que troca a chamada por uma referência
+--      literal a "profiles" dentro da própria policy de profiles e dispara
+--      "infinite recursion detected in policy for relation profiles"
+--      (42P17) em qualquer select à tabela. plpgsql nunca é inlined.
+create or replace function is_admin()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_is_admin boolean;
+begin
+  select exists(select 1 from profiles where id = auth.uid() and role = 'admin') into v_is_admin;
+  return v_is_admin;
+end;
+$$;
+
+grant execute on function is_admin() to authenticated;
+
+-- 17e. Bloqueio de auto-promoção — sem isto, a policy de auto-edição de perfil
+--      ("id = auth.uid()", secção 1, sem restrição de colunas) permite hoje a
+--      QUALQUER utilizador autenticado fazer
+--      supabase.from('profiles').update({ role: 'admin', status: 'approved' })
+--      sobre a sua própria linha. Isto já era verdade antes desta funcionalidade
+--      (role nutricionista/paciente), mas passa a ser crítico agora que existe
+--      um terceiro role privilegiado e um status que decide acesso à app.
+--      A única transição que o próprio utilizador pode fazer a si mesmo é
+--      "rejected" -> "pending_verification" (reenviar documentos depois de
+--      uma rejeição), sempre a limpar motivo_rejeicao ao mesmo tempo.
+create or replace function prevent_self_privilege_escalation()
+returns trigger
+language plpgsql
+as $$
+begin
+  if auth.uid() is not null and NEW.id = auth.uid() then
+    if NEW.role is distinct from OLD.role then
+      raise exception 'Não pode alterar a sua própria função de acesso.';
+    end if;
+    if NEW.status is distinct from OLD.status then
+      if not (OLD.status = 'rejected' and NEW.status = 'pending_verification') then
+        raise exception 'Não pode alterar o estado da sua própria verificação.';
+      end if;
+      if NEW.motivo_rejeicao is not null then
+        raise exception 'O motivo de rejeição tem de ficar vazio ao reenviar.';
+      end if;
+    elsif NEW.motivo_rejeicao is distinct from OLD.motivo_rejeicao then
+      raise exception 'Não pode alterar o motivo de rejeição do seu próprio perfil.';
+    end if;
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists profiles_prevent_self_privilege_escalation on profiles;
+create trigger profiles_prevent_self_privilege_escalation
+  before update on profiles
+  for each row execute function prevent_self_privilege_escalation();
+
+-- 17f. admin_set_verification_status — único caminho de escrita que um admin
+--      tem sobre o status/motivo de outro utilizador (a RLS de profiles NÃO
+--      dá update grant a admins — só select, ver 17g). Só aceita a transição
+--      pending_verification -> approved/rejected (não permite "desaprovar"
+--      uma conta já aprovada por esta via, nem um admin agir sobre si próprio).
+create or replace function admin_set_verification_status(p_profile_id uuid, p_status text, p_reason text default null)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row profiles%rowtype;
+begin
+  if not is_admin() then
+    raise exception 'Não autorizado.';
+  end if;
+  if p_profile_id = auth.uid() then
+    raise exception 'Um admin não pode alterar o seu próprio estado de verificação por esta via.';
+  end if;
+  if p_status not in ('approved', 'rejected') then
+    raise exception 'Estado inválido.';
+  end if;
+  if p_status = 'rejected' and (p_reason is null or length(trim(p_reason)) = 0) then
+    raise exception 'É obrigatório indicar um motivo de rejeição.';
+  end if;
+
+  select * into v_row from profiles
+  where id = p_profile_id and role = 'nutricionista' and status = 'pending_verification'
+  for update;
+
+  if not found then
+    raise exception 'Este pedido já não está pendente ou não existe.';
+  end if;
+
+  update profiles set
+    status = p_status,
+    motivo_rejeicao = case when p_status = 'rejected' then trim(p_reason) else null end
+  where id = p_profile_id;
+
+  return json_build_object('ok', true, 'profile_id', p_profile_id, 'status', p_status,
+    'email', v_row.email, 'nome', v_row.nome);
+end;
+$$;
+
+grant execute on function admin_set_verification_status(uuid, text, text) to authenticated;
+
+-- 17g. RLS — admin lê perfis de nutricionistas (para rever pedidos), nunca
+--      perfis de pacientes (não é necessário para esta funcionalidade — leitura
+--      alargada desnecessariamente seria mais dados sensíveis expostos do que
+--      o preciso).
+drop policy if exists "admin vê perfis de nutricionistas" on profiles;
+create policy "admin vê perfis de nutricionistas"
+  on profiles for select
+  using (is_admin() and role = 'nutricionista');
+
+-- 17h. RLS — gating real (não só de UX) das tabelas onde o nutricionista tem
+--      hoje acesso de escrita "for all" por posse direta. plans/consultations/
+--      meal_comments/daily_water_logs/meal_logs/progress_photos/
+--      patient_consents e o storage de meal-photos acedem sempre via
+--      exists(select ... from clients where nutricionista_id = auth.uid()),
+--      e a RLS de clients corre também dentro desse subquery — por isso
+--      herdam o gate automaticamente assim que clients nega visibilidade a
+--      um nutricionista não aprovado, sem precisar de alteração própria.
+--
+--      is_approved_nutricionista() (plpgsql, security definer, nunca
+--      inlined) em vez de "exists (select ... from profiles ...)" inline
+--      aqui é obrigatório, não só estilo: a policy 13 de profiles já lê de
+--      clients (nutricionista vê perfil dos seus pacientes), e clients ler
+--      profiles de volta na mesma cláusula criava um ciclo profiles ->
+--      clients -> profiles -> clients -> ... ("infinite recursion detected
+--      in policy for relation profiles", 42P17) em qualquer select a
+--      qualquer uma das duas tabelas. Como function owner == table owner
+--      (profiles), a leitura dentro da function ignora RLS em vez de a
+--      reavaliar, quebrando o ciclo.
+create or replace function is_approved_nutricionista()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_approved boolean;
+begin
+  select (status = 'approved') into v_approved from profiles where id = auth.uid();
+  return coalesce(v_approved, false);
+end;
+$$;
+
+grant execute on function is_approved_nutricionista() to authenticated;
+
+drop policy if exists "nutricionista gere os seus próprios clientes" on clients;
+create policy "nutricionista gere os seus próprios clientes"
+  on clients for all
+  using (nutricionista_id = auth.uid() and is_approved_nutricionista())
+  with check (nutricionista_id = auth.uid() and is_approved_nutricionista());
+
+drop policy if exists "nutricionista gere os seus próprios convites" on nutricionista_paciente_links;
+create policy "nutricionista gere os seus próprios convites"
+  on nutricionista_paciente_links for all
+  using (nutricionista_id = auth.uid() and is_approved_nutricionista())
+  with check (nutricionista_id = auth.uid() and is_approved_nutricionista());
+
+-- ============================================================
+-- 18. verification-documents — bucket + RLS de storage.objects para os 2
+--     documentos de verificação (comprovativo do corpo profissional +
+--     documento de identificação). Caminho: {user_id}/professional-proof.<ext>
+--     e {user_id}/id-document.<ext> — determinístico, permite upsert (uma
+--     resubmissão substitui o ficheiro anterior, tal como meal-photos).
+--     8MB por ficheiro (scans/PDFs são maiores que fotos comprimidas de
+--     comida) — pdf + jpeg + png.
+-- ============================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('verification-documents', 'verification-documents', false, 8388608,
+  array['application/pdf', 'image/jpeg', 'image/png'])
+on conflict (id) do update set
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "nutricionista gere os seus documentos de verificação" on storage.objects;
+create policy "nutricionista gere os seus documentos de verificação"
+  on storage.objects for all
+  using (
+    bucket_id = 'verification-documents'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'verification-documents'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "admin vê documentos de verificação" on storage.objects;
+create policy "admin vê documentos de verificação"
+  on storage.objects for select
+  using (bucket_id = 'verification-documents' and is_admin());
+
+-- ============================================================
+-- 19. profiles — registo e validação de estudantes de nutrição (Fase 2)
+-- ============================================================
+
+-- 19a. role — adiciona 'estudante'.
+alter table profiles drop constraint if exists profiles_role_check;
+alter table profiles add constraint profiles_role_check
+  check (role in ('nutricionista', 'paciente', 'admin', 'estudante'));
+
+-- 19b. status — adiciona os 3 estados próprios do fluxo de estudante.
+--      'expired' fica na lista por completude/vocabulário da spec, mas
+--      como a expiração é lazy (sem cron — decisão explícita), nada
+--      escreve este valor automaticamente hoje; é só reservado para o
+--      caso de um cron vir a ser adicionado no futuro.
+alter table profiles drop constraint if exists profiles_status_check;
+alter table profiles add constraint profiles_status_check
+  check (status in (
+    'pending_verification', 'approved', 'rejected',
+    'pending_email_confirmation', 'pending_manual_verification', 'expired'
+  ));
+
+-- 19c. Novas colunas. documentos_verificacao (jsonb, já existe da Fase 1)
+--      é reaproveitada — estudante usa só a chave "matricula".
+alter table profiles add column if not exists instituicao_ensino text;
+alter table profiles add column if not exists ano_conclusao_previsto int;
+alter table profiles add column if not exists validado_em timestamptz;
+alter table profiles add column if not exists expira_em timestamptz;
+
+-- 19d. is_academic_email() — replica o algoritmo já fornecido (lista de
+--      padrões testados como substring do domínio, tal como o
+--      .includes() original). language sql simples: não acede a nenhuma
+--      tabela, por isso não tem risco de recursão de RLS.
+create or replace function is_academic_email(p_email text)
+returns boolean
+language sql
+immutable
+as $$
+  select p_email is not null and exists (
+    select 1 from unnest(array[
+      'alunos.', 'aluno.', 'estudantes.', 'estudante.',
+      'student.', 'campus.', 'discente.', '.edu.br', '.edu', '.ac.uk'
+    ]) as pattern
+    where lower(split_part(p_email, '@', 2)) like '%' || pattern || '%'
+  );
+$$;
+
+-- 19e. handle_new_user — substitui a versão da secção 17c. Nutricionistas
+--      continuam pending_verification; pacientes/admin continuam
+--      approved; estudantes ficam pending_email_confirmation (se o email
+--      "parecer" académico) ou pending_manual_verification (caso
+--      contrário) — a decisão real de aprovar sozinho só acontece depois,
+--      em 19f, quando o email é mesmo confirmado.
+create or replace function handle_new_user()
+returns trigger as $$
+declare
+  v_role   text := coalesce(new.raw_user_meta_data->>'role', 'nutricionista');
+  v_status text;
+begin
+  if v_role = 'estudante' then
+    v_status := case when is_academic_email(new.email)
+      then 'pending_email_confirmation' else 'pending_manual_verification' end;
+  elsif v_role = 'nutricionista' then
+    v_status := 'pending_verification';
+  else
+    v_status := 'approved';
+  end if;
+
+  insert into public.profiles (
+    id, role, nome, email, status, cedula, pais_atuacao, corpo_profissional,
+    instituicao_ensino, ano_conclusao_previsto
+  )
+  values (
+    new.id, v_role, new.raw_user_meta_data->>'nome', new.email, v_status,
+    new.raw_user_meta_data->>'cedula',
+    new.raw_user_meta_data->>'pais_atuacao',
+    new.raw_user_meta_data->>'corpo_profissional',
+    new.raw_user_meta_data->>'instituicao_ensino',
+    nullif(new.raw_user_meta_data->>'ano_conclusao_previsto', '')::int
+  );
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+-- 19f. Aprovação automática (Fluxo A) — reage à confirmação real do email
+--      pelo Supabase Auth (email_confirmed_at nulo -> preenchido). Nunca
+--      confia em nada vindo do signup: re-verifica is_academic_email()
+--      sobre o email efetivamente confirmado.
+create or replace function handle_student_email_confirmed()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if OLD.email_confirmed_at is null and NEW.email_confirmed_at is not null then
+    update profiles set
+      status = 'approved',
+      validado_em = now(),
+      expira_em = now() + interval '365 days'
+    where id = NEW.id
+      and role = 'estudante'
+      and status = 'pending_email_confirmation'
+      and is_academic_email(NEW.email);
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists on_auth_user_email_confirmed on auth.users;
+create trigger on_auth_user_email_confirmed
+  after update on auth.users
+  for each row execute function handle_student_email_confirmed();
+
+-- 19g. is_approved_professional() — substitui is_approved_nutricionista()
+--      (Fase 1, secção 17h) como helper usado pelas policies de clients/
+--      nutricionista_paciente_links. Estudante só conta como aprovado se
+--      ainda não tiver passado expira_em — é aqui, não numa coluna
+--      "expired" escrita por cron, que a expiração é realmente aplicada.
+create or replace function is_approved_professional()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_row profiles%rowtype;
+begin
+  select * into v_row from profiles where id = auth.uid();
+  if v_row.id is null then return false; end if;
+  if v_row.role = 'nutricionista' then return v_row.status = 'approved'; end if;
+  if v_row.role = 'estudante' then
+    return v_row.status = 'approved' and (v_row.expira_em is null or v_row.expira_em > now());
+  end if;
+  return false;
+end;
+$$;
+grant execute on function is_approved_professional() to authenticated;
+
+drop policy if exists "nutricionista gere os seus próprios clientes" on clients;
+create policy "profissional aprovado gere os seus próprios clientes"
+  on clients for all
+  using (nutricionista_id = auth.uid() and is_approved_professional())
+  with check (nutricionista_id = auth.uid() and is_approved_professional());
+
+drop policy if exists "nutricionista gere os seus próprios convites" on nutricionista_paciente_links;
+create policy "profissional aprovado gere os seus próprios convites"
+  on nutricionista_paciente_links for all
+  using (nutricionista_id = auth.uid() and is_approved_professional())
+  with check (nutricionista_id = auth.uid() and is_approved_professional());
+
+drop function if exists is_approved_nutricionista();
+
+-- 19h. RLS — admin passa a ver também perfis de estudante (para rever
+--      Fluxo B), nunca pacientes.
+drop policy if exists "admin vê perfis de nutricionistas" on profiles;
+create policy "admin vê perfis de nutricionistas e estudantes"
+  on profiles for select
+  using (is_admin() and role in ('nutricionista', 'estudante'));
+
+-- 19i. admin_set_verification_status — substitui a versão da secção 17f.
+--      Mesmo nome/assinatura, generalizado para also aceitar estudantes
+--      em pending_manual_verification; só preenche validado_em/expira_em
+--      quando aprova um estudante (nutricionista não usa estes campos).
+create or replace function admin_set_verification_status(p_profile_id uuid, p_status text, p_reason text default null)
+returns json language plpgsql security definer set search_path = public
+as $$
+declare v_row profiles%rowtype;
+begin
+  if not is_admin() then raise exception 'Não autorizado.'; end if;
+  if p_profile_id = auth.uid() then
+    raise exception 'Um admin não pode alterar o seu próprio estado de verificação por esta via.';
+  end if;
+  if p_status not in ('approved', 'rejected') then raise exception 'Estado inválido.'; end if;
+  if p_status = 'rejected' and (p_reason is null or length(trim(p_reason)) = 0) then
+    raise exception 'É obrigatório indicar um motivo de rejeição.';
+  end if;
+
+  select * into v_row from profiles
+  where id = p_profile_id and (
+    (role = 'nutricionista' and status = 'pending_verification') or
+    (role = 'estudante' and status = 'pending_manual_verification')
+  )
+  for update;
+  if not found then raise exception 'Este pedido já não está pendente ou não existe.'; end if;
+
+  update profiles set
+    status = p_status,
+    motivo_rejeicao = case when p_status = 'rejected' then trim(p_reason) else null end,
+    validado_em = case when p_status = 'approved' and v_row.role = 'estudante' then now() else validado_em end,
+    expira_em   = case when p_status = 'approved' and v_row.role = 'estudante' then now() + interval '365 days' else expira_em end
+  where id = p_profile_id;
+
+  return json_build_object('ok', true, 'profile_id', p_profile_id, 'status', p_status,
+    'email', v_row.email, 'nome', v_row.nome, 'role', v_row.role);
+end;
+$$;
+
+-- 19j. prevent_self_privilege_escalation — substitui a versão da secção
+--      17e. Acrescenta 2 transições permitidas (lista continua fechada,
+--      tudo o resto continua bloqueado): estudante rejeitado reenviar, e
+--      estudante "expirado" (approved na BD mas expira_em já passou)
+--      renovar ou converter-se a nutricionista. A conversão de role só é
+--      permitida nesta condição exata — chamada pela RPC 19k, nunca por
+--      um update direto vindo do cliente.
+create or replace function prevent_self_privilege_escalation()
+returns trigger language plpgsql as $$
+declare
+  v_estudante_expirado boolean := (OLD.role = 'estudante' and OLD.status = 'approved' and OLD.expira_em < now());
+begin
+  if auth.uid() is not null and NEW.id = auth.uid() then
+    if NEW.role is distinct from OLD.role then
+      if not (v_estudante_expirado and NEW.role = 'nutricionista' and NEW.status = 'pending_verification') then
+        raise exception 'Não pode alterar a sua própria função de acesso.';
+      end if;
+    end if;
+    if NEW.status is distinct from OLD.status then
+      if not (
+        (OLD.status = 'rejected' and NEW.status = 'pending_verification') or
+        (OLD.status = 'rejected' and NEW.status = 'pending_manual_verification') or
+        (v_estudante_expirado and NEW.status = 'pending_manual_verification' and NEW.role = 'estudante') or
+        (v_estudante_expirado and NEW.status = 'pending_verification' and NEW.role = 'nutricionista')
+      ) then
+        raise exception 'Não pode alterar o estado da sua própria verificação.';
+      end if;
+    elsif NEW.motivo_rejeicao is distinct from OLD.motivo_rejeicao then
+      raise exception 'Não pode alterar o motivo de rejeição do seu próprio perfil.';
+    end if;
+  end if;
+  return NEW;
+end;
+$$;
+
+-- 19k. convert_estudante_to_nutricionista — único caminho para um
+--      estudante expirado passar a nutricionista. Fica pending_verification
+--      como qualquer nutricionista novo — tem de submeter os 2 documentos
+--      profissionais como qualquer outro, o histórico de estudante não
+--      isenta verificação profissional.
+create or replace function convert_estudante_to_nutricionista(p_cedula text, p_pais_atuacao text, p_corpo_profissional text)
+returns json language plpgsql security definer set search_path = public
+as $$
+declare v_row profiles%rowtype;
+begin
+  select * into v_row from profiles where id = auth.uid();
+  if v_row.id is null or v_row.role != 'estudante' then
+    raise exception 'Só contas de estudante podem fazer esta transição.';
+  end if;
+  if v_row.status != 'approved' or v_row.expira_em is null or v_row.expira_em >= now() then
+    raise exception 'Só disponível depois do estatuto de estudante expirar.';
+  end if;
+  if p_pais_atuacao not in ('PT', 'BR') or p_corpo_profissional not in ('ON', 'CRN') then
+    raise exception 'País/corpo profissional inválido.';
+  end if;
+  if p_cedula is null or length(trim(p_cedula)) = 0 then
+    raise exception 'Indique o nº de cédula profissional.';
+  end if;
+
+  update profiles set
+    role = 'nutricionista', status = 'pending_verification',
+    cedula = trim(p_cedula), pais_atuacao = p_pais_atuacao, corpo_profissional = p_corpo_profissional,
+    documentos_verificacao = '{}', motivo_rejeicao = null
+  where id = auth.uid();
+
+  return json_build_object('ok', true);
+end;
+$$;
+grant execute on function convert_estudante_to_nutricionista(text, text, text) to authenticated;

@@ -21,6 +21,7 @@ na cloud, sem instalação nem servidor próprio.
   - [Convite por email do Portal do Paciente](#convite-por-email-do-portal-do-paciente)
   - [Fotos de refeições — bucket e limpeza automática](#fotos-de-refeições--bucket-e-limpeza-automática)
   - [Gerar plano com IA](#gerar-plano-com-ia)
+  - [Verificação profissional do nutricionista + admin](#verificação-profissional-do-nutricionista--admin)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Testes automatizados](#testes-automatizados)
 - [Fonte dos dados](#fonte-dos-dados)
@@ -33,6 +34,7 @@ na cloud, sem instalação nem servidor próprio.
 - **Macros por porção** — ajuste de gramas com recálculo automático
 - **Piechart** sempre visível com totais do dia (kcal, proteína, HC, lípidos)
 - **Conta + sincronização (Supabase)** — dados de pacientes/planos/consultas guardados na cloud, com login por nutricionista e isolamento por RLS
+- **Verificação profissional obrigatória** — novas contas de nutricionista ficam pendentes até um admin aprovar a cédula profissional e os documentos submetidos, num dashboard de admin próprio (`public/admin.html`)
 - **Portal do Paciente** (`public/portal.html`) — convite por email (nutricionista → paciente), plano do dia interativo (água, refeições feitas/saltadas com notas), timeline "story" de fotos das refeições por categoria, e vista da evolução do próprio paciente
 - **Responsivo** — utilizável em telemóvel/tablet, com menu em drawer
 - **Consentimento informado + exportação RGPD** — registo de consentimento por paciente e exportação de todos os dados em JSON
@@ -145,6 +147,39 @@ e volta a publicar a function.
 Sem `ANTHROPIC_API_KEY` configurado, o botão "Gerar com IA" mostra um erro claro ao
 nutricionista — o resto da app continua a funcionar normalmente.
 
+### Verificação profissional do nutricionista + admin
+
+Toda conta nova de nutricionista nasce com `status = 'pending_verification'`
+(schema.sql secção 17) e fica sem acesso à app até um admin aprovar, num
+dashboard próprio em `public/admin.html` (não está ligado em nenhum menu — só
+acessível por URL direto). O registo pede país de atuação, nº de cédula
+profissional e 2 documentos (comprovativo da ordem/conselho + identificação),
+guardados no bucket privado `verification-documents` (schema.sql secção 18,
+criado da mesma forma idempotente que o bucket `meal-photos`).
+
+**Criar a primeira conta admin** (não há signup para isto, de propósito — é
+sempre manual):
+
+1. Cria a conta normalmente (signup em `login.html` ou, no Supabase Dashboard,
+   *Authentication → Users → Add user* com "Auto Confirm User").
+2. No SQL Editor, corre uma única vez:
+   ```sql
+   update profiles set role = 'admin', status = 'approved' where id = '<uuid-do-utilizador>';
+   ```
+3. Entra em `/admin.html` com essas credenciais para rever pedidos pendentes.
+
+**Notificação por email de aprovação/rejeição** (opcional — reutiliza os
+secrets `RESEND_API_KEY`/`INVITE_FROM_EMAIL` já configurados para o convite
+de pacientes, ver acima; sem eles a aprovação/rejeição continua a funcionar
+normalmente, só não sai o email):
+```bash
+supabase functions deploy notify-verification-status
+```
+
+Nutricionistas com conta anterior a esta funcionalidade não são afetados —
+`status` recebe `approved` automaticamente para todas as linhas já existentes
+ao correr `schema.sql`, só contas novas ficam pendentes.
+
 ## Estrutura do projeto
 
 ```
@@ -153,12 +188,14 @@ public/          site estático servido em produção (Vercel)
   login.html       login/registo do nutricionista
   app.html         aplicação do nutricionista (autenticado)
   portal.html      portal do paciente (autenticado, read-only)
+  admin.html       dashboard de admin (não ligado em menus, só por URL direto)
   css/, js/, img/
 supabase/
-  schema.sql               tabelas + RLS + bucket de Storage
-  functions/send-invite-email/      Edge Function do convite por email
-  functions/cleanup-meal-photos/    Edge Function agendada — apaga fotos de refeições >45 dias
-  functions/generate-meal-plan/     Edge Function do botão "Gerar com IA" (rascunho de plano)
+  schema.sql               tabelas + RLS + buckets de Storage
+  functions/send-invite-email/            Edge Function do convite por email
+  functions/cleanup-meal-photos/          Edge Function agendada — apaga fotos de refeições >45 dias
+  functions/generate-meal-plan/           Edge Function do botão "Gerar com IA" (rascunho de plano)
+  functions/notify-verification-status/   Edge Function — email de aprovação/rejeição de conta
 scripts/
   generate-tca-trimmed.mjs  gera supabase/functions/generate-meal-plan/tca_data.json a partir
                             de public/js/data/tca_data.js (correr manualmente quando este mudar)

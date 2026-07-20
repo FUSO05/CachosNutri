@@ -202,15 +202,323 @@ async function fetchProfileFromSupabase() {
 }
 
 // Contas de paciente não devem entrar na app do nutricionista (usam portal.html).
-// Devolve true (é nutricionista), false (é paciente) ou null (sessão órfã —
-// utilizador autenticado sem linha em "profiles", ex: apagada manualmente).
-async function verificarRoleNutricionista() {
+// Devolve true (é nutricionista OU estudante — desde a Fase 2 um estudante
+// aprovado usa a mesma app.html), false (é paciente/admin) ou null (sessão
+// órfã — utilizador autenticado sem linha em "profiles", ex: apagada manualmente).
+async function verificarRoleProfissional() {
   const { data: prof, error } = await sb.from('profiles').select('role').eq('id', currentUser.id).single();
   if (error) {
     if (error.code === 'PGRST116') return null; // 0 linhas — sessão órfã
     return true; // erro transitório (rede, etc.) — não bloqueia
   }
-  return prof.role !== 'paciente';
+  // Explicitamente esta lista (não "!== 'paciente'") — desde que existe o role
+  // 'admin', uma conta admin também não deve cair no dashboard de app.html.
+  return prof.role === 'nutricionista' || prof.role === 'estudante';
+}
+
+// ── Gate de verificação profissional / estudante (Fases 5 e 6) ────────────────
+// Nutricionistas novos nascem com status='pending_verification'; estudantes
+// nascem pending_email_confirmation ou pending_manual_verification consoante
+// o email pareça académico (schema.sql secções 17 e 19). Nenhum tem acesso à
+// dashboard antes de status='approved' — e, no caso de estudante, antes de
+// expira_em ainda estar no futuro. initApp() chama showStatusGate() em vez de
+// carregar a dashboard sempre que esse gate não estiver satisfeito.
+const VERIFICATION_DOC_FIELDS = [
+  { key: 'professional_proof', filename: 'professional-proof', label: 'Comprovativo da Ordem/Conselho Profissional' },
+  { key: 'id_document', filename: 'id-document', label: 'Documento de identificação (Cartão de Cidadão / RG)' },
+];
+const STUDENT_DOC_FIELDS = [
+  { key: 'matricula', filename: 'matricula', label: 'Comprovativo de matrícula' },
+];
+
+let _statusGateProfile = null;
+let _statusGateUploads = {};
+
+function showStatusGate(prof) {
+  _statusGateProfile = prof;
+  _statusGateUploads = Object.assign({}, prof.documentos_verificacao || {});
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('pg-status-gate').style.display = '';
+  renderStatusGate();
+}
+
+function renderStatusGate() {
+  const box = document.getElementById('status-gate-box');
+  box.innerHTML = _statusGateProfile.role === 'estudante' ? renderStudentGateContent() : renderNutriGateContent();
+}
+
+function renderNutriGateContent() {
+  const prof = _statusGateProfile;
+  const hasAllDocs = VERIFICATION_DOC_FIELDS.every(f => _statusGateUploads[f.key]);
+
+  if (prof.status === 'rejected') {
+    return renderStatusGateForm(
+      VERIFICATION_DOC_FIELDS,
+      `O seu pedido de verificação foi rejeitado. Motivo: "${escHtml(prof.motivo_rejeicao || '')}". Reveja os seus dados e reenvie os documentos.`,
+      { showProfessionalFields: true, submitFn: 'submitStatusGateResubmit()', submitLabel: 'Reenviar para verificação' }
+    );
+  }
+  if (!hasAllDocs) {
+    return renderStatusGateForm(VERIFICATION_DOC_FIELDS, 'Falta submeter os seus documentos de verificação para começarmos a rever o seu pedido.', null);
+  }
+  return renderWaitingScreen('Os seus documentos foram submetidos e estão a ser revistos pela nossa equipa. Assim que a sua conta for aprovada, pode voltar a entrar normalmente.');
+}
+
+function renderStudentGateContent() {
+  const prof = _statusGateProfile;
+  const isExpired = prof.status === 'approved' && prof.expira_em && new Date(prof.expira_em) < new Date();
+  if (isExpired) return renderExpiredStudentScreen();
+
+  if (prof.status === 'pending_email_confirmation') {
+    return renderWaitingScreen('Enviámos um email de confirmação para o endereço académico que indicou. Assim que confirmar, a sua conta é aprovada automaticamente — não é preciso mais nenhuma ação.');
+  }
+
+  const hasDoc = STUDENT_DOC_FIELDS.every(f => _statusGateUploads[f.key]);
+  if (prof.status === 'rejected') {
+    return renderStatusGateForm(
+      STUDENT_DOC_FIELDS,
+      `O seu pedido de verificação foi rejeitado. Motivo: "${escHtml(prof.motivo_rejeicao || '')}". Reenvie o comprovativo de matrícula.`,
+      { submitFn: 'submitStatusGateStudentResubmit()', submitLabel: 'Reenviar para verificação' }
+    );
+  }
+  if (!hasDoc) {
+    return renderStatusGateForm(STUDENT_DOC_FIELDS, 'Falta submeter o comprovativo de matrícula do ano letivo vigente para começarmos a rever o seu pedido.', null);
+  }
+  return renderWaitingScreen('O seu comprovativo foi submetido e está a ser revisto pela nossa equipa. Assim que a sua conta for aprovada, pode voltar a entrar normalmente.');
+}
+
+function renderWaitingScreen(msg) {
+  return `
+    <div class="auth-logo"><img src="img/fav.png" alt="CachosNutri" class="auth-logo-img"><span class="auth-logo-text">CachosNutri</span></div>
+    <p class="auth-tagline">A aguardar verificação</p>
+    <p class="auth-hint">${escHtml(msg)}</p>
+    <button class="btn-back" style="width:100%;justify-content:center;margin-top:8px" onclick="handleLogout()">Terminar sessão</button>
+  `;
+}
+
+function renderExpiredStudentScreen() {
+  return `
+    <div class="auth-logo"><img src="img/fav.png" alt="CachosNutri" class="auth-logo-img"><span class="auth-logo-text">CachosNutri</span></div>
+    <p class="auth-tagline">Estatuto de estudante expirado</p>
+    <p class="auth-hint">O seu estatuto de estudante expirou. Pode renovar submetendo um novo comprovativo de matrícula, ou tornar-se nutricionista se já tiver concluído o curso.</p>
+    <div class="auth-form">
+      <div class="auth-error" id="status-gate-error"></div>
+      <button class="btn-primary auth-submit" type="button" onclick="startStudentRenewal()">Renovar estatuto de estudante</button>
+      <button class="btn-back" style="width:100%;justify-content:center" onclick="showConvertToNutricionistaForm()">Tornar-me nutricionista</button>
+      <button class="btn-back" style="width:100%;justify-content:center" onclick="handleLogout()">Terminar sessão</button>
+    </div>
+  `;
+}
+
+// docFields: VERIFICATION_DOC_FIELDS ou STUDENT_DOC_FIELDS. opts: null (só
+// upload, sem botão de reenvio — usado no primeiro pedido) ou
+// { submitFn, submitLabel, showProfessionalFields } no caso de reenvio depois
+// de rejeitado (showProfessionalFields só existe para o nutricionista —
+// estudante reenvia só o documento, sem país/cédula).
+function renderStatusGateForm(docFields, hintMsg, opts) {
+  const prof = _statusGateProfile;
+  const docsHtml = docFields.map(f => {
+    const uploaded = !!_statusGateUploads[f.key];
+    return `
+      <div class="form-field">
+        <label class="field-label">${f.label}</label>
+        <button type="button" class="btn-back" style="width:100%;justify-content:center" onclick="document.getElementById('sg-file-${f.key}').click()">
+          ${uploaded ? '✓ Documento enviado — clique para substituir' : 'Selecionar ficheiro'}
+        </button>
+        <input type="file" id="sg-file-${f.key}" accept="application/pdf,image/*" style="display:none" onchange="handleStatusGateFileSelected('${f.key}', this)">
+      </div>`;
+  }).join('');
+
+  const professionalFields = !(opts && opts.showProfessionalFields) ? '' : `
+    <div class="form-row">
+      <div class="form-field">
+        <label class="field-label">País de atuação</label>
+        <select class="field-select" id="sg-pais" onchange="syncStatusGateCorpo()" required>
+          <option value="">Selecionar…</option>
+          <option value="PT" ${prof.pais_atuacao === 'PT' ? 'selected' : ''}>Portugal</option>
+          <option value="BR" ${prof.pais_atuacao === 'BR' ? 'selected' : ''}>Brasil</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="field-label">Corpo profissional</label>
+        <input class="field-input" id="sg-corpo" value="${escHtml(prof.corpo_profissional || '')}" disabled>
+      </div>
+    </div>
+    <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="sg-cedula" value="${escHtml(prof.cedula || '')}" required></div>
+  `;
+
+  return `
+    <div class="auth-logo"><img src="img/fav.png" alt="CachosNutri" class="auth-logo-img"><span class="auth-logo-text">CachosNutri</span></div>
+    <p class="auth-tagline">Verificação${prof.role === 'estudante' ? ' de estudante' : ' profissional'}</p>
+    <p class="auth-hint">${escHtml(hintMsg)}</p>
+    <div class="auth-form">
+      ${professionalFields}
+      ${docsHtml}
+      <div class="auth-error" id="status-gate-error"></div>
+      ${opts ? `<button class="btn-primary auth-submit" type="button" id="status-gate-btn" onclick="${opts.submitFn}">${opts.submitLabel}</button>` : ''}
+      <button class="btn-back" style="width:100%;justify-content:center" onclick="handleLogout()">Terminar sessão</button>
+    </div>
+  `;
+}
+
+function syncStatusGateCorpo() {
+  const pais = document.getElementById('sg-pais').value;
+  document.getElementById('sg-corpo').value = pais === 'PT' ? 'ON' : pais === 'BR' ? 'CRN' : '';
+}
+
+async function handleStatusGateFileSelected(key, inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const errEl = document.getElementById('status-gate-error');
+  if (errEl) errEl.textContent = '';
+  const docFields = _statusGateProfile.role === 'estudante' ? STUDENT_DOC_FIELDS : VERIFICATION_DOC_FIELDS;
+  const field = docFields.find(f => f.key === key);
+  const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+  const path = `${currentUser.id}/${field.filename}.${ext}`;
+  const { error: uploadError } = await sb.storage.from('verification-documents')
+    .upload(path, file, { upsert: true, contentType: file.type || 'application/octet-stream' });
+  if (uploadError) {
+    console.error('Erro ao enviar documento:', uploadError);
+    if (errEl) errEl.textContent = 'Não foi possível enviar o documento. Tente novamente.';
+    return;
+  }
+  _statusGateUploads[key] = path;
+  const { error: dbError } = await sb.from('profiles')
+    .update({ documentos_verificacao: _statusGateUploads })
+    .eq('id', currentUser.id);
+  if (dbError) {
+    console.error('Erro ao guardar documento:', dbError);
+    if (errEl) errEl.textContent = 'Não foi possível guardar o documento. Tente novamente.';
+    return;
+  }
+  renderStatusGate();
+}
+
+async function submitStatusGateResubmit() {
+  const errEl = document.getElementById('status-gate-error');
+  if (errEl) errEl.textContent = '';
+  const hasAllDocs = VERIFICATION_DOC_FIELDS.every(f => _statusGateUploads[f.key]);
+  if (!hasAllDocs) { if (errEl) errEl.textContent = 'Submeta os dois documentos antes de reenviar.'; return; }
+  const pais   = document.getElementById('sg-pais').value;
+  const cedula = document.getElementById('sg-cedula').value.trim();
+  if (!pais || !cedula) { if (errEl) errEl.textContent = 'Preencha o país de atuação e o nº de cédula.'; return; }
+  const corpo = pais === 'PT' ? 'ON' : 'CRN';
+  const btn = document.getElementById('status-gate-btn');
+  setButtonLoading(btn, true);
+  const { error } = await sb.from('profiles').update({
+    status: 'pending_verification', motivo_rejeicao: null,
+    cedula, pais_atuacao: pais, corpo_profissional: corpo,
+  }).eq('id', currentUser.id);
+  setButtonLoading(btn, false);
+  if (error) {
+    console.error('Erro ao reenviar verificação:', error);
+    if (errEl) errEl.textContent = 'Não foi possível reenviar. Tente novamente.';
+    return;
+  }
+  _statusGateProfile.status = 'pending_verification';
+  _statusGateProfile.motivo_rejeicao = null;
+  renderStatusGate();
+}
+
+async function submitStatusGateStudentResubmit() {
+  const errEl = document.getElementById('status-gate-error');
+  if (errEl) errEl.textContent = '';
+  const hasDoc = STUDENT_DOC_FIELDS.every(f => _statusGateUploads[f.key]);
+  if (!hasDoc) { if (errEl) errEl.textContent = 'Submeta o comprovativo de matrícula antes de reenviar.'; return; }
+  const btn = document.getElementById('status-gate-btn');
+  setButtonLoading(btn, true);
+  const { error } = await sb.from('profiles').update({
+    status: 'pending_manual_verification', motivo_rejeicao: null,
+  }).eq('id', currentUser.id);
+  setButtonLoading(btn, false);
+  if (error) {
+    console.error('Erro ao reenviar verificação:', error);
+    if (errEl) errEl.textContent = 'Não foi possível reenviar. Tente novamente.';
+    return;
+  }
+  _statusGateProfile.status = 'pending_manual_verification';
+  _statusGateProfile.motivo_rejeicao = null;
+  renderStatusGate();
+}
+
+// Reenvio depois do estatuto expirar: limpa o comprovativo antigo (é de um
+// ano letivo já passado) para forçar um novo upload, e já muda o status na BD
+// — permitido pela exceção da trigger prevent_self_privilege_escalation
+// (schema.sql secção 19j) só para esta transição exata.
+async function startStudentRenewal() {
+  const errEl = document.getElementById('status-gate-error');
+  const { error } = await sb.from('profiles')
+    .update({ status: 'pending_manual_verification', motivo_rejeicao: null })
+    .eq('id', currentUser.id);
+  if (error) {
+    console.error('Erro ao iniciar renovação:', error);
+    if (errEl) errEl.textContent = 'Não foi possível iniciar a renovação. Tente novamente.';
+    return;
+  }
+  _statusGateProfile.status = 'pending_manual_verification';
+  delete _statusGateUploads.matricula;
+  renderStatusGate();
+}
+
+function showConvertToNutricionistaForm() {
+  const box = document.getElementById('status-gate-box');
+  box.innerHTML = `
+    <div class="auth-logo"><img src="img/fav.png" alt="CachosNutri" class="auth-logo-img"><span class="auth-logo-text">CachosNutri</span></div>
+    <p class="auth-tagline">Tornar-me nutricionista</p>
+    <p class="auth-hint">Preencha os seus dados profissionais — depois de submeter, vai precisar de enviar os documentos de verificação, tal como qualquer novo registo de nutricionista.</p>
+    <div class="auth-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label class="field-label">País de atuação</label>
+          <select class="field-select" id="sg-convert-pais" onchange="syncStatusGateConvertCorpo()" required>
+            <option value="">Selecionar…</option>
+            <option value="PT">Portugal</option>
+            <option value="BR">Brasil</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">Corpo profissional</label>
+          <input class="field-input" id="sg-convert-corpo" placeholder="Automático" disabled>
+        </div>
+      </div>
+      <div class="form-field"><label class="field-label">Nº de cédula profissional</label><input class="field-input" id="sg-convert-cedula" required></div>
+      <div class="auth-error" id="status-gate-error"></div>
+      <button class="btn-primary auth-submit" type="button" id="status-gate-btn" onclick="submitConvertToNutricionista()">Confirmar</button>
+      <button class="btn-back" style="width:100%;justify-content:center" onclick="renderStatusGate()">Voltar</button>
+    </div>
+  `;
+}
+
+function syncStatusGateConvertCorpo() {
+  const pais = document.getElementById('sg-convert-pais').value;
+  document.getElementById('sg-convert-corpo').value = pais === 'PT' ? 'ON' : pais === 'BR' ? 'CRN' : '';
+}
+
+async function submitConvertToNutricionista() {
+  const errEl = document.getElementById('status-gate-error');
+  if (errEl) errEl.textContent = '';
+  const pais   = document.getElementById('sg-convert-pais').value;
+  const cedula = document.getElementById('sg-convert-cedula').value.trim();
+  if (!pais || !cedula) { if (errEl) errEl.textContent = 'Preencha o país de atuação e o nº de cédula.'; return; }
+  const corpo = pais === 'PT' ? 'ON' : 'CRN';
+  const btn = document.getElementById('status-gate-btn');
+  setButtonLoading(btn, true);
+  const { error } = await sb.rpc('convert_estudante_to_nutricionista', {
+    p_cedula: cedula, p_pais_atuacao: pais, p_corpo_profissional: corpo
+  });
+  setButtonLoading(btn, false);
+  if (error) {
+    console.error('Erro ao converter para nutricionista:', error);
+    if (errEl) errEl.textContent = 'Não foi possível concluir. Tente novamente.';
+    return;
+  }
+  _statusGateProfile.role = 'nutricionista';
+  _statusGateProfile.status = 'pending_verification';
+  _statusGateProfile.cedula = cedula;
+  _statusGateProfile.pais_atuacao = pais;
+  _statusGateProfile.corpo_profissional = corpo;
+  _statusGateUploads = {};
+  renderStatusGate();
 }
 
 function confirmLogout() {
@@ -244,17 +552,27 @@ async function initApp() {
     return;
   }
   currentUser = session.user;
-  const isNutri = await verificarRoleNutricionista();
-  if (isNutri === null) {
+  const isProfissional = await verificarRoleProfissional();
+  if (isProfissional === null) {
     await sb.auth.signOut();
     window.location.href = 'login.html?erro=sessao_invalida';
     return;
   }
-  if (!isNutri) {
+  if (!isProfissional) {
     await sb.auth.signOut();
     window.location.href = 'login.html?erro=sem_acesso';
     return;
   }
+
+  const { data: verifProf, error: verifErr } = await sb.from('profiles')
+    .select('role, status, motivo_rejeicao, documentos_verificacao, cedula, pais_atuacao, corpo_profissional, instituicao_ensino, ano_conclusao_previsto, expira_em')
+    .eq('id', currentUser.id).single();
+  const isExpiredStudent = !!(verifProf && verifProf.role === 'estudante' && verifProf.expira_em && new Date(verifProf.expira_em) < new Date());
+  if (!verifErr && verifProf && (verifProf.status !== 'approved' || isExpiredStudent)) {
+    showStatusGate(verifProf);
+    return;
+  }
+
   loadProfile();
   updateSidebarUser();
 
